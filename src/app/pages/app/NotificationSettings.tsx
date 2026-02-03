@@ -1,0 +1,371 @@
+import { motion } from "motion/react";
+import { 
+  Bell,
+  BellOff,
+  Mail,
+  MessageSquare,
+  Calendar,
+  Heart,
+  TrendingUp,
+  Users,
+  Zap,
+  Moon,
+  Volume2,
+  VolumeX,
+  ArrowLeft
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { useState } from "react";
+import { AppLayout } from "@/app/components/AppLayout";
+
+export function NotificationSettings() {
+  const [notificationSettings, setNotificationSettings] = useState({
+    pushEnabled: true,
+    emailEnabled: true,
+    smsEnabled: false,
+    quietHoursEnabled: true,
+    quietStart: "22:00",
+    quietEnd: "08:00",
+    
+    // Specific notifications
+    sessionReminders: true,
+    moodCheckIns: true,
+    journalPrompts: true,
+    wellnessTips: false,
+    communityActivity: false,
+    achievementUnlocked: true,
+    progressMilestones: true,
+    crisisAlerts: true
+  });
+
+  const toggleSetting = (key: keyof typeof notificationSettings) => {
+    setNotificationSettings(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const notificationCategories = [
+    {
+      title: "Session Reminders",
+      description: "Get notified before scheduled therapy sessions",
+      icon: Calendar,
+      key: "sessionReminders" as const,
+      color: "text-blue-600"
+    },
+    {
+      title: "Mood Check-ins",
+      description: "Daily prompts to track your mood",
+      icon: Heart,
+      key: "moodCheckIns" as const,
+      color: "text-pink-600"
+    },
+    {
+      title: "Journal Prompts",
+      description: "Writing prompts and journaling reminders",
+      icon: MessageSquare,
+      key: "journalPrompts" as const,
+      color: "text-purple-600"
+    },
+    {
+      title: "Wellness Tips",
+      description: "Daily mental health tips and advice",
+      icon: Zap,
+      key: "wellnessTips" as const,
+      color: "text-yellow-600"
+    },
+    {
+      title: "Community Activity",
+      description: "Updates from your community connections",
+      icon: Users,
+      key: "communityActivity" as const,
+      color: "text-green-600"
+    },
+    {
+      title: "Achievement Unlocked",
+      description: "Notifications for badges and rewards",
+      icon: TrendingUp,
+      key: "achievementUnlocked" as const,
+      color: "text-indigo-600"
+    },
+    {
+      title: "Progress Milestones",
+      description: "Celebrate your wellness journey milestones",
+      icon: Heart,
+      key: "progressMilestones" as const,
+      color: "text-rose-600"
+    },
+    {
+      title: "Crisis Alerts",
+      description: "Important safety and crisis notifications",
+      icon: Bell,
+      key: "crisisAlerts" as const,
+      color: "text-red-600"
+    }
+  ];
+
+  return (
+    <AppLayout>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <Link 
+              to="/app/settings" 
+              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 transition-colors font-medium"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Back to Settings
+            </Link>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600">
+                <Bell className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
+                <p className="text-gray-600">Manage alerts and reminders</p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Master Controls */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+          >
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Notification Channels</h2>
+
+            <div className="space-y-4">
+              {/* Push Notifications */}
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  {notificationSettings.pushEnabled ? (
+                    <Bell className="w-5 h-5 text-blue-600" />
+                  ) : (
+                    <BellOff className="w-5 h-5 text-gray-400" />
+                  )}
+                  <div>
+                    <p className="font-medium text-gray-900">Push Notifications</p>
+                    <p className="text-sm text-gray-600">Real-time alerts on your device</p>
+                  </div>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => toggleSetting("pushEnabled")}
+                  className={`w-14 h-8 rounded-full transition-colors ${
+                    notificationSettings.pushEnabled ? "bg-blue-500" : "bg-gray-300"
+                  }`}
+                >
+                  <motion.div
+                    animate={{ x: notificationSettings.pushEnabled ? 24 : 2 }}
+                    className="w-6 h-6 bg-white rounded-full shadow-md"
+                  />
+                </motion.button>
+              </div>
+
+              {/* Email Notifications */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <p className="font-medium text-gray-900">Email Notifications</p>
+                    <p className="text-sm text-gray-600">Receive updates via email</p>
+                  </div>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => toggleSetting("emailEnabled")}
+                  className={`w-14 h-8 rounded-full transition-colors ${
+                    notificationSettings.emailEnabled ? "bg-purple-500" : "bg-gray-300"
+                  }`}
+                >
+                  <motion.div
+                    animate={{ x: notificationSettings.emailEnabled ? 24 : 2 }}
+                    className="w-6 h-6 bg-white rounded-full shadow-md"
+                  />
+                </motion.button>
+              </div>
+
+              {/* SMS Notifications */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-gray-900">SMS Notifications</p>
+                    <p className="text-sm text-gray-600">Text message alerts</p>
+                  </div>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => toggleSetting("smsEnabled")}
+                  className={`w-14 h-8 rounded-full transition-colors ${
+                    notificationSettings.smsEnabled ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  <motion.div
+                    animate={{ x: notificationSettings.smsEnabled ? 24 : 2 }}
+                    className="w-6 h-6 bg-white rounded-full shadow-md"
+                  />
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Quiet Hours */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Moon className="w-5 h-5 text-indigo-600" />
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Quiet Hours</h2>
+                  <p className="text-sm text-gray-600">Pause notifications during sleep</p>
+                </div>
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => toggleSetting("quietHoursEnabled")}
+                className={`w-14 h-8 rounded-full transition-colors ${
+                  notificationSettings.quietHoursEnabled ? "bg-indigo-500" : "bg-gray-300"
+                }`}
+              >
+                <motion.div
+                  animate={{ x: notificationSettings.quietHoursEnabled ? 24 : 2 }}
+                  className="w-6 h-6 bg-white rounded-full shadow-md"
+                />
+              </motion.button>
+            </div>
+
+            {notificationSettings.quietHoursEnabled && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="grid grid-cols-2 gap-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                  <input
+                    type="time"
+                    value={notificationSettings.quietStart}
+                    onChange={(e) => setNotificationSettings({...notificationSettings, quietStart: e.target.value})}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                  <input
+                    type="time"
+                    value={notificationSettings.quietEnd}
+                    onChange={(e) => setNotificationSettings({...notificationSettings, quietEnd: e.target.value})}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+
+          {/* Notification Types */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
+          >
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Notification Types</h2>
+
+            <div className="space-y-3">
+              {notificationCategories.map((category, index) => {
+                const Icon = category.icon;
+                return (
+                  <motion.div
+                    key={category.key}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + index * 0.05 }}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-5 h-5 ${category.color}`} />
+                      <div>
+                        <p className="font-medium text-gray-900">{category.title}</p>
+                        <p className="text-sm text-gray-600">{category.description}</p>
+                      </div>
+                    </div>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => toggleSetting(category.key)}
+                      className={`w-14 h-8 rounded-full transition-colors ${
+                        notificationSettings[category.key] ? "bg-gradient-to-r from-blue-500 to-indigo-600" : "bg-gray-300"
+                      }`}
+                    >
+                      <motion.div
+                        animate={{ x: notificationSettings[category.key] ? 24 : 2 }}
+                        className="w-6 h-6 bg-white rounded-full shadow-md"
+                      />
+                    </motion.button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Quick Actions */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="mt-6 grid grid-cols-2 gap-3"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                const allEnabled = {...notificationSettings};
+                Object.keys(allEnabled).forEach(key => {
+                  if (typeof allEnabled[key as keyof typeof allEnabled] === 'boolean') {
+                    (allEnabled as any)[key] = true;
+                  }
+                });
+                setNotificationSettings(allEnabled);
+              }}
+              className="px-4 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium flex items-center justify-center gap-2"
+            >
+              <Volume2 className="w-4 h-4" />
+              Enable All
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                const allDisabled = {...notificationSettings};
+                Object.keys(allDisabled).forEach(key => {
+                  if (typeof allDisabled[key as keyof typeof allDisabled] === 'boolean') {
+                    (allDisabled as any)[key] = false;
+                  }
+                });
+                setNotificationSettings(allDisabled);
+              }}
+              className="px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium flex items-center justify-center gap-2"
+            >
+              <VolumeX className="w-4 h-4" />
+              Disable All
+            </motion.button>
+          </motion.div>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}
