@@ -15,6 +15,12 @@ import {
   Search
 } from "lucide-react";
 import { useState } from "react";
+import { api } from "../../../lib/api";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "../../components/ui/dialog";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
+import { Label } from "../../components/ui/label";
 
 interface EmailTemplate {
   id: string;
@@ -34,6 +40,9 @@ export function EmailTemplates() {
   const [isEditing, setIsEditing] = useState(false);
   const [viewMode, setViewMode] = useState<"preview" | "html" | "text">("preview");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   // Mock email templates
   const templates: EmailTemplate[] = [
@@ -245,6 +254,22 @@ export function EmailTemplates() {
     return content;
   };
 
+  const handleSendTestEmail = async () => {
+    if (!selectedTemplate || !testEmail) return;
+    
+    setIsSending(true);
+    try {
+      const html = getPreviewContent(selectedTemplate);
+      await api.sendEmail(testEmail, selectedTemplate.subject, html, selectedTemplate.textContent);
+      toast.success("Test email sent successfully");
+      setShowSendModal(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send email");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <AdminLayoutNew>
       <div className="max-w-7xl mx-auto space-y-6">
@@ -414,11 +439,13 @@ export function EmailTemplates() {
                       <Edit className="w-4 h-4" />
                     </motion.button>
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="p-2 rounded-lg hover:bg-green-50 text-green-600"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="px-3 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 flex items-center gap-2 text-sm font-medium"
+                      onClick={() => setShowSendModal(true)}
                     >
                       <Send className="w-4 h-4" />
+                      Send Test
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -534,6 +561,35 @@ export function EmailTemplates() {
           </motion.div>
         </div>
       </div>
+      
+      <Dialog open={showSendModal} onOpenChange={setShowSendModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Test Email</DialogTitle>
+            <DialogDescription>
+              Send a test email of <strong>{selectedTemplate?.name}</strong> to the address below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSendModal(false)}>Cancel</Button>
+            <Button onClick={handleSendTestEmail} disabled={isSending || !testEmail}>
+              {isSending ? "Sending..." : "Send Email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayoutNew>
   );
 }

@@ -26,44 +26,135 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
+import { api } from "@/lib/api";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+
 export function UserProfile() {
   const navigate = useNavigate();
+  const { signOut, user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [joinedAt, setJoinedAt] = useState<string>("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [formData, setFormData] = useState({
-    name: "Alex Johnson",
-    email: "alex.johnson@email.com",
-    phone: "(555) 123-4567",
-    birthday: "January 15, 1995",
-    location: "San Francisco, CA"
+    name: "",
+    email: "",
+    phone: "",
+    birthday: "",
+    location: ""
   });
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [userStats, setUserStats] = useState({
+    sessions: 0,
+    checkins: 0,
+    daysActive: 0
+  });
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
+
+  const loadProfile = async () => {
+    try {
+      const profile = await api.getMe();
+      setFormData({
+        name: profile.full_name || "",
+        email: profile.email || user?.email || "",
+        phone: profile.emergency_contact_phone || "",
+        birthday: profile.age ? `${profile.age} years old` : "",
+        location: profile.timezone || ""
+      });
+      setProfileImage(profile.avatar_url);
+      if (profile.created_at) {
+        setJoinedAt(new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }));
+      }
+
+      // Update stats from real data
+      if (profile.stats) {
+        setUserStats({
+          sessions: profile.stats.completed_sessions || 0,
+          checkins: profile.stats.total_checkins || 0,
+          daysActive: profile.stats.streak_days || 0
+        });
+      } else {
+        // Fallback for partial data
+        setUserStats({
+          sessions: 0,
+          checkins: 0,
+          daysActive: profile.streak_days || 0
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load profile:", error);
+      toast.error("Failed to load profile");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (file && user) {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        setProfileImage(publicUrl);
+        
+        // Auto-save the profile image
+        await api.updateProfile({
+          avatar_url: publicUrl
+        });
+        
+        toast.success("Profile photo updated successfully");
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        toast.error("Error uploading image");
+      }
     }
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (isEditing) {
-      // Save to localStorage
-      localStorage.setItem('userProfile', JSON.stringify({ ...formData, profileImage }));
-      alert('Profile updated successfully!');
+      try {
+        const updatedProfile = await api.updateProfile({
+          full_name: formData.name,
+          email: formData.email,
+          avatar_url: profileImage
+        });
+        setFormData({
+          ...formData,
+          name: updatedProfile.full_name || '',
+          email: updatedProfile.email || '',
+        });
+        toast.success("Profile updated successfully!");
+        setIsEditing(false);
+      } catch (error) {
+        toast.error("Failed to update profile");
+      }
+    } else {
+      setIsEditing(true);
     }
-    setIsEditing(!isEditing);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm('Are you sure you want to log out?')) {
-      // Clear localStorage
-      localStorage.clear();
-      // Navigate to login
+      await signOut();
       navigate('/login');
     }
   };
@@ -77,9 +168,9 @@ export function UserProfile() {
   };
 
   const stats = [
-    { label: "Sessions", value: "12", icon: Heart },
-    { label: "Check-ins", value: "45", icon: Calendar },
-    { label: "Days Active", value: "28", icon: Calendar }
+    { label: "Sessions", value: userStats.sessions.toString(), icon: Heart },
+    { label: "Check-ins", value: userStats.checkins.toString(), icon: Calendar },
+    { label: "Days Active", value: userStats.daysActive.toString(), icon: Calendar }
   ];
 
   const preferences = [
@@ -122,14 +213,7 @@ export function UserProfile() {
     }
   ];
 
-  useEffect(() => {
-    const savedProfile = localStorage.getItem('userProfile');
-    if (savedProfile) {
-      const profileData = JSON.parse(savedProfile);
-      setFormData(profileData);
-      setProfileImage(profileData.profileImage);
-    }
-  }, []);
+
 
   return (
     <AppLayout>
@@ -194,7 +278,7 @@ export function UserProfile() {
                     </motion.button>
                   </div>
                   <h2 className="text-2xl font-bold mb-1">{formData.name}</h2>
-                  <p className="text-muted-foreground text-sm">Member since Dec 2024</p>
+                  <p className="text-muted-foreground text-sm">Member since {joinedAt || '...'}</p>
                 </div>
 
                 {/* Quick Stats */}

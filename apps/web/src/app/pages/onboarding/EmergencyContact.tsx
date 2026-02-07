@@ -3,14 +3,31 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Card } from "../../components/ui/card";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { ArrowRight, ArrowLeft, Phone, Heart, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { useOnboarding } from "@/app/contexts/OnboardingContext";
 
 export function OnboardingEmergencyContact() {
+  const navigate = useNavigate();
+  const { data, updateData } = useOnboarding();
+  const [emergencyName, setEmergencyName] = useState(data.emergencyContactName || "");
+  const [emergencyPhone, setEmergencyPhone] = useState(data.emergencyContactPhone || "");
+  const [emergencyRelationship, setEmergencyRelationship] = useState(data.emergencyContactRelationship || "");
+
+  const handleContinue = () => {
+    updateData({ 
+      emergencyContactName: emergencyName, 
+      emergencyContactPhone: emergencyPhone, 
+      emergencyContactRelationship: emergencyRelationship 
+    });
+    navigate("/onboarding/permissions");
+  };
+
   return (
     <OnboardingLayout
-      currentStep={6}
+      currentStep={7}
       totalSteps={8}
       title="Emergency Contact"
       subtitle="Help us keep you safe (optional but recommended)"
@@ -62,6 +79,8 @@ export function OnboardingEmergencyContact() {
                 <Label htmlFor="emergencyName">Contact Name</Label>
                 <Input
                   id="emergencyName"
+                  value={emergencyName}
+                  onChange={(e) => setEmergencyName(e.target.value)}
                   placeholder="e.g., Mom, Best Friend, Partner"
                   className="bg-input-background transition-all focus:scale-[1.02]"
                 />
@@ -77,6 +96,8 @@ export function OnboardingEmergencyContact() {
                 <Input
                   id="emergencyPhone"
                   type="tel"
+                  value={emergencyPhone}
+                  onChange={(e) => setEmergencyPhone(e.target.value)}
                   placeholder="+1 (555) 123-4567"
                   className="bg-input-background transition-all focus:scale-[1.02]"
                 />
@@ -91,6 +112,8 @@ export function OnboardingEmergencyContact() {
                 <Label htmlFor="emergencyRelationship">Relationship</Label>
                 <select
                   id="emergencyRelationship"
+                  value={emergencyRelationship}
+                  onChange={(e) => setEmergencyRelationship(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-md bg-input-background transition-all focus:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Select relationship</option>
@@ -177,7 +200,10 @@ export function OnboardingEmergencyContact() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Button className="w-full group relative overflow-hidden">
+              <Button 
+                onClick={handleContinue}
+                className="w-full group relative overflow-hidden"
+              >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   Continue
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

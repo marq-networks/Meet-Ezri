@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { 
   Home, 
@@ -18,6 +18,7 @@ import {
   CreditCard
 } from "lucide-react";
 import { MobileBottomNav } from "./MobileBottomNav";
+import { useAuth } from "../contexts/AuthContext";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -26,6 +27,7 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut, user } = useAuth();
 
   const navItems = [
     { path: "/app/dashboard", icon: Home, label: "Home" },
@@ -37,7 +39,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     navigate("/login");
   };
 

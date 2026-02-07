@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { formatDistanceToNow } from "date-fns";
 import { 
   User,
   Mail,
@@ -11,31 +12,362 @@ import {
   Save,
   ArrowLeft,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { useState, useEffect, useRef } from "react";
 import { AppLayout } from "@/app/components/AppLayout";
+import { api } from "@/lib/api";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { toast } from "sonner";
 
 export function AccountSettings() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  
   const [profileData, setProfileData] = useState({
-    firstName: "Sarah",
-    lastName: "Johnson",
-    email: "sarah.johnson@email.com",
-    phone: "+1 (555) 123-4567",
-    dateOfBirth: "1992-05-15",
-    location: "San Francisco, CA",
-    bio: "Mental health enthusiast focused on mindfulness and personal growth."
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    dateOfBirth: "",
+    location: "",
+    bio: "",
+    avatar_url: ""
   });
 
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const initials = `${profileData.firstName[0] || ""}${profileData.lastName[0] || ""}`.toUpperCase();
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  
+  // Password change state
+  const [passwordState, setPasswordState] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // 2FA state
+  const [mfaFactors, setMfaFactors] = useState<any[]>([]);
+  const [showMfaModal, setShowMfaModal] = useState(false);
+  const [mfaStep, setMfaStep] = useState<'enroll' | 'verify'>('enroll');
+  const [mfaData, setMfaData] = useState<{ id: string; qr_code: string; secret: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
+
+  useEffect(() => {
+    fetchMfaStatus();
+  }, []);
+
+  const fetchMfaStatus = async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+      setMfaFactors(data.totp);
+    } catch (error) {
+      console.error('Error fetching MFA status:', error);
+    }
   };
+
+  const handleEnrollMfa = async () => {
+    try {
+      setMfaLoading(true);
+
+      // Clean up any existing TOTP factors to prevent conflicts
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const existingTotp = factors?.all?.filter(f => f.factorType === 'totp') || [];
+      
+      if (existingTotp.length > 0) {
+        await Promise.all(existingTotp.map(f => supabase.auth.mfa.unenroll({ factorId: f.id })));
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      const enrollWithRetry = async (attempt = 0): Promise<any> => {
+        try {
+          const friendlyName = attempt === 0 ? 'MeetEzri' : `MeetEzri (${attempt})`;
+          return await supabase.auth.mfa.enroll({
+            factorType: 'totp',
+            friendlyName,
+          });
+        } catch (error: any) {
+          if (error?.code === 'mfa_factor_name_conflict' && attempt < 5) {
+            return enrollWithRetry(attempt + 1);
+          }
+          throw error;
+        }
+      };
+
+      const { data, error } = await enrollWithRetry();
+
+      if (error) throw error;
+      
+      console.log('MFA Enroll Data:', data);
+
+      setMfaData({
+        id: data.id,
+        qr_code: data.totp?.qr_code || data.qr_code,
+        secret: data.totp?.secret || data.secret
+      });
+      setMfaStep('enroll');
+      setShowMfaModal(true);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to start MFA enrollment');
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleVerifyMfa = async () => {
+    try {
+      if (!mfaData) return;
+      setMfaLoading(true);
+
+      const { data, error } = await supabase.auth.mfa.challenge({
+        factorId: mfaData.id,
+      });
+
+      if (error) throw error;
+
+      const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: mfaData.id,
+        challengeId: data.id,
+        code: mfaCode,
+      });
+
+      if (verifyError) throw verifyError;
+
+      toast.success('Two-Factor Authentication enabled successfully');
+      setShowMfaModal(false);
+      fetchMfaStatus();
+    } catch (error: any) {
+      toast.error(error.message || 'Invalid code');
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleDisableMfa = async () => {
+    try {
+      // For simplicity, we just unenroll the first factor found
+      const factorId = mfaFactors[0]?.id;
+      if (!factorId) return;
+
+      const { error } = await supabase.auth.mfa.unenroll({
+        factorId,
+      });
+
+      if (error) throw error;
+
+      toast.success('Two-Factor Authentication disabled');
+      fetchMfaStatus();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to disable MFA');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== "DELETE") return;
+    
+    setDeleteLoading(true);
+    try {
+      await api.deleteAccount();
+      await supabase.auth.signOut();
+      toast.success("Account deleted successfully");
+      navigate("/login");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete account");
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+    }
+  };
+
+  const handlePasswordUpdate = async () => {
+    try {
+      if (!passwordState.currentPassword || !passwordState.newPassword || !passwordState.confirmPassword) {
+        toast.error("Please fill in all fields");
+        return;
+      }
+
+      if (passwordState.newPassword !== passwordState.confirmPassword) {
+        toast.error("New passwords do not match");
+        return;
+      }
+
+      if (passwordState.newPassword.length < 6) {
+        toast.error("Password must be at least 6 characters");
+        return;
+      }
+
+      setPasswordLoading(true);
+
+      // Verify current password by signing in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || "",
+        password: passwordState.currentPassword
+      });
+
+      if (signInError) {
+        throw new Error("Incorrect current password");
+      }
+
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordState.newPassword
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast.success("Password updated successfully");
+      setShowPasswordModal(false);
+      setPasswordState({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
+    } catch (error: any) {
+      console.error("Error updating password:", error);
+      toast.error(error.message || "Failed to update password");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    async function fetchProfile() {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        const data = await api.getMe();
+        
+        // Split full name into first and last name
+        const nameParts = (data.full_name || "").split(" ");
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        setProfileData({
+          firstName,
+          lastName,
+          email: data.email || user.email || "",
+          phone: data.phone || "",
+          dateOfBirth: data.age || "", // Using age field for DOB temporarily
+          location: data.timezone || "", // Using timezone as location proxy
+          bio: data.current_mood || "", // Using mood as bio proxy
+          avatar_url: data.avatar_url || ""
+        });
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+        toast.error("Failed to load profile data");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProfile();
+  }, [user]);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!event.target.files || event.target.files.length === 0) {
+        return;
+      }
+      setUploading(true);
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatar_url = data.publicUrl;
+
+      setProfileData(prev => ({ ...prev, avatar_url }));
+      
+      // Auto-save the new avatar URL
+      await api.updateProfile({ avatar_url });
+      
+      toast.success("Profile picture updated");
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast.error('Error uploading avatar');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    try {
+      setUploading(true);
+      setProfileData(prev => ({ ...prev, avatar_url: "" }));
+      
+      await api.updateProfile({ avatar_url: null });
+      
+      toast.success("Profile picture removed");
+    } catch (error) {
+      console.error('Error removing avatar:', error);
+      toast.error('Error removing avatar');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      
+      const full_name = `${profileData.firstName} ${profileData.lastName}`.trim();
+      
+      await api.updateProfile({
+        full_name,
+        // We generally don't update email here as it requires verification
+        phone: profileData.phone,
+        age: profileData.dateOfBirth,
+        timezone: profileData.location,
+        current_mood: profileData.bio
+      });
+
+      setSaved(true);
+      toast.success("Profile updated successfully");
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      toast.error("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -83,16 +415,26 @@ export function AccountSettings() {
 
             <div className="flex items-center gap-6">
               <div className="relative">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg"
-                >
-                  SJ
-                </motion.div>
+                {profileData.avatar_url ? (
+                  <motion.img
+                    whileHover={{ scale: 1.05 }}
+                    src={profileData.avatar_url}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover shadow-lg"
+                  />
+                ) : (
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg"
+                  >
+                    {initials || "?"}
+                  </motion.div>
+                )}
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg border-2 border-gray-100"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg border-2 border-gray-100 cursor-pointer"
                 >
                   <Camera className="w-4 h-4 text-blue-600" />
                 </motion.button>
@@ -102,17 +444,28 @@ export function AccountSettings() {
                 <h3 className="font-bold text-gray-900 mb-1">Change Photo</h3>
                 <p className="text-sm text-gray-600 mb-3">Upload a new profile picture (JPG, PNG, max 5MB)</p>
                 <div className="flex gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Upload Photo
+                    {uploading ? 'Uploading...' : 'Upload Photo'}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium"
+                    onClick={handleRemovePhoto}
+                    disabled={uploading || !profileData.avatar_url}
+                    className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Remove
                   </motion.button>
@@ -247,19 +600,45 @@ export function AccountSettings() {
                   </div>
                   <div className="text-left">
                     <p className="font-medium text-gray-900">Change Password</p>
-                    <p className="text-sm text-gray-600">Last changed 3 months ago</p>
+                    <p className="text-sm text-gray-600">
+                      {user?.updated_at 
+                        ? `Last changed ${formatDistanceToNow(new Date(user.updated_at), { addSuffix: true })}`
+                        : 'Never changed'}
+                    </p>
                   </div>
                 </div>
                 <div className="text-blue-600">Change</div>
               </motion.button>
 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-blue-900 mb-1">Two-Factor Authentication</p>
-                    <p className="text-sm text-blue-700">Enabled via authenticator app</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className={`w-5 h-5 mt-0.5 ${mfaFactors.length > 0 ? 'text-green-600' : 'text-gray-400'}`} />
+                    <div>
+                      <p className="font-medium text-blue-900 mb-1">Two-Factor Authentication</p>
+                      <p className="text-sm text-blue-700">
+                        {mfaFactors.length > 0 
+                          ? 'Enabled via authenticator app' 
+                          : 'Add an extra layer of security to your account'}
+                      </p>
+                    </div>
                   </div>
+                  
+                  {mfaFactors.length > 0 ? (
+                    <button 
+                      onClick={handleDisableMfa}
+                      className="text-sm text-red-600 font-medium hover:text-red-700"
+                    >
+                      Disable
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={handleEnrollMfa}
+                      className="text-sm text-blue-600 font-medium hover:text-blue-700"
+                    >
+                      Enable
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -329,6 +708,8 @@ export function AccountSettings() {
                   </p>
                   <input
                     type="text"
+                    value={deleteConfirmation}
+                    onChange={(e) => setDeleteConfirmation(e.target.value)}
                     placeholder='Type "DELETE" to confirm'
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none"
                   />
@@ -347,11 +728,99 @@ export function AccountSettings() {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-medium"
+                    onClick={handleDeleteAccount}
+                    disabled={deleteConfirmation !== "DELETE" || deleteLoading}
+                    className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                   >
+                    {deleteLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                     Delete Account
                   </motion.button>
                 </div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* MFA Modal */}
+          {showMfaModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowMfaModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              >
+                <h3 className="text-xl font-bold text-gray-900 mb-6">
+                  {mfaStep === 'enroll' ? 'Setup 2FA' : 'Verify Code'}
+                </h3>
+
+                {mfaStep === 'enroll' && mfaData ? (
+                  <div className="space-y-6">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 mb-4">
+                        Scan this QR code with your authenticator app (like Google Authenticator or Authy)
+                      </p>
+                      <div className="flex justify-center mb-4">
+                        {mfaData.qr_code && (
+                          <img 
+                            src={mfaData.qr_code.startsWith('data:') ? mfaData.qr_code : `data:image/svg+xml;utf-8,${encodeURIComponent(mfaData.qr_code)}`} 
+                            alt="QR Code" 
+                            className="w-48 h-48" 
+                          />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 break-all">
+                        Secret: {mfaData.secret}
+                      </p>
+                    </div>
+
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setMfaStep('verify')}
+                      className="w-full py-3 rounded-xl bg-blue-600 text-white font-medium"
+                    >
+                      Next
+                    </motion.button>
+                  </div>
+                ) : mfaStep === 'enroll' ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  </div>
+                ) : null}
+
+                {mfaStep === 'verify' && (
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Enter Verification Code
+                      </label>
+                      <input
+                        type="text"
+                        value={mfaCode}
+                        onChange={(e) => setMfaCode(e.target.value)}
+                        placeholder="000000"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-center text-2xl tracking-widest"
+                        maxLength={6}
+                      />
+                    </div>
+
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleVerifyMfa}
+                      disabled={mfaLoading || mfaCode.length !== 6}
+                      className="w-full py-3 rounded-xl bg-blue-600 text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {mfaLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Verify & Enable
+                    </motion.button>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}
@@ -377,6 +846,8 @@ export function AccountSettings() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
                     <input
                       type="password"
+                      value={passwordState.currentPassword}
+                      onChange={(e) => setPasswordState({...passwordState, currentPassword: e.target.value})}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
@@ -385,6 +856,8 @@ export function AccountSettings() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
                     <input
                       type="password"
+                      value={passwordState.newPassword}
+                      onChange={(e) => setPasswordState({...passwordState, newPassword: e.target.value})}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
@@ -393,6 +866,8 @@ export function AccountSettings() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
                     <input
                       type="password"
+                      value={passwordState.confirmPassword}
+                      onChange={(e) => setPasswordState({...passwordState, confirmPassword: e.target.value})}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
@@ -403,7 +878,8 @@ export function AccountSettings() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowPasswordModal(false)}
-                    className="flex-1 px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
+                    disabled={passwordLoading}
+                    className="flex-1 px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium disabled:opacity-50"
                   >
                     Cancel
                   </motion.button>
@@ -411,9 +887,11 @@ export function AccountSettings() {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setShowPasswordModal(false)}
-                    className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium"
+                    onClick={handlePasswordUpdate}
+                    disabled={passwordLoading}
+                    className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                   >
+                    {passwordLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                     Update Password
                   </motion.button>
                 </div>

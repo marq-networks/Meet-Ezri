@@ -30,15 +30,6 @@ create table public.organizations (
 
 alter table public.organizations enable row level security;
 
-create policy "Org members can view organization" on organizations
-  for select using (
-    exists (
-      select 1 from org_members
-      where org_members.org_id = organizations.id
-      and org_members.user_id = auth.uid()
-    )
-  );
-
 -- ORG MEMBERS
 create table public.org_members (
   org_id uuid references public.organizations(id) on delete cascade not null,
@@ -56,6 +47,15 @@ create policy "Members can view other members in same org" on org_members
       select 1 from org_members as om
       where om.org_id = org_members.org_id
       and om.user_id = auth.uid()
+    )
+  );
+
+create policy "Org members can view organization" on organizations
+  for select using (
+    exists (
+      select 1 from org_members
+      where org_members.org_id = organizations.id
+      and org_members.user_id = auth.uid()
     )
   );
 

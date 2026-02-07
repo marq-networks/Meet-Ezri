@@ -1,7 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 // Contexts
+import { AuthProvider } from '@/app/contexts/AuthContext';
 import { SafetyProvider } from '@/app/contexts/SafetyContext';
+import { OnboardingProvider } from '@/app/contexts/OnboardingContext';
+import { ProtectedRoute } from '@/app/components/ProtectedRoute';
 
 // Components
 import { Toaster } from '@/app/components/ui/sonner';
@@ -17,7 +20,10 @@ import { Accessibility } from '@/app/pages/Accessibility';
 // Auth Pages
 import { Login } from '@/app/pages/Login';
 import { Signup } from '@/app/pages/Signup';
+import { VerifyEmail } from '@/app/pages/VerifyEmail';
+import { AuthCallback } from '@/app/pages/AuthCallback';
 import { ForgotPassword } from '@/app/pages/ForgotPassword';
+import { ResetPassword } from '@/app/pages/ResetPassword';
 
 // Onboarding Pages
 import { OnboardingWelcome } from '@/app/pages/onboarding/Welcome';
@@ -160,8 +166,9 @@ import { Phase1Demo } from '@/app/pages/Phase1Demo';
 
 export default function App() {
   return (
-    <SafetyProvider>
-      <BrowserRouter>
+    <AuthProvider>
+      <SafetyProvider>
+        <BrowserRouter>
         <MobileMetaTags />
         <Toaster />
         <Routes>
@@ -175,20 +182,26 @@ export default function App() {
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
-          {/* Onboarding Routes */}
-          <Route path="/onboarding/welcome" element={<OnboardingWelcome />} />
-          <Route path="/onboarding/profile" element={<OnboardingProfileSetup />} />
-          <Route path="/onboarding/wellness-baseline" element={<OnboardingWellnessBaseline />} />
-          <Route path="/onboarding/health-background" element={<OnboardingHealthBackground />} />
-          <Route path="/onboarding/avatar-preferences" element={<OnboardingAvatarPreferences />} />
-          <Route path="/onboarding/safety-consent" element={<OnboardingSafetyConsent />} />
-          <Route path="/onboarding/emergency-contact" element={<OnboardingEmergencyContact />} />
-          <Route path="/onboarding/permissions" element={<OnboardingPermissions />} />
-          <Route path="/onboarding/complete" element={<OnboardingComplete />} />
+          <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+            <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
+              {/* Onboarding Routes */}
+              <Route path="/onboarding/welcome" element={<OnboardingWelcome />} />
+              <Route path="/onboarding/profile" element={<OnboardingProfileSetup />} />
+              <Route path="/onboarding/wellness-baseline" element={<OnboardingWellnessBaseline />} />
+              <Route path="/onboarding/health-background" element={<OnboardingHealthBackground />} />
+              <Route path="/onboarding/avatar-preferences" element={<OnboardingAvatarPreferences />} />
+              <Route path="/onboarding/safety-consent" element={<OnboardingSafetyConsent />} />
+              <Route path="/onboarding/emergency-contact" element={<OnboardingEmergencyContact />} />
+              <Route path="/onboarding/permissions" element={<OnboardingPermissions />} />
+              <Route path="/onboarding/complete" element={<OnboardingComplete />} />
+            </Route>
           
-          {/* App Routes */}
+            {/* App Routes */}
           <Route path="/app/dashboard" element={<Dashboard />} />
           <Route path="/app/billing" element={<Billing />} />
           <Route path="/app/session-lobby" element={<SessionLobby />} />
@@ -244,6 +257,7 @@ export default function App() {
           <Route path="/app/notification-history" element={<NotificationHistory />} />
           <Route path="/app/help-support" element={<HelpSupport />} />
           
+          </Route>
           {/* Error Pages */}
           <Route path="/error/404" element={<Error404 />} />
           <Route path="/error/500" element={<Error500 />} />
@@ -256,92 +270,97 @@ export default function App() {
           {/* Demo Routes */}
           <Route path="/demo/phase1" element={<Phase1Demo />} />
           
-          {/* Admin Routes */}
+          {/* Admin Routes - Public */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/credentials" element={<AdminCredentials />} />
           <Route path="/admin/two-factor-auth" element={<TwoFactorAuth />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/super-admin-dashboard" element={<SuperAdminDashboard />} />
-          <Route path="/admin/org-admin-dashboard" element={<OrgAdminDashboard />} />
-          <Route path="/admin/team-admin-dashboard" element={<TeamAdminDashboard />} />
-          <Route path="/admin/user-management" element={<UserManagement />} />
-          <Route path="/admin/user-details-enhanced" element={<UserDetailsEnhanced />} />
-          <Route path="/admin/crisis-monitoring" element={<CrisisMonitoring />} />
-          <Route path="/admin/crisis-dashboard" element={<CrisisDashboard />} />
-          <Route path="/admin/crisis-event-details" element={<CrisisEventDetails />} />
-          <Route path="/admin/crisis-follow-up-queue" element={<CrisisFollowUpQueue />} />
-          <Route path="/admin/safety-events" element={<SafetyEventDashboard />} />
-          <Route path="/admin/safety-event-details" element={<SafetyEventDetails />} />
-          <Route path="/admin/session-analytics" element={<SessionAnalytics />} />
-          <Route path="/admin/content-management" element={<ContentManagement />} />
-          <Route path="/admin/reports-analytics" element={<ReportsAnalytics />} />
-          <Route path="/admin/support-tickets" element={<SupportTickets />} />
-          <Route path="/admin/notifications-center" element={<NotificationsCenter />} />
-          <Route path="/admin/audit-logs" element={<AuditLogs />} />
-          <Route path="/admin/system-settings" element={<SystemSettingsEnhanced />} />
-          <Route path="/admin/analytics" element={<Analytics />} />
-          <Route path="/admin/usage-overview" element={<UsageOverview />} />
-          <Route path="/admin/engagement-metrics" element={<EngagementMetrics />} />
-          <Route path="/admin/feature-adoption" element={<FeatureAdoption />} />
-          <Route path="/admin/retention-metrics" element={<RetentionMetrics />} />
-          <Route path="/admin/wellness-tools-cms" element={<WellnessToolsCMS />} />
-          <Route path="/admin/wellness-tool-editor" element={<WellnessToolEditor />} />
-          <Route path="/admin/wellness-content-library" element={<WellnessContentLibrary />} />
-          <Route path="/admin/content-performance" element={<ContentPerformance />} />
-          <Route path="/admin/nudge-templates" element={<NudgeTemplates />} />
-          <Route path="/admin/nudge-scheduler" element={<NudgeScheduler />} />
-          <Route path="/admin/nudge-performance" element={<NudgePerformance />} />
-          <Route path="/admin/manual-notifications" element={<ManualNotifications />} />
-          <Route path="/admin/global-configuration" element={<GlobalConfiguration />} />
-          <Route path="/admin/integration-settings" element={<IntegrationSettings />} />
-          <Route path="/admin/branding-customization" element={<BrandingCustomization />} />
-          <Route path="/admin/system-health-dashboard" element={<SystemHealthDashboard />} />
-          <Route path="/admin/error-tracking" element={<ErrorTracking />} />
-          <Route path="/admin/backup-recovery" element={<BackupRecovery />} />
-          <Route path="/admin/hipaa-compliance" element={<HIPAACompliance />} />
-          <Route path="/admin/data-privacy-controls" element={<DataPrivacyControls />} />
-          <Route path="/admin/legal-documentation" element={<LegalDocumentation />} />
-          <Route path="/admin/activity-monitor" element={<ActivityMonitor />} />
-          <Route path="/admin/content-moderation" element={<ContentModeration />} />
-          <Route path="/admin/system-health-enhanced" element={<SystemHealthEnhanced />} />
-          <Route path="/admin/live-sessions-monitor" element={<LiveSessionsMonitor />} />
-          <Route path="/admin/usage-analytics" element={<UsageAnalytics />} />
-          <Route path="/admin/api-management" element={<APIManagement />} />
-          <Route path="/admin/feature-flags" element={<FeatureFlags />} />
-          <Route path="/admin/email-templates" element={<EmailTemplates />} />
-          <Route path="/admin/push-notifications" element={<PushNotifications />} />
-          <Route path="/admin/billing" element={<BillingAdmin />} />
-          <Route path="/admin/billing-subscriptions" element={<BillingSubscriptions />} />
-          <Route path="/admin/therapist-management" element={<TherapistManagement />} />
-          <Route path="/admin/community-management" element={<CommunityManagement />} />
-          <Route path="/admin/crisis-protocol" element={<CrisisProtocol />} />
-          <Route path="/admin/data-export" element={<DataExport />} />
-          <Route path="/admin/security-settings" element={<SecuritySettings />} />
-          <Route path="/admin/compliance" element={<Compliance />} />
-          <Route path="/admin/compliance-dashboard" element={<ComplianceDashboard />} />
-          <Route path="/admin/ab-testing" element={<ABTesting />} />
-          <Route path="/admin/user-segmentation" element={<UserSegmentation />} />
-          <Route path="/admin/onboarding-analytics" element={<OnboardingAnalytics />} />
-          <Route path="/admin/session-recordings" element={<SessionRecordings />} />
-          <Route path="/admin/wellness-challenges" element={<WellnessChallenges />} />
-          <Route path="/admin/nudge-management" element={<NudgeManagement />} />
-          <Route path="/admin/wellness-content-cms" element={<WellnessContentCMS />} />
-          <Route path="/admin/exercise-library" element={<ExerciseLibrary />} />
-          <Route path="/admin/badge-manager" element={<BadgeManager />} />
-          <Route path="/admin/system-logs" element={<SystemLogs />} />
-          <Route path="/admin/team-role-management" element={<TeamRoleManagement />} />
-          <Route path="/admin/system-settings-enhanced" element={<SystemSettingsEnhanced />} />
-          <Route path="/admin/enterprise-features" element={<EnterpriseFeatures />} />
-          <Route path="/admin/data-retention-privacy" element={<DataRetentionPrivacy />} />
-          <Route path="/admin/ai-avatar-manager" element={<AIAvatarManager />} />
-          <Route path="/admin/conversation-transcripts" element={<ConversationTranscripts />} />
-          <Route path="/admin/package-manager" element={<PackageManager />} />
-          <Route path="/admin/payg-transactions" element={<PayAsYouGoManager />} />
+
+          {/* Admin Routes - Protected */}
+          <Route element={<ProtectedRoute allowedRoles={['super_admin', 'org_admin', 'team_admin']}><Outlet /></ProtectedRoute>}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/super-admin-dashboard" element={<SuperAdminDashboard />} />
+            <Route path="/admin/org-admin-dashboard" element={<OrgAdminDashboard />} />
+            <Route path="/admin/team-admin-dashboard" element={<TeamAdminDashboard />} />
+            <Route path="/admin/user-management" element={<UserManagement />} />
+            <Route path="/admin/user-details-enhanced" element={<UserDetailsEnhanced />} />
+            <Route path="/admin/crisis-monitoring" element={<CrisisMonitoring />} />
+            <Route path="/admin/crisis-dashboard" element={<CrisisDashboard />} />
+            <Route path="/admin/crisis-event-details" element={<CrisisEventDetails />} />
+            <Route path="/admin/crisis-follow-up-queue" element={<CrisisFollowUpQueue />} />
+            <Route path="/admin/safety-events" element={<SafetyEventDashboard />} />
+            <Route path="/admin/safety-event-details" element={<SafetyEventDetails />} />
+            <Route path="/admin/session-analytics" element={<SessionAnalytics />} />
+            <Route path="/admin/content-management" element={<ContentManagement />} />
+            <Route path="/admin/reports-analytics" element={<ReportsAnalytics />} />
+            <Route path="/admin/support-tickets" element={<SupportTickets />} />
+            <Route path="/admin/notifications-center" element={<NotificationsCenter />} />
+            <Route path="/admin/audit-logs" element={<AuditLogs />} />
+            <Route path="/admin/system-settings" element={<SystemSettingsEnhanced />} />
+            <Route path="/admin/analytics" element={<Analytics />} />
+            <Route path="/admin/usage-overview" element={<UsageOverview />} />
+            <Route path="/admin/engagement-metrics" element={<EngagementMetrics />} />
+            <Route path="/admin/feature-adoption" element={<FeatureAdoption />} />
+            <Route path="/admin/retention-metrics" element={<RetentionMetrics />} />
+            <Route path="/admin/wellness-tools-cms" element={<WellnessToolsCMS />} />
+            <Route path="/admin/wellness-tool-editor" element={<WellnessToolEditor />} />
+            <Route path="/admin/wellness-content-library" element={<WellnessContentLibrary />} />
+            <Route path="/admin/content-performance" element={<ContentPerformance />} />
+            <Route path="/admin/nudge-templates" element={<NudgeTemplates />} />
+            <Route path="/admin/nudge-scheduler" element={<NudgeScheduler />} />
+            <Route path="/admin/nudge-performance" element={<NudgePerformance />} />
+            <Route path="/admin/manual-notifications" element={<ManualNotifications />} />
+            <Route path="/admin/global-configuration" element={<GlobalConfiguration />} />
+            <Route path="/admin/integration-settings" element={<IntegrationSettings />} />
+            <Route path="/admin/branding-customization" element={<BrandingCustomization />} />
+            <Route path="/admin/system-health-dashboard" element={<SystemHealthDashboard />} />
+            <Route path="/admin/error-tracking" element={<ErrorTracking />} />
+            <Route path="/admin/backup-recovery" element={<BackupRecovery />} />
+            <Route path="/admin/hipaa-compliance" element={<HIPAACompliance />} />
+            <Route path="/admin/data-privacy-controls" element={<DataPrivacyControls />} />
+            <Route path="/admin/legal-documentation" element={<LegalDocumentation />} />
+            <Route path="/admin/ab-testing" element={<ABTesting />} />
+            <Route path="/admin/activity-monitor" element={<ActivityMonitor />} />
+            <Route path="/admin/content-moderation" element={<ContentModeration />} />
+            <Route path="/admin/system-health-enhanced" element={<SystemHealthEnhanced />} />
+            <Route path="/admin/live-sessions-monitor" element={<LiveSessionsMonitor />} />
+            <Route path="/admin/usage-analytics" element={<UsageAnalytics />} />
+            <Route path="/admin/api-management" element={<APIManagement />} />
+            <Route path="/admin/feature-flags" element={<FeatureFlags />} />
+            <Route path="/admin/email-templates" element={<EmailTemplates />} />
+            <Route path="/admin/push-notifications" element={<PushNotifications />} />
+            <Route path="/admin/billing" element={<BillingAdmin />} />
+            <Route path="/admin/billing-subscriptions" element={<BillingSubscriptions />} />
+            <Route path="/admin/therapist-management" element={<TherapistManagement />} />
+            <Route path="/admin/community-management" element={<CommunityManagement />} />
+            <Route path="/admin/crisis-protocol" element={<CrisisProtocol />} />
+            <Route path="/admin/data-export" element={<DataExport />} />
+            <Route path="/admin/security-settings" element={<SecuritySettings />} />
+            <Route path="/admin/compliance" element={<Compliance />} />
+            <Route path="/admin/compliance-dashboard" element={<ComplianceDashboard />} />
+            <Route path="/admin/user-segmentation" element={<UserSegmentation />} />
+            <Route path="/admin/onboarding-analytics" element={<OnboardingAnalytics />} />
+            <Route path="/admin/session-recordings" element={<SessionRecordings />} />
+            <Route path="/admin/wellness-challenges" element={<WellnessChallenges />} />
+            <Route path="/admin/nudge-management" element={<NudgeManagement />} />
+            <Route path="/admin/wellness-content-cms" element={<WellnessContentCMS />} />
+            <Route path="/admin/exercise-library" element={<ExerciseLibrary />} />
+            <Route path="/admin/badge-manager" element={<BadgeManager />} />
+            <Route path="/admin/system-logs" element={<SystemLogs />} />
+            <Route path="/admin/team-role-management" element={<TeamRoleManagement />} />
+            <Route path="/admin/system-settings-enhanced" element={<SystemSettingsEnhanced />} />
+            <Route path="/admin/enterprise-features" element={<EnterpriseFeatures />} />
+            <Route path="/admin/data-retention-privacy" element={<DataRetentionPrivacy />} />
+            <Route path="/admin/ai-avatar-manager" element={<AIAvatarManager />} />
+            <Route path="/admin/conversation-transcripts" element={<ConversationTranscripts />} />
+            <Route path="/admin/package-manager" element={<PackageManager />} />
+            <Route path="/admin/payg-transactions" element={<PayAsYouGoManager />} />
+          </Route>
           
           {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </SafetyProvider>
+  </AuthProvider>
   );
 }

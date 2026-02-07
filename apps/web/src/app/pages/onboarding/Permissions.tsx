@@ -1,16 +1,26 @@
 import { OnboardingLayout } from "../../components/OnboardingLayout";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { ArrowRight, ArrowLeft, Video, Bell, Mic, CheckCircle2, Info } from "lucide-react";
 import { useState } from "react";
+import { useOnboarding } from "@/app/contexts/OnboardingContext";
 
 export function OnboardingPermissions() {
+  const navigate = useNavigate();
+  const { data, updateData } = useOnboarding();
   const [permissions, setPermissions] = useState({
     camera: false,
     microphone: false,
     notifications: false
+  });
+
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    dailyCheckIn: true,
+    sessionReminders: true,
+    wellnessTips: true,
+    weeklyProgress: false
   });
 
   const permissionItems = [
@@ -51,9 +61,24 @@ export function OnboardingPermissions() {
     }));
   };
 
+  const handleNotificationPrefToggle = (key: keyof typeof notificationPreferences) => {
+    setNotificationPreferences(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const handleContinue = () => {
+    updateData({ 
+      permissions,
+      notificationPreferences
+    });
+    navigate("/onboarding/complete");
+  };
+
   return (
     <OnboardingLayout
-      currentStep={7}
+      currentStep={8}
       totalSteps={8}
       title="Permissions & Notifications"
       subtitle="Enable features to get the most out of Ezri"
@@ -168,21 +193,22 @@ export function OnboardingPermissions() {
 
             <div className="space-y-3">
               {[
-                { label: "Daily mood check-in reminders", defaultChecked: true },
-                { label: "Scheduled session reminders", defaultChecked: true },
-                { label: "Wellness tips and insights", defaultChecked: true },
-                { label: "Weekly progress summaries", defaultChecked: false }
-              ].map((pref, index) => (
+                { key: "dailyCheckIn", label: "Daily mood check-in reminders" },
+                { key: "sessionReminders", label: "Scheduled session reminders" },
+                { key: "wellnessTips", label: "Wellness tips and insights" },
+                { key: "weeklyProgress", label: "Weekly progress summaries" }
+              ].map((pref) => (
                 <motion.label
-                  key={index}
+                  key={pref.key}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.8 + index * 0.05 }}
+                  transition={{ delay: 0.8 }}
                   className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <input
                     type="checkbox"
-                    defaultChecked={pref.defaultChecked}
+                    checked={notificationPreferences[pref.key as keyof typeof notificationPreferences]}
+                    onChange={() => handleNotificationPrefToggle(pref.key as keyof typeof notificationPreferences)}
                     className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <span className="text-sm">{pref.label}</span>
@@ -225,7 +251,10 @@ export function OnboardingPermissions() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Button className="w-full group relative overflow-hidden">
+              <Button 
+                onClick={handleContinue}
+                className="w-full group relative overflow-hidden"
+              >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   Continue
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

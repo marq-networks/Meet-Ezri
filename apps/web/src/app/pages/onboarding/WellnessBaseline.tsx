@@ -1,14 +1,17 @@
 import { OnboardingLayout } from "../../components/OnboardingLayout";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { ArrowRight, ArrowLeft, Smile, Frown, Meh, Laugh, Angry } from "lucide-react";
 import { useState } from "react";
+import { useOnboarding } from "@/app/contexts/OnboardingContext";
 
 export function OnboardingWellnessBaseline() {
-  const [currentMood, setCurrentMood] = useState("");
-  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const navigate = useNavigate();
+  const { data, updateData } = useOnboarding();
+  const [currentMood, setCurrentMood] = useState(data.currentMood || "");
+  const [selectedGoals, setSelectedGoals] = useState<string[]>(data.selectedGoals || []);
 
   const moods = [
     { value: "great", label: "Great", icon: Laugh, color: "text-green-500", bg: "bg-green-50" },
@@ -35,6 +38,11 @@ export function OnboardingWellnessBaseline() {
         ? prev.filter(g => g !== value)
         : [...prev, value]
     );
+  };
+
+  const handleContinue = () => {
+    updateData({ currentMood, selectedGoals });
+    navigate("/onboarding/health-background");
   };
 
   return (
@@ -142,12 +150,15 @@ export function OnboardingWellnessBaseline() {
             </Button>
           </Link>
 
-          <Link to="/onboarding/health-background" className="flex-1">
+          <div className="flex-1">
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Button className="w-full group relative overflow-hidden">
+              <Button 
+                onClick={handleContinue}
+                className="w-full group relative overflow-hidden"
+              >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   Continue
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -160,7 +171,7 @@ export function OnboardingWellnessBaseline() {
                 />
               </Button>
             </motion.div>
-          </Link>
+          </div>
         </motion.div>
       </div>
     </OnboardingLayout>

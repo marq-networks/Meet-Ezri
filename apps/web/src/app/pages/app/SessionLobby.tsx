@@ -2,7 +2,7 @@ import { AppLayout } from "../../components/AppLayout";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Video,
   Calendar,
@@ -17,17 +17,111 @@ import {
   X,
   Check
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export function SessionLobby() {
+  const { profile } = useAuth();
+  const navigate = useNavigate();
   const [selectedMode, setSelectedMode] = useState<"now" | "schedule">("now");
   const [selectedDuration, setSelectedDuration] = useState(30);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState("Voice 1");
-  const [selectedAvatar, setSelectedAvatar] = useState("Alex");
+  const [selectedAvatar, setSelectedAvatar] = useState(profile?.selected_avatar || "Alex");
+  
+  // Temporary state for modal
+  const [tempSelectedVoice, setTempSelectedVoice] = useState(selectedVoice);
+  const [tempSelectedAvatar, setTempSelectedAvatar] = useState(selectedAvatar);
+
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
+  const [isStarting, setIsStarting] = useState(false);
+  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (profile?.selected_avatar) {
+      setSelectedAvatar(profile.selected_avatar);
+      setTempSelectedAvatar(profile.selected_avatar);
+    }
+    loadUpcomingSessions();
+  }, [profile]);
+
+  // Sync temp state when modal opens
+  useEffect(() => {
+    if (showCustomizeModal) {
+      setTempSelectedVoice(selectedVoice);
+      setTempSelectedAvatar(selectedAvatar);
+    }
+  }, [showCustomizeModal, selectedVoice, selectedAvatar]);
+
+  const handleSaveCustomize = () => {
+    setSelectedVoice(tempSelectedVoice);
+    setSelectedAvatar(tempSelectedAvatar);
+    setShowCustomizeModal(false);
+    toast.success("Session settings updated");
+  };
+
+  const loadUpcomingSessions = async () => {
+    try {
+      const sessions = await api.sessions.list({ status: 'scheduled' });
+      setUpcomingSessions(sessions);
+    } catch (err) {
+      console.error("Failed to load sessions:", err);
+    }
+  };
+
+  const handleStartSession = async () => {
+    setIsStarting(true);
+    try {
+      const session = await api.sessions.create({
+        type: 'instant',
+        duration_minutes: selectedDuration,
+        config: {
+          voice: selectedVoice,
+          avatar: selectedAvatar
+        }
+      });
+      
+      navigate("/app/active-session", { 
+        state: { 
+          sessionId: session.id,
+          config: session.config,
+          duration: session.duration_minutes
+        } 
+      });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start session");
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const handleScheduleSession = async () => {
+    if (!scheduleDate || !scheduleTime) {
+      toast.error("Please select both date and time");
+      return;
+    }
+
+    try {
+      const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
+      await api.sessions.schedule({
+        duration_minutes: selectedDuration,
+        scheduled_at: scheduledAt,
+        config: {
+          voice: selectedVoice,
+          avatar: selectedAvatar
+        }
+      });
+      toast.success("Session scheduled successfully");
+      setShowScheduleModal(false);
+      loadUpcomingSessions();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to schedule session");
+    }
+  };
 
   const voices = [
     { id: "voice1", name: "Voice 1", description: "Warm and friendly", gender: "Female" },
@@ -50,21 +144,6 @@ export function SessionLobby() {
     { label: "Check your audio/video", checked: true },
     { label: "Take a few deep breaths", checked: false },
     { label: "Set your intention for this session", checked: false }
-  ];
-
-  const upcomingSessions = [
-    {
-      date: "Tomorrow, 2:00 PM",
-      duration: "45 min",
-      type: "Weekly Check-in",
-      avatar: "👨‍⚕️"
-    },
-    {
-      date: "Friday, 10:00 AM",
-      duration: "30 min",
-      type: "Mood Session",
-      avatar: "👩‍⚕️"
-    }
   ];
 
   return (
@@ -94,21 +173,20 @@ export function SessionLobby() {
               <Card className="p-6 shadow-xl">
                 <h2 className="text-xl font-bold mb-4">Session Type</h2>
                 <div className="grid grid-cols-2 gap-4">
-                  <Link to="/app/active-session">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`p-6 rounded-xl border-2 transition-all w-full ${
-                        selectedMode === "now"
-                          ? "border-primary bg-primary/10 shadow-lg"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <Play className={`w-8 h-8 mb-3 mx-auto ${selectedMode === "now" ? "text-primary" : "text-gray-400"}`} />
-                      <h3 className="font-bold mb-1">Start Now</h3>
-                      <p className="text-sm text-muted-foreground">Begin immediately</p>
-                    </motion.button>
-                  </Link>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedMode("now")}
+                    className={`p-6 rounded-xl border-2 transition-all w-full ${
+                      selectedMode === "now"
+                        ? "border-primary bg-primary/10 shadow-lg"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <Play className={`w-8 h-8 mb-3 mx-auto ${selectedMode === "now" ? "text-primary" : "text-gray-400"}`} />
+                    <h3 className="font-bold mb-1">Start Now</h3>
+                    <p className="text-sm text-muted-foreground">Begin immediately</p>
+                  </motion.button>
 
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -259,31 +337,39 @@ export function SessionLobby() {
               transition={{ delay: 0.7 }}
             >
               {selectedMode === "now" ? (
-                <Link to="/app/active-session">
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button 
+                    className="w-full h-16 text-lg group relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:shadow-2xl hover:shadow-purple-500/50 transition-all"
+                    onClick={handleStartSession}
+                    disabled={isStarting}
                   >
-                    <Button className="w-full h-16 text-lg group relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:shadow-2xl hover:shadow-purple-500/50 transition-all">
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600"
+                      initial={{ x: "-100%" }}
+                      whileHover={{ x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    />
+                    <span className="relative z-10 flex items-center justify-center gap-3">
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600"
-                        initial={{ x: "-100%" }}
-                        whileHover={{ x: 0 }}
-                        transition={{ duration: 0.3 }}
-                      />
-                      <span className="relative z-10 flex items-center justify-center gap-3">
-                        <motion.div
-                          animate={{ scale: [1, 1.1, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        {isStarting ? (
+                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
                           <Video className="w-6 h-6" />
-                        </motion.div>
-                        <span className="font-bold">Start Session Now ({selectedDuration} min)</span>
-                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        )}
+                      </motion.div>
+                      <span className="font-bold">
+                        {isStarting ? "Starting Session..." : `Start Session Now (${selectedDuration} min)`}
                       </span>
-                    </Button>
-                  </motion.div>
-                </Link>
+                      {!isStarting && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+                    </span>
+                  </Button>
+                </motion.div>
               ) : (
                 <Button 
                   className="w-full h-16 text-lg bg-gradient-to-r from-gray-600 to-gray-700"
@@ -411,11 +497,11 @@ export function SessionLobby() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full max-w-2xl"
+                  className="w-full max-w-2xl flex flex-col max-h-[85vh]"
                 >
-                  <Card className="p-6 shadow-2xl bg-white max-h-[90vh] overflow-y-auto">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-6">
+                  <Card className="flex flex-col shadow-2xl bg-white overflow-hidden">
+                    {/* Header - Fixed */}
+                    <div className="flex items-center justify-between p-6 border-b shrink-0">
                       <div>
                         <h2 className="text-2xl font-bold">Customize Voice & Avatar</h2>
                         <p className="text-sm text-muted-foreground mt-1">
@@ -432,93 +518,96 @@ export function SessionLobby() {
                       </motion.button>
                     </div>
 
-                    {/* Voice Selection */}
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Volume2 className="w-5 h-5 text-primary" />
-                        <h3 className="font-bold text-lg">Voice Selection</h3>
+                    {/* Scrollable Content */}
+                    <div className="p-6 overflow-y-auto">
+                      {/* Voice Selection */}
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Volume2 className="w-5 h-5 text-primary" />
+                          <h3 className="font-bold text-lg">Voice Selection</h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {voices.map((voice, index) => (
+                            <motion.button
+                              key={voice.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.1 + index * 0.05 }}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setTempSelectedVoice(voice.name)}
+                              className={`p-4 rounded-xl border-2 transition-all text-left relative ${
+                                tempSelectedVoice === voice.name
+                                  ? "border-primary bg-primary/10 shadow-lg"
+                                  : "border-border hover:border-primary/50"
+                              }`}
+                            >
+                              {tempSelectedVoice === voice.name && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="absolute top-2 right-2 bg-primary rounded-full p-1"
+                                >
+                                  <Check className="w-3 h-3 text-white" />
+                                </motion.div>
+                              )}
+                              <div className="font-bold mb-1">{voice.name}</div>
+                              <div className="text-sm text-muted-foreground mb-2">
+                                {voice.description}
+                              </div>
+                              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                <span className="inline-block w-2 h-2 rounded-full bg-primary"></span>
+                                {voice.gender}
+                              </div>
+                            </motion.button>
+                          ))}
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {voices.map((voice, index) => (
-                          <motion.button
-                            key={voice.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 + index * 0.05 }}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setSelectedVoice(voice.name)}
-                            className={`p-4 rounded-xl border-2 transition-all text-left relative ${
-                              selectedVoice === voice.name
-                                ? "border-primary bg-primary/10 shadow-lg"
-                                : "border-border hover:border-primary/50"
-                            }`}
-                          >
-                            {selectedVoice === voice.name && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute top-2 right-2 bg-primary rounded-full p-1"
-                              >
-                                <Check className="w-3 h-3 text-white" />
-                              </motion.div>
-                            )}
-                            <div className="font-bold mb-1">{voice.name}</div>
-                            <div className="text-sm text-muted-foreground mb-2">
-                              {voice.description}
-                            </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                              <span className="inline-block w-2 h-2 rounded-full bg-primary"></span>
-                              {voice.gender}
-                            </div>
-                          </motion.button>
-                        ))}
+
+                      {/* Avatar Selection */}
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <User className="w-5 h-5 text-primary" />
+                          <h3 className="font-bold text-lg">Avatar Selection</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {avatars.map((avatar, index) => (
+                            <motion.button
+                              key={avatar.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.3 + index * 0.05 }}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setTempSelectedAvatar(avatar.name)}
+                              className={`p-4 rounded-xl border-2 transition-all text-center relative ${
+                                tempSelectedAvatar === avatar.name
+                                  ? "border-primary bg-primary/10 shadow-lg"
+                                  : "border-border hover:border-primary/50"
+                              }`}
+                            >
+                              {tempSelectedAvatar === avatar.name && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="absolute top-2 right-2 bg-primary rounded-full p-1"
+                                >
+                                  <Check className="w-3 h-3 text-white" />
+                                </motion.div>
+                              )}
+                              <div className="text-4xl mb-2">{avatar.emoji}</div>
+                              <div className="font-bold mb-1">{avatar.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {avatar.description}
+                              </div>
+                            </motion.button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Avatar Selection */}
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <User className="w-5 h-5 text-primary" />
-                        <h3 className="font-bold text-lg">Avatar Selection</h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {avatars.map((avatar, index) => (
-                          <motion.button
-                            key={avatar.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 + index * 0.05 }}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setSelectedAvatar(avatar.name)}
-                            className={`p-4 rounded-xl border-2 transition-all text-center relative ${
-                              selectedAvatar === avatar.name
-                                ? "border-primary bg-primary/10 shadow-lg"
-                                : "border-border hover:border-primary/50"
-                            }`}
-                          >
-                            {selectedAvatar === avatar.name && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute top-2 right-2 bg-primary rounded-full p-1"
-                              >
-                                <Check className="w-3 h-3 text-white" />
-                              </motion.div>
-                            )}
-                            <div className="text-4xl mb-2">{avatar.emoji}</div>
-                            <div className="font-bold mb-1">{avatar.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {avatar.description}
-                            </div>
-                          </motion.button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Footer Buttons */}
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t">
+                    {/* Footer Buttons - Fixed */}
+                    <div className="flex items-center justify-end gap-3 p-6 border-t shrink-0 bg-gray-50/50">
                       <Button
                         variant="outline"
                         onClick={() => setShowCustomizeModal(false)}
@@ -527,7 +616,7 @@ export function SessionLobby() {
                       </Button>
                       <Button
                         className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                        onClick={() => setShowCustomizeModal(false)}
+                        onClick={handleSaveCustomize}
                       >
                         <Check className="w-4 h-4 mr-2" />
                         Save Changes
@@ -558,11 +647,11 @@ export function SessionLobby() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full max-w-2xl"
+                  className="w-full max-w-2xl flex flex-col max-h-[85vh]"
                 >
-                  <Card className="p-6 shadow-2xl bg-white max-h-[90vh] overflow-y-auto">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-6">
+                  <Card className="flex flex-col shadow-2xl bg-white overflow-hidden">
+                    {/* Header - Fixed */}
+                    <div className="flex items-center justify-between p-6 border-b shrink-0">
                       <div>
                         <h2 className="text-2xl font-bold">Schedule a Session</h2>
                         <p className="text-sm text-muted-foreground mt-1">
@@ -579,34 +668,37 @@ export function SessionLobby() {
                       </motion.button>
                     </div>
 
-                    {/* Date and Time Selection */}
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Calendar className="w-5 h-5 text-primary" />
-                        <h3 className="font-bold text-lg">Date & Time</h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="p-4 rounded-xl border-2 transition-all text-left relative">
-                          <input
-                            type="date"
-                            value={scheduleDate}
-                            onChange={(e) => setScheduleDate(e.target.value)}
-                            className="w-full p-2 border-none outline-none"
-                          />
+                    {/* Scrollable Content */}
+                    <div className="p-6 overflow-y-auto">
+                      {/* Date and Time Selection */}
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Calendar className="w-5 h-5 text-primary" />
+                          <h3 className="font-bold text-lg">Date & Time</h3>
                         </div>
-                        <div className="p-4 rounded-xl border-2 transition-all text-left relative">
-                          <input
-                            type="time"
-                            value={scheduleTime}
-                            onChange={(e) => setScheduleTime(e.target.value)}
-                            className="w-full p-2 border-none outline-none"
-                          />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="p-4 rounded-xl border-2 transition-all text-left relative">
+                            <input
+                              type="date"
+                              value={scheduleDate}
+                              onChange={(e) => setScheduleDate(e.target.value)}
+                              className="w-full p-2 border-none outline-none"
+                            />
+                          </div>
+                          <div className="p-4 rounded-xl border-2 transition-all text-left relative">
+                            <input
+                              type="time"
+                              value={scheduleTime}
+                              onChange={(e) => setScheduleTime(e.target.value)}
+                              className="w-full p-2 border-none outline-none"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Footer Buttons */}
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t">
+                    {/* Footer Buttons - Fixed */}
+                    <div className="flex items-center justify-end gap-3 p-6 border-t shrink-0 bg-gray-50/50">
                       <Button
                         variant="outline"
                         onClick={() => setShowScheduleModal(false)}
@@ -615,7 +707,7 @@ export function SessionLobby() {
                       </Button>
                       <Button
                         className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                        onClick={() => setShowScheduleModal(false)}
+                        onClick={handleScheduleSession}
                       >
                         <Check className="w-4 h-4 mr-2" />
                         Schedule

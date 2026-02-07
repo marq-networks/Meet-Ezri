@@ -12,10 +12,27 @@ import {
   Clock,
   ArrowRight,
   CheckCircle2,
+  Smile,
 } from "lucide-react";
 import { Link } from "react-router";
+import { useEffect, useState } from "react";
+import { api } from "../../../lib/api";
 
 export function AdminDashboard() {
+  const [recentMoods, setRecentMoods] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchMoods = async () => {
+      try {
+        const data = await api.moods.getAllMoods();
+        setRecentMoods(data.slice(0, 5));
+      } catch (error) {
+        console.error("Failed to fetch moods", error);
+      }
+    };
+    fetchMoods();
+  }, []);
+
   const recentAlerts = [
     {
       id: 1,
@@ -186,7 +203,7 @@ export function AdminDashboard() {
             </Card>
           </motion.div>
 
-          {/* Recent Sessions */}
+          {/* Recent Mood Check-ins */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -195,44 +212,45 @@ export function AdminDashboard() {
             <Card className="p-6 h-full">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-xl font-bold mb-1">Recent Sessions</h2>
+                  <h2 className="text-xl font-bold mb-1">Recent Mood Check-ins</h2>
                   <p className="text-sm text-muted-foreground">
-                    Latest user activity
+                    Latest user moods
                   </p>
                 </div>
-                <Link to="/admin/session-analytics">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    View All
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
+                <Button variant="outline" size="sm" className="gap-2">
+                  View All
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
 
               <div className="space-y-4">
-                {recentSessions.map((session, index) => (
+                {recentMoods.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No mood entries yet.</p>
+                ) : (
+                recentMoods.map((mood, index) => (
                   <motion.div
-                    key={session.id}
+                    key={mood.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 + index * 0.1 }}
                     className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:border-primary/50 transition-colors"
                   >
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-sm">
-                      {session.user.charAt(0)}
+                      <Smile className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm mb-1">{session.user}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {session.topic} • {session.duration}
+                      <p className="font-medium text-sm mb-1">{mood.profiles?.full_name || 'Anonymous'}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {mood.mood} • Intensity: {mood.intensity}/10
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">
-                        {session.time}
+                        {new Date(mood.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </motion.div>
-                ))}
+                )))}
               </div>
             </Card>
           </motion.div>

@@ -2,10 +2,11 @@ import { OnboardingLayout } from "../../components/OnboardingLayout";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Label } from "../../components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { ArrowRight, ArrowLeft, Sparkles, Volume2, Palette, Heart, Brain, Users, Star, CheckCircle } from "lucide-react";
 import { useState } from "react";
+import { useOnboarding } from "@/app/contexts/OnboardingContext";
 
 interface AIAvatar {
   id: string;
@@ -23,8 +24,10 @@ interface AIAvatar {
 }
 
 export function OnboardingAvatarPreferences() {
-  const [selectedAvatar, setSelectedAvatar] = useState("");
-  const [selectedEnvironment, setSelectedEnvironment] = useState("");
+  const navigate = useNavigate();
+  const { data, updateData } = useOnboarding();
+  const [selectedAvatar, setSelectedAvatar] = useState(data.selectedAvatar || "");
+  const [selectedEnvironment, setSelectedEnvironment] = useState(data.selectedEnvironment || "");
 
   const aiAvatars: AIAvatar[] = [
     {
@@ -92,6 +95,11 @@ export function OnboardingAvatarPreferences() {
     { value: "space", label: "Starry Night", emoji: "🌌", gradient: "from-indigo-500 to-purple-900" },
     { value: "minimal", label: "Minimal Studio", emoji: "⬜", gradient: "from-gray-100 to-gray-300" }
   ];
+
+  const handleContinue = () => {
+    updateData({ selectedAvatar, selectedEnvironment });
+    navigate("/onboarding/safety-consent");
+  };
 
   return (
     <OnboardingLayout
@@ -311,6 +319,7 @@ export function OnboardingAvatarPreferences() {
               whileTap={{ scale: 0.98 }}
             >
               <Button 
+                onClick={handleContinue}
                 className="w-full group relative overflow-hidden"
                 disabled={!selectedAvatar}
               >

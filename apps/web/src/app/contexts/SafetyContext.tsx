@@ -8,6 +8,7 @@ import { SafetyState, SafetyConsent, SafetyContext as SafetyContextType } from '
 import { logSafetyEvent } from '@/app/utils/safetyLogger';
 import { isValidStateTransition } from '@/app/utils/safetyDetection';
 import { notifyTrustedContacts, shouldNotifyContacts } from '@/app/utils/trustedContactNotifications';
+import { useAuth } from './AuthContext';
 
 const CONSENT_STORAGE_KEY = 'ezri_safety_consent';
 
@@ -18,6 +19,7 @@ interface SafetyProviderProps {
 }
 
 export function SafetyProvider({ children }: SafetyProviderProps) {
+  const { user, profile } = useAuth();
   const [currentState, setCurrentState] = useState<SafetyState>('NORMAL');
   const [previousState, setPreviousState] = useState<SafetyState | null>(null);
   const [stateChangedAt, setStateChangedAt] = useState<number>(Date.now());
@@ -57,10 +59,8 @@ export function SafetyProvider({ children }: SafetyProviderProps) {
       return;
     }
 
-    // Get current user (in a real app, this would come from auth context)
-    const currentUser = localStorage.getItem('currentUser');
-    const userId = currentUser ? JSON.parse(currentUser).id : 'unknown';
-    const userName = currentUser ? JSON.parse(currentUser).name : 'Your friend';
+    const userId = user?.id || 'unknown';
+    const userName = profile?.full_name || 'User';
 
     // Log the safety event
     logSafetyEvent({
@@ -110,7 +110,7 @@ export function SafetyProvider({ children }: SafetyProviderProps) {
         timestamp: new Date().toISOString(),
       });
     }
-  }, [currentState, sessionId, consent.trustedContactEnabled]);
+  }, [currentState, sessionId, consent.trustedContactEnabled, user, profile]);
 
   const resetToNormal = useCallback(() => {
     if (currentState !== 'NORMAL') {

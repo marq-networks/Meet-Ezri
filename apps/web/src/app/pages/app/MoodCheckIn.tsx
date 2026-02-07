@@ -12,6 +12,8 @@ import {
   TrendingUp
 } from "lucide-react";
 import { useState } from "react";
+import { api } from "../../../lib/api";
+import { toast } from "sonner";
 
 export function MoodCheckIn() {
   const navigate = useNavigate();
@@ -20,6 +22,7 @@ export function MoodCheckIn() {
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const moods = [
     { value: "happy", emoji: "😊", label: "Happy", color: "from-yellow-400 to-orange-500" },
@@ -49,11 +52,31 @@ export function MoodCheckIn() {
     }
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-    setTimeout(() => {
-      navigate("/app/dashboard");
-    }, 2000);
+  const handleSubmit = async () => {
+    if (!selectedMood) {
+      toast.error("Please select a mood");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await api.moods.create({
+        mood: selectedMood,
+        intensity: selectedIntensity,
+        activities: selectedActivities,
+        notes: notes || undefined,
+      });
+
+      setSubmitted(true);
+      setTimeout(() => {
+        navigate("/app/dashboard");
+      }, 2000);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to submit mood check-in");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -284,7 +307,7 @@ export function MoodCheckIn() {
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
                 onClick={handleSubmit}
-                disabled={!selectedMood}
+                disabled={!selectedMood || isSubmitting}
                 className="w-full h-14 text-lg group relative overflow-hidden"
               >
                 <motion.div
@@ -294,9 +317,15 @@ export function MoodCheckIn() {
                   transition={{ duration: 0.3 }}
                 />
                 <span className="relative z-10 flex items-center justify-center gap-2">
-                  <CheckCircle className="w-5 h-5" />
-                  Complete Check-In
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  {isSubmitting ? (
+                    "Submitting..."
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      Complete Check-In
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
                 </span>
               </Button>
             </motion.div>

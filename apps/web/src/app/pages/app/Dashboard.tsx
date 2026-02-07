@@ -2,7 +2,8 @@ import { AppLayout } from "../../components/AppLayout";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { motion } from "motion/react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
+import { formatDistanceToNow } from "date-fns";
 import {
   Video,
   Heart,
@@ -19,16 +20,19 @@ import {
 } from "lucide-react";
 import { WellnessChallenges } from "../../components/WellnessChallenges";
 import { PWAInstallPrompt } from "../../components/PWAInstallPrompt";
+import { useAuth } from "@/app/contexts/AuthContext";
 
 export function Dashboard() {
-  const currentMood = "Calm";
-  const streakDays = 7;
-  const upcomingSessions = 0;
+  const { profile } = useAuth();
+  const firstName = profile?.full_name?.split(' ')[0] || "Friend";
+  const currentMood = profile?.current_mood || "Calm";
+  const streakDays = profile?.streak_days || 0;
+  const upcomingSessions = profile?.upcoming_sessions || 0;
   
-  // Mock subscription data (in real app, fetch from backend)
-  const creditsRemaining = 145; // Minutes
-  const creditsTotal = 200;
-  const userPlan = "Basic Plan";
+  // Real data from backend
+  const creditsRemaining = profile?.credits_remaining || 0;
+  const creditsTotal = profile?.credits_total || 200;
+  const userPlan = profile?.subscription_plan || "Basic Plan";
 
   const quickActions = [
     {
@@ -61,11 +65,13 @@ export function Dashboard() {
     }
   ];
 
-  const recentActivities = [
-    { type: "mood", text: "Logged feeling Calm", time: "2 hours ago", emoji: "😌" },
-    { type: "journal", text: "Wrote a journal entry", time: "Yesterday", emoji: "📝" },
-    { type: "session", text: "Completed AI session", time: "2 days ago", emoji: "💬" },
-    { type: "achievement", text: "Earned 7-day streak!", time: "Today", emoji: "🔥" }
+  const recentActivities = profile?.mood_entries?.slice(0, 4).map((entry: any) => ({
+    type: "mood",
+    text: `Logged ${entry.mood} (${entry.intensity}/10)`,
+    time: formatDistanceToNow(new Date(entry.created_at), { addSuffix: true }),
+    emoji: "😌"
+  })) || [
+    { type: "system", text: "Welcome to MeetEzri!", time: "Just now", emoji: "👋" }
   ];
 
   const insights = [
@@ -98,7 +104,7 @@ export function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold mb-2">Welcome back! 👋</h1>
+          <h1 className="text-3xl font-bold mb-2">Welcome back, {firstName}! 👋</h1>
           <p className="text-muted-foreground">
             {new Date().toLocaleDateString("en-US", {
               weekday: "long",
@@ -175,9 +181,9 @@ export function Dashboard() {
                   <Calendar className="w-8 h-8" />
                   <Award className="w-8 h-8" />
                 </div>
-                <h3 className="font-semibold mb-1">Sessions This Week</h3>
-                <p className="text-2xl font-bold">3 Completed</p>
-                <p className="text-xs text-white/80 mt-2">Click to view all sessions</p>
+                <h3 className="font-semibold mb-1">Upcoming Sessions</h3>
+                <p className="text-2xl font-bold">{upcomingSessions}</p>
+                <p className="text-xs text-white/80 mt-2">Click to view schedule</p>
               </Card>
             </motion.div>
           </Link>

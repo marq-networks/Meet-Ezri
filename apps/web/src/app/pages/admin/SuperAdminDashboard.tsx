@@ -1,6 +1,7 @@
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { api } from "../../../lib/api";
 import { motion } from "motion/react";
 import {
   Users,
@@ -24,6 +25,7 @@ import {
   Bell,
   Eye,
   Download,
+  Smile,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -48,75 +50,54 @@ import {
 export function SuperAdminDashboard() {
   const navigate = useNavigate();
 
-  // Animated counter state
-  const [userCount, setUserCount] = useState(142000);
-  const [orgCount, setOrgCount] = useState(2800);
-  const [sessionCount, setSessionCount] = useState(8300);
-  const [revenue, setRevenue] = useState(284);
+  // Stats state
+  const [stats, setStats] = useState<any>(null);
+  const [recentMoods, setRecentMoods] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Simulate real-time updates
+  // Fetch real data
   useEffect(() => {
-    const interval = setInterval(() => {
-      setUserCount(prev => prev + Math.floor(Math.random() * 10));
-      setSessionCount(prev => prev + Math.floor(Math.random() * 5));
-      if (Math.random() > 0.7) {
-        setOrgCount(prev => prev + 1);
+    const fetchStats = async () => {
+      try {
+        const [data, moods] = await Promise.all([
+          api.admin.getStats(),
+          api.moods.getAllMoods()
+        ]);
+        setStats(data);
+        setRecentMoods(moods.slice(0, 5));
+      } catch (error) {
+        console.error("Failed to fetch admin stats", error);
+      } finally {
+        setLoading(false);
       }
-    }, 3000);
+    };
 
+    fetchStats();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Chart data
-  const userGrowthData = [
-    { month: "Jan", users: 98234, orgs: 2234 },
-    { month: "Feb", users: 105678, orgs: 2398 },
-    { month: "Mar", users: 112456, orgs: 2512 },
-    { month: "Apr", users: 120890, orgs: 2645 },
-    { month: "May", users: 128567, orgs: 2734 },
-    { month: "Jun", users: 135234, orgs: 2821 },
-    { month: "Jul", users: 142459, orgs: 2847 },
-  ];
+  if (loading && !stats) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
-  const sessionData = [
-    { day: "Mon", sessions: 7234, duration: 45 },
-    { day: "Tue", sessions: 8123, duration: 48 },
-    { day: "Wed", sessions: 7890, duration: 42 },
-    { day: "Thu", sessions: 8567, duration: 51 },
-    { day: "Fri", sessions: 8934, duration: 47 },
-    { day: "Sat", sessions: 6234, duration: 39 },
-    { day: "Sun", sessions: 5890, duration: 41 },
-  ];
-
-  const revenueData = [
-    { month: "Jan", revenue: 198 },
-    { month: "Feb", revenue: 215 },
-    { month: "Mar", revenue: 228 },
-    { month: "Apr", revenue: 242 },
-    { month: "May", revenue: 256 },
-    { month: "Jun", revenue: 271 },
-    { month: "Jul", revenue: 284 },
-  ];
-
-  const platformDistribution = [
-    { name: "Mobile App", value: 58, color: "#8b5cf6" },
-    { name: "Web", value: 32, color: "#ec4899" },
-    { name: "Desktop", value: 10, color: "#06b6d4" },
-  ];
-
-  const systemHealth = [
-    { name: "API Response Time", value: "45ms", status: "excellent", color: "text-green-600", percentage: 95 },
-    { name: "Server Uptime", value: "99.98%", status: "excellent", color: "text-green-600", percentage: 99 },
-    { name: "Database Load", value: "42%", status: "good", color: "text-blue-600", percentage: 58 },
-    { name: "CDN Performance", value: "98%", status: "excellent", color: "text-green-600", percentage: 98 },
-  ];
-
-  const topOrganizations = [
-    { name: "HealthCare Corp", users: 2847, growth: "+15%", status: "Enterprise", revenue: "$12.4K" },
-    { name: "Wellness Inc", users: 1923, growth: "+12%", status: "Enterprise", revenue: "$8.9K" },
-    { name: "MindCare Solutions", users: 1456, growth: "+8%", status: "Pro", revenue: "$5.2K" },
-    { name: "Therapy Network", users: 1234, growth: "+22%", status: "Enterprise", revenue: "$6.1K" },
-  ];
+  // Use stats data or fallbacks
+  const userCount = stats?.totalUsers || 0;
+  const sessionCount = stats?.activeSessions || 0;
+  const totalSessions = stats?.totalSessions || 0;
+  const revenue = stats?.revenue || 0;
+  const userGrowthData = stats?.userGrowth || [];
+  const sessionData = stats?.sessionActivity || [];
+  const revenueData = stats?.revenueData || [];
+  const platformDistribution = stats?.platformDistribution || [];
+  const systemHealth = stats?.systemHealth || [];
 
   const recentAlerts = [
     {
@@ -222,40 +203,7 @@ export function SuperAdminDashboard() {
             </Card>
           </motion.div>
 
-          {/* Organizations */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="p-6 bg-gradient-to-br from-pink-50 to-white border-pink-200 relative overflow-hidden group hover:shadow-xl transition-all">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl" />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-pink-500 flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                    +8.2%
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">Organizations</p>
-                <motion.div
-                  key={orgCount}
-                  initial={{ scale: 1.1 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="text-3xl font-bold"
-                >
-                  {orgCount.toLocaleString()}
-                </motion.div>
-                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                  <TrendingUp className="w-3 h-3 text-green-600" />
-                  <span>+47 this month</span>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
+
 
           {/* Active Sessions */}
           <motion.div
@@ -337,8 +285,8 @@ export function SuperAdminDashboard() {
                     User Growth Trend
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    7-month user and organization growth
-                  </p>
+                  7-month user growth
+                </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm">
@@ -353,10 +301,7 @@ export function SuperAdminDashboard() {
                       <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="colorOrgs" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
-                    </linearGradient>
+
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="month" stroke="#6b7280" />
@@ -378,15 +323,7 @@ export function SuperAdminDashboard() {
                     fill="url(#colorUsers)"
                     name="Total Users"
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="orgs"
-                    stroke="#ec4899"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorOrgs)"
-                    name="Organizations"
-                  />
+
                 </AreaChart>
               </ResponsiveContainer>
             </Card>
@@ -697,7 +634,9 @@ export function SuperAdminDashboard() {
           </motion.div>
         </div>
 
-        {/* Top Organizations */}
+
+
+        {/* Recent Mood Check-ins */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -707,67 +646,61 @@ export function SuperAdminDashboard() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="font-bold text-xl flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-purple-500" />
-                  Top Organizations
+                  <Smile className="w-5 h-5 text-purple-500" />
+                  Recent Mood Check-ins
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Highest performing enterprise accounts
+                  Latest user emotional states and check-ins
                 </p>
               </div>
-              <Link to="/admin/billing-subscriptions">
-                <Button variant="outline" size="sm">
-                  View All Organizations
-                </Button>
-              </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {topOrganizations.map((org, index) => (
-                <motion.div
-                  key={org.name}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 1.2 + index * 0.1 }}
-                  className="p-4 bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-200 hover:shadow-lg transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
-                      {org.name.charAt(0)}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {recentMoods.length === 0 ? (
+                <div className="col-span-full text-center py-8 text-muted-foreground">
+                  No mood entries recorded yet.
+                </div>
+              ) : (
+                recentMoods.map((mood, index) => (
+                  <motion.div
+                    key={mood.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 1.2 + index * 0.1 }}
+                    className="p-4 bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-200 hover:shadow-lg transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                        <Smile className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">{mood.profiles?.full_name || 'Anonymous'}</p>
+                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium capitalize">
+                          {mood.mood}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{org.name}</p>
-                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                        {org.status}
-                      </span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Intensity</span>
+                        <span className="font-bold">{mood.intensity}/10</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Activities</span>
+                        <span className="font-bold text-xs truncate max-w-[80px]">
+                          {mood.activities?.length || 0} selected
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Date</span>
+                        <span className="font-bold text-xs">
+                          {new Date(mood.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Users</span>
-                      <span className="font-bold">{org.users.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Revenue</span>
-                      <span className="font-bold text-green-600">{org.revenue}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Growth</span>
-                      <span className="font-bold text-green-600">{org.growth}</span>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full justify-between group-hover:bg-gray-100"
-                      onClick={() => navigate('/admin/billing-subscriptions')}
-                    >
-                      View Details
-                      <ArrowUpRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              )}
             </div>
           </Card>
         </motion.div>

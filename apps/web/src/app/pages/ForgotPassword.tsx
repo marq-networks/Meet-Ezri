@@ -5,8 +5,38 @@ import { Label } from "../components/ui/label";
 import { Link } from "react-router";
 import { KeyRound } from "lucide-react";
 import { PublicNav } from "../components/PublicNav";
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export function ForgotPassword() {
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setIsSubmitted(true);
+      toast.success("Password reset email sent!");
+    } catch (error: any) {
+      console.error("Error sending reset email:", error);
+      toast.error(error.message || "Failed to send reset email");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-purple-50/30 to-white">
       <PublicNav />
@@ -23,21 +53,43 @@ export function ForgotPassword() {
         </div>
         
         <Card className="p-8">
-          <form className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                className="bg-input-background"
-              />
+          {isSubmitted ? (
+            <div className="text-center space-y-4">
+              <div className="bg-green-50 text-green-700 p-4 rounded-lg">
+                <p className="font-medium">Check your email</p>
+                <p className="text-sm mt-1">
+                  We've sent a password reset link to <strong>{email}</strong>
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setIsSubmitted(false)}
+              >
+                Try another email
+              </Button>
             </div>
-            
-            <Button type="submit" className="w-full">
-              Send Reset Link
-            </Button>
-          </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  className="bg-input-background"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Sending..." : "Send Reset Link"}
+              </Button>
+            </form>
+          )}
           
           <div className="mt-6 text-center">
             <Link to="/login" className="text-sm text-primary hover:underline">

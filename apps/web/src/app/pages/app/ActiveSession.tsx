@@ -22,12 +22,14 @@ import {
   Pause,
   Play
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/app/components/ui/button";
 const avatarImage = "https://placehold.co/400";
 import { useSafety } from "@/app/contexts/SafetyContext";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 import { analyzeTextForSafety } from "@/app/utils/safetyDetection";
 import { SafetyStateIndicator } from "@/app/components/safety/SafetyStateIndicator";
 import { SafetyBoundaryMessage } from "@/app/components/safety/SafetyBoundaryMessage";
@@ -36,6 +38,12 @@ import { getSafetyResources } from "@/app/utils/safetyResources";
 
 export function ActiveSession() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { sessionId: stateSessionId, duration, config } = location.state || {};
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
   const { currentState, updateState } = useSafety();
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
@@ -47,24 +55,80 @@ export function ActiveSession() {
   const [showPermissionRequest, setShowPermissionRequest] = useState(true);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   
+  // Media Stream Initialization
+  useEffect(() => {
+    if (permissionsGranted && !stream) {
+      const initMedia = async () => {
+        try {
+          const userStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+          });
+          setStream(userStream);
+          if (videoRef.current) {
+            videoRef.current.srcObject = userStream;
+          }
+        } catch (err) {
+          console.error("Failed to access media devices:", err);
+          toast.error("Failed to access camera/microphone");
+          setPermissionsGranted(false);
+          setShowPermissionRequest(true);
+        }
+      };
+      initMedia();
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [permissionsGranted, stream]);
+
+  // Handle toggling tracks when state changes
+  useEffect(() => {
+    if (stream) {
+      stream.getAudioTracks().forEach(track => {
+        track.enabled = !isMuted;
+      });
+      stream.getVideoTracks().forEach(track => {
+        track.enabled = !isCameraOff;
+      });
+    }
+  }, [isMuted, isCameraOff, stream]);
+
   // Safety-related state
   const [showSafetyBoundary, setShowSafetyBoundary] = useState(false);
   const [showSafetyResources, setShowSafetyResources] = useState(false);
   const [isSessionPaused, setIsSessionPaused] = useState(false);
   const [lastSafetyState, setLastSafetyState] = useState(currentState);
   
-  // Credits tracking (mock data - in real app, fetch from backend)
-  const [creditsRemaining, setCreditsRemaining] = useState(145); // Minutes remaining
+  // Credits tracking
+  const [creditsRemaining, setCreditsRemaining] = useState(duration || 0);
   const [showLowCreditsWarning, setShowLowCreditsWarning] = useState(false);
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
 
+  useEffect(() => {
+    const loadCredits = async () => {
+      try {
+        const { credits } = await api.user.getCredits();
+        if (credits !== undefined) {
+          setCreditsRemaining(credits);
+        }
+      } catch (err) {
+        console.error("Failed to load credits:", err);
+      }
+    };
+    loadCredits();
+  }, []);
+
   // Session tracking
-  const [sessionId] = useState(() => `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [sessionId] = useState(() => stateSessionId || `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [sessionStartTime] = useState(Date.now());
 
   // Current AI Avatar Info (would come from user preferences)
   const currentAvatar = {
-    name: "Maya Chen",
+    name: config?.avatar || "Maya Chen",
     status: "listening"
   };
 
@@ -124,29 +188,33 @@ export function ActiveSession() {
     if (isSessionPaused) return; // Don't count time when paused
     
     const timer = setInterval(() => {
-      setSessionTime((prev) => prev + 1);
-      
-      // Deduct 1 credit every 60 seconds (1 minute)
-      if (sessionTime > 0 && sessionTime % 60 === 0) {
-        setCreditsRemaining((prev) => {
-          const newCredits = Math.max(0, prev - 1);
-          
-          // Show low credits warning at 10 minutes
-          if (newCredits === 10 && !showLowCreditsWarning) {
-            setShowLowCreditsWarning(true);
-          }
-          
-          // Show out of credits modal at 0
-          if (newCredits === 0) {
-            setShowOutOfCredits(true);
-          }
-          
-          return newCredits;
-        });
-      }
+      setSessionTime((prev) => {
+        const newTime = prev + 1;
+        
+        // Deduct 1 credit every 60 seconds (1 minute)
+        if (newTime > 0 && newTime % 60 === 0) {
+          setCreditsRemaining((prevCredits) => Math.max(0, prevCredits - 1));
+        }
+        
+        return newTime;
+      });
     }, 1000);
+    
     return () => clearInterval(timer);
-  }, [sessionTime, showLowCreditsWarning, isSessionPaused]);
+  }, [isSessionPaused]);
+
+  // Handle low credits warnings
+  useEffect(() => {
+    // Show low credits warning at 10 minutes
+    if (creditsRemaining === 10 && !showLowCreditsWarning) {
+      setShowLowCreditsWarning(true);
+    }
+    
+    // Show out of credits modal at 0
+    if (creditsRemaining === 0 && !showOutOfCredits) {
+      setShowOutOfCredits(true);
+    }
+  }, [creditsRemaining, showLowCreditsWarning, showOutOfCredits]);
 
   // Simulate Ezri speaking animation - alternates between speaking and listening
   useEffect(() => {
@@ -162,10 +230,18 @@ export function ActiveSession() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     const endTime = Date.now();
     const durationSeconds = Math.floor((endTime - sessionStartTime) / 1000);
     
+    try {
+      await api.sessions.end(sessionId, durationSeconds);
+      toast.success("Session ended successfully");
+    } catch (error) {
+      console.error("Failed to end session:", error);
+      toast.error("Failed to save session data");
+    }
+
     // Check if cooldown is needed based on safety state
     const needsCooldown = currentState === 'HIGH_RISK' || currentState === 'SAFETY_MODE';
     
@@ -459,15 +535,16 @@ export function ActiveSession() {
           transition={{ delay: 0.3 }}
           className="absolute bottom-28 right-10 w-64 h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-slate-700 to-slate-900 border-2 border-white/20 shadow-2xl"
         >
-          {!isCameraOff ? (
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-6xl mb-2">👤</div>
-                <p className="text-sm text-gray-300">You</p>
-              </div>
-            </div>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-black">
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className={`w-full h-full object-cover ${isCameraOff ? 'hidden' : 'block'}`}
+          />
+          
+          {isCameraOff && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
               <div className="text-center">
                 <VideoOff className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                 <p className="text-sm text-gray-400">Camera Off</p>

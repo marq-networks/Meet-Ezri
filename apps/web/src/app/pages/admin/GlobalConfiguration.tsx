@@ -19,9 +19,11 @@ import {
   Clock,
   FileText,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface ConfigSection {
   id: string;
@@ -44,6 +46,7 @@ interface Setting {
 
 export function GlobalConfiguration() {
   const [hasChanges, setHasChanges] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [sections, setSections] = useState<ConfigSection[]>([
     {
@@ -54,7 +57,7 @@ export function GlobalConfiguration() {
       color: "from-blue-500 to-cyan-600",
       settings: [
         {
-          id: "app-name",
+          id: "app.name",
           name: "Application Name",
           description: "Display name for the application",
           type: "text",
@@ -62,7 +65,7 @@ export function GlobalConfiguration() {
           defaultValue: "Ezri Mental Health",
         },
         {
-          id: "app-environment",
+          id: "app.environment",
           name: "Environment",
           description: "Current deployment environment",
           type: "select",
@@ -75,7 +78,7 @@ export function GlobalConfiguration() {
           defaultValue: "production",
         },
         {
-          id: "maintenance-mode",
+          id: "app.maintenance_mode",
           name: "Maintenance Mode",
           description: "Enable to show maintenance page to users",
           type: "toggle",
@@ -83,7 +86,7 @@ export function GlobalConfiguration() {
           defaultValue: false,
         },
         {
-          id: "debug-mode",
+          id: "app.debug_mode",
           name: "Debug Mode",
           description: "Enable detailed logging and error messages",
           type: "toggle",
@@ -100,7 +103,7 @@ export function GlobalConfiguration() {
       color: "from-purple-500 to-pink-600",
       settings: [
         {
-          id: "ai-voice",
+          id: "features.ai_voice",
           name: "AI Voice Conversations",
           description: "Enable voice interactions with AI avatars",
           type: "toggle",
@@ -108,7 +111,7 @@ export function GlobalConfiguration() {
           defaultValue: true,
         },
         {
-          id: "mood-tracking",
+          id: "features.mood_tracking",
           name: "Mood Tracking",
           description: "Enable mood check-in and tracking features",
           type: "toggle",
@@ -116,7 +119,7 @@ export function GlobalConfiguration() {
           defaultValue: true,
         },
         {
-          id: "journaling",
+          id: "features.journaling",
           name: "Journaling",
           description: "Enable journaling functionality",
           type: "toggle",
@@ -124,7 +127,7 @@ export function GlobalConfiguration() {
           defaultValue: true,
         },
         {
-          id: "community",
+          id: "features.community",
           name: "Community Features",
           description: "Enable community forums and groups",
           type: "toggle",
@@ -141,7 +144,7 @@ export function GlobalConfiguration() {
       color: "from-red-500 to-rose-600",
       settings: [
         {
-          id: "2fa-required",
+          id: "security.require_2fa",
           name: "Require Two-Factor Authentication",
           description: "Require all users to enable 2FA",
           type: "toggle",
@@ -149,7 +152,7 @@ export function GlobalConfiguration() {
           defaultValue: false,
         },
         {
-          id: "session-timeout",
+          id: "security.session_timeout",
           name: "Session Timeout (minutes)",
           description: "Automatic logout after inactivity",
           type: "number",
@@ -157,7 +160,7 @@ export function GlobalConfiguration() {
           defaultValue: 30,
         },
         {
-          id: "password-expiry",
+          id: "security.password_expiry",
           name: "Password Expiry (days)",
           description: "Force password reset after specified days",
           type: "number",
@@ -165,7 +168,7 @@ export function GlobalConfiguration() {
           defaultValue: 90,
         },
         {
-          id: "max-login-attempts",
+          id: "security.max_login_attempts",
           name: "Max Login Attempts",
           description: "Lock account after failed attempts",
           type: "number",
@@ -182,7 +185,7 @@ export function GlobalConfiguration() {
       color: "from-green-500 to-emerald-600",
       settings: [
         {
-          id: "email-notifications",
+          id: "notifications.email",
           name: "Email Notifications",
           description: "Send email notifications to users",
           type: "toggle",
@@ -190,7 +193,7 @@ export function GlobalConfiguration() {
           defaultValue: true,
         },
         {
-          id: "push-notifications",
+          id: "notifications.push",
           name: "Push Notifications",
           description: "Send push notifications to mobile devices",
           type: "toggle",
@@ -198,7 +201,7 @@ export function GlobalConfiguration() {
           defaultValue: true,
         },
         {
-          id: "admin-alerts",
+          id: "notifications.admin_alerts",
           name: "Admin Alerts",
           description: "Send critical alerts to administrators",
           type: "toggle",
@@ -206,7 +209,7 @@ export function GlobalConfiguration() {
           defaultValue: true,
         },
         {
-          id: "notification-frequency",
+          id: "notifications.frequency",
           name: "Notification Frequency",
           description: "How often to send digest notifications",
           type: "select",
@@ -229,7 +232,7 @@ export function GlobalConfiguration() {
       color: "from-orange-500 to-amber-600",
       settings: [
         {
-          id: "enable-caching",
+          id: "performance.enable_caching",
           name: "Enable Caching",
           description: "Cache API responses for better performance",
           type: "toggle",
@@ -237,7 +240,7 @@ export function GlobalConfiguration() {
           defaultValue: true,
         },
         {
-          id: "cache-ttl",
+          id: "performance.cache_ttl",
           name: "Cache TTL (seconds)",
           description: "How long to cache responses",
           type: "number",
@@ -245,7 +248,7 @@ export function GlobalConfiguration() {
           defaultValue: 300,
         },
         {
-          id: "rate-limiting",
+          id: "performance.rate_limiting",
           name: "API Rate Limiting",
           description: "Limit API requests per user",
           type: "toggle",
@@ -253,7 +256,7 @@ export function GlobalConfiguration() {
           defaultValue: true,
         },
         {
-          id: "max-requests",
+          id: "performance.max_requests_per_hour",
           name: "Max Requests per Hour",
           description: "Maximum API requests allowed per hour",
           type: "number",
@@ -270,7 +273,7 @@ export function GlobalConfiguration() {
       color: "from-indigo-500 to-purple-600",
       settings: [
         {
-          id: "auto-backup",
+          id: "database.auto_backup",
           name: "Automatic Backups",
           description: "Enable scheduled database backups",
           type: "toggle",
@@ -278,7 +281,7 @@ export function GlobalConfiguration() {
           defaultValue: true,
         },
         {
-          id: "backup-frequency",
+          id: "database.backup_frequency",
           name: "Backup Frequency",
           description: "How often to backup the database",
           type: "select",
@@ -291,7 +294,7 @@ export function GlobalConfiguration() {
           defaultValue: "daily",
         },
         {
-          id: "connection-pool",
+          id: "database.connection_pool_size",
           name: "Connection Pool Size",
           description: "Maximum database connections",
           type: "number",
@@ -299,7 +302,7 @@ export function GlobalConfiguration() {
           defaultValue: 20,
         },
         {
-          id: "query-timeout",
+          id: "database.query_timeout",
           name: "Query Timeout (seconds)",
           description: "Maximum time for database queries",
           type: "number",
@@ -309,6 +312,29 @@ export function GlobalConfiguration() {
       ],
     },
   ]);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await api.getSettings();
+        // data is array of { key, value, description }
+        
+        setSections(prev => prev.map(section => ({
+          ...section,
+          settings: section.settings.map(setting => {
+            const found = data.find((s: any) => s.key === setting.id);
+            return found ? { ...setting, value: found.value } : setting;
+          })
+        })));
+      } catch (err) {
+        console.error("Failed to load settings", err);
+        toast.error("Failed to load configuration");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
 
   const handleSettingChange = (
     sectionId: string,
@@ -330,10 +356,25 @@ export function GlobalConfiguration() {
     setHasChanges(true);
   };
 
-  const handleSave = () => {
-    // In a real app, save to backend
-    console.log("Saving configuration...", sections);
-    setHasChanges(false);
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      const promises = [];
+      for (const section of sections) {
+        for (const setting of section.settings) {
+           promises.push(api.updateSetting(setting.id, setting.value, setting.description));
+        }
+      }
+      
+      await Promise.all(promises);
+      setHasChanges(false);
+      toast.success("Configuration saved successfully");
+    } catch (err) {
+      console.error("Failed to save", err);
+      toast.error("Failed to save configuration");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReset = () => {
@@ -346,7 +387,7 @@ export function GlobalConfiguration() {
         })),
       }))
     );
-    setHasChanges(false);
+    setHasChanges(true); // Resetting counts as a change to save
   };
 
   const stats = [
@@ -364,7 +405,7 @@ export function GlobalConfiguration() {
     },
     {
       label: "Last Updated",
-      value: "2 hours ago",
+      value: "Just now",
       icon: Clock,
       color: "from-green-500 to-emerald-600",
     },
@@ -375,6 +416,12 @@ export function GlobalConfiguration() {
       color: hasChanges ? "from-orange-500 to-amber-600" : "from-green-500 to-emerald-600",
     },
   ];
+
+  if (isLoading && sections.every(s => s.settings.every(set => set.value === set.defaultValue))) {
+     // Initial loading state can be added here if needed, 
+     // but we show default values while loading to prevent layout shift
+     // or add a spinner overlay. For now, we just let it load.
+  }
 
   return (
     <AdminLayoutNew>
@@ -399,18 +446,18 @@ export function GlobalConfiguration() {
               onClick={handleReset}
               variant="outline"
               className="border-gray-300 text-gray-700 hover:bg-gray-100"
-              disabled={!hasChanges}
+              disabled={isLoading}
             >
               <RotateCcw className="w-4 h-4 mr-2" />
-              Reset
+              Reset Defaults
             </Button>
             <Button
               onClick={handleSave}
               className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
-              disabled={!hasChanges}
+              disabled={!hasChanges || isLoading}
             >
               <Save className="w-4 h-4 mr-2" />
-              Save Changes
+              {isLoading ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </motion.div>
@@ -573,7 +620,7 @@ export function GlobalConfiguration() {
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    onClick={handleReset}
+                    onClick={() => setHasChanges(false)}
                     variant="outline"
                     className="border-white text-white hover:bg-white/20"
                     size="sm"

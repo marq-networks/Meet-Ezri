@@ -33,8 +33,11 @@ import {
   ResponsiveContainer,
   Cell
 } from "recharts";
+import { useAuth } from "@/app/contexts/AuthContext";
 
 export function Progress() {
+  const { profile } = useAuth();
+
   const weeklyProgress = [
     { week: "Week 1", mood: 6, sessions: 2, journals: 3, checkIns: 5 },
     { week: "Week 2", mood: 7, sessions: 3, journals: 4, checkIns: 6 },
@@ -106,32 +109,32 @@ export function Progress() {
     {
       icon: Video,
       label: "AI Sessions",
-      value: "12",
-      change: "+3 this week",
+      value: profile?.stats?.completed_sessions?.toString() || "0",
+      change: "Total sessions",
       color: "text-blue-500",
       bgColor: "bg-blue-50"
     },
     {
       icon: Heart,
       label: "Mood Check-ins",
-      value: "45",
-      change: "+7 this week",
+      value: profile?.stats?.total_checkins?.toString() || "0",
+      change: "Total check-ins",
       color: "text-pink-500",
       bgColor: "bg-pink-50"
     },
     {
       icon: BookOpen,
       label: "Journal Entries",
-      value: "28",
-      change: "+4 this week",
+      value: profile?.stats?.total_journals?.toString() || "0",
+      change: "Total entries",
       color: "text-purple-500",
       bgColor: "bg-purple-50"
     },
     {
       icon: Flame,
       label: "Current Streak",
-      value: "7 days",
-      change: "Best: 12 days",
+      value: `${profile?.streak_days || 0} days`,
+      change: "Keep it up!",
       color: "text-orange-500",
       bgColor: "bg-orange-50"
     }

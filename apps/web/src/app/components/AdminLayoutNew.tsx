@@ -32,12 +32,13 @@ import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "./ui/button";
+import { useAuth } from "../contexts/AuthContext";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
-type AdminRole = "super" | "org" | "team";
+type AdminRole = "super_admin" | "org_admin" | "team_admin";
 
 interface NavSection {
   name: string;
@@ -56,181 +57,181 @@ const NAVIGATION: NavSection[] = [
   {
     name: "Dashboards",
     icon: LayoutDashboard,
-    roles: ["super", "org", "team"],
+    roles: ["super_admin", "org_admin", "team_admin"],
     pages: [
-      { name: "Super Admin Dashboard", href: "/admin/super-admin-dashboard", icon: Crown, roles: ["super"] },
-      { name: "Org Admin Dashboard", href: "/admin/org-admin-dashboard", icon: Building2, roles: ["org"] },
-      { name: "Team Admin Dashboard", href: "/admin/team-admin-dashboard", icon: Shield, roles: ["team"] },
-      { name: "Admin Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, roles: ["super", "org", "team"] },
+      { name: "Super Admin Dashboard", href: "/admin/super-admin-dashboard", icon: Crown, roles: ["super_admin"] },
+      { name: "Org Admin Dashboard", href: "/admin/org-admin-dashboard", icon: Building2, roles: ["org_admin"] },
+      { name: "Team Admin Dashboard", href: "/admin/team-admin-dashboard", icon: Shield, roles: ["team_admin"] },
+      { name: "Admin Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, roles: ["super_admin", "org_admin", "team_admin"] },
     ],
   },
   {
     name: "User Management",
     icon: Users,
-    roles: ["super", "org", "team"],
+    roles: ["super_admin", "org_admin", "team_admin"],
     pages: [
-      { name: "All Users", href: "/admin/user-management", icon: Users, roles: ["super", "org", "team"] },
-      { name: "User Details", href: "/admin/user-details-enhanced", icon: Eye, roles: ["super", "org", "team"] },
-      { name: "User Segmentation", href: "/admin/user-segmentation", icon: Users, roles: ["super", "org"] },
-      { name: "Team Management", href: "/admin/team-role-management", icon: Shield, roles: ["super", "org"] },
-      { name: "Therapist Management", href: "/admin/therapist-management", icon: Users, roles: ["super", "org"] },
+      { name: "All Users", href: "/admin/user-management", icon: Users, roles: ["super_admin", "org_admin", "team_admin"] },
+      { name: "User Details", href: "/admin/user-details-enhanced", icon: Eye, roles: ["super_admin", "org_admin", "team_admin"] },
+      { name: "User Segmentation", href: "/admin/user-segmentation", icon: Users, roles: ["super_admin", "org_admin"] },
+      { name: "Team Management", href: "/admin/team-role-management", icon: Shield, roles: ["super_admin", "org_admin"] },
+      { name: "Therapist Management", href: "/admin/therapist-management", icon: Users, roles: ["super_admin", "org_admin"] },
     ],
   },
   {
     name: "AI Avatar System",
     icon: Brain,
-    roles: ["super", "org"],
+    roles: ["super_admin", "org_admin"],
     pages: [
-      { name: "AI Avatar Manager", href: "/admin/ai-avatar-manager", icon: Brain, roles: ["super", "org"] },
-      { name: "Conversation Transcripts", href: "/admin/conversation-transcripts", icon: MessageSquare, roles: ["super", "org", "team"] },
+      { name: "AI Avatar Manager", href: "/admin/ai-avatar-manager", icon: Brain, roles: ["super_admin", "org_admin"] },
+      { name: "Conversation Transcripts", href: "/admin/conversation-transcripts", icon: MessageSquare, roles: ["super_admin", "org_admin", "team_admin"] },
     ],
   },
   {
     name: "Crisis Management",
     icon: AlertTriangle,
-    roles: ["super", "org", "team"],
+    roles: ["super_admin", "org_admin", "team_admin"],
     pages: [
-      { name: "Crisis Dashboard", href: "/admin/crisis-dashboard", icon: LayoutDashboard, roles: ["super", "org", "team"] },
-      { name: "Crisis Monitoring", href: "/admin/crisis-monitoring", icon: AlertTriangle, roles: ["super", "org", "team"] },
-      { name: "Crisis Events", href: "/admin/crisis-event-details", icon: Eye, roles: ["super", "org"] },
-      { name: "Follow-Up Queue", href: "/admin/crisis-follow-up-queue", icon: FileText, roles: ["super", "org", "team"] },
-      { name: "Crisis Protocol", href: "/admin/crisis-protocol", icon: FileText, roles: ["super", "org"] },
+      { name: "Crisis Dashboard", href: "/admin/crisis-dashboard", icon: LayoutDashboard, roles: ["super_admin", "org_admin", "team_admin"] },
+      { name: "Crisis Monitoring", href: "/admin/crisis-monitoring", icon: AlertTriangle, roles: ["super_admin", "org_admin", "team_admin"] },
+      { name: "Crisis Events", href: "/admin/crisis-event-details", icon: Eye, roles: ["super_admin", "org_admin"] },
+      { name: "Follow-Up Queue", href: "/admin/crisis-follow-up-queue", icon: FileText, roles: ["super_admin", "org_admin", "team_admin"] },
+      { name: "Crisis Protocol", href: "/admin/crisis-protocol", icon: FileText, roles: ["super_admin", "org_admin"] },
     ],
   },
   {
     name: "Analytics",
     icon: BarChart3,
-    roles: ["super", "org", "team"],
+    roles: ["super_admin", "org_admin", "team_admin"],
     pages: [
-      { name: "Platform Analytics", href: "/admin/analytics", icon: Globe, roles: ["super"] },
-      { name: "Usage Overview", href: "/admin/usage-overview", icon: BarChart3, roles: ["super", "org"] },
-      { name: "Usage Analytics", href: "/admin/usage-analytics", icon: BarChart3, roles: ["super", "org"] },
-      { name: "Session Analytics", href: "/admin/session-analytics", icon: BarChart3, roles: ["super", "org", "team"] },
-      { name: "Engagement Metrics", href: "/admin/engagement-metrics", icon: BarChart3, roles: ["super", "org"] },
-      { name: "Retention Metrics", href: "/admin/retention-metrics", icon: BarChart3, roles: ["super", "org"] },
-      { name: "Feature Adoption", href: "/admin/feature-adoption", icon: BarChart3, roles: ["super", "org"] },
-      { name: "Onboarding Analytics", href: "/admin/onboarding-analytics", icon: BarChart3, roles: ["super", "org"] },
-      { name: "Reports & Analytics", href: "/admin/reports-analytics", icon: BarChart3, roles: ["super", "org", "team"] },
+      { name: "Platform Analytics", href: "/admin/analytics", icon: Globe, roles: ["super_admin"] },
+      { name: "Usage Overview", href: "/admin/usage-overview", icon: BarChart3, roles: ["super_admin", "org_admin"] },
+      { name: "Usage Analytics", href: "/admin/usage-analytics", icon: BarChart3, roles: ["super_admin", "org_admin"] },
+      { name: "Session Analytics", href: "/admin/session-analytics", icon: BarChart3, roles: ["super_admin", "org_admin", "team_admin"] },
+      { name: "Engagement Metrics", href: "/admin/engagement-metrics", icon: BarChart3, roles: ["super_admin", "org_admin"] },
+      { name: "Retention Metrics", href: "/admin/retention-metrics", icon: BarChart3, roles: ["super_admin", "org_admin"] },
+      { name: "Feature Adoption", href: "/admin/feature-adoption", icon: BarChart3, roles: ["super_admin", "org_admin"] },
+      { name: "Onboarding Analytics", href: "/admin/onboarding-analytics", icon: BarChart3, roles: ["super_admin", "org_admin"] },
+      { name: "Reports & Analytics", href: "/admin/reports-analytics", icon: BarChart3, roles: ["super_admin", "org_admin", "team_admin"] },
     ],
   },
   {
     name: "Content",
     icon: FileText,
-    roles: ["super", "org"],
+    roles: ["super_admin", "org_admin"],
     pages: [
-      { name: "Content Management", href: "/admin/content-management", icon: FileText, roles: ["super", "org"] },
-      { name: "Wellness Tools CMS", href: "/admin/wellness-tools-cms", icon: Heart, roles: ["super", "org"] },
-      { name: "Wellness Content CMS", href: "/admin/wellness-content-cms", icon: FileText, roles: ["super", "org"] },
-      { name: "Content Library", href: "/admin/wellness-content-library", icon: FileText, roles: ["super", "org"] },
-      { name: "Tool Editor", href: "/admin/wellness-tool-editor", icon: FileText, roles: ["super", "org"] },
-      { name: "Exercise Library", href: "/admin/exercise-library", icon: FileText, roles: ["super", "org"] },
-      { name: "Content Performance", href: "/admin/content-performance", icon: BarChart3, roles: ["super", "org"] },
-      { name: "Content Moderation", href: "/admin/content-moderation", icon: Shield, roles: ["super", "org"] },
+      { name: "Content Management", href: "/admin/content-management", icon: FileText, roles: ["super_admin", "org_admin"] },
+      { name: "Wellness Tools CMS", href: "/admin/wellness-tools-cms", icon: Heart, roles: ["super_admin", "org_admin"] },
+      { name: "Wellness Content CMS", href: "/admin/wellness-content-cms", icon: FileText, roles: ["super_admin", "org_admin"] },
+      { name: "Content Library", href: "/admin/wellness-content-library", icon: FileText, roles: ["super_admin", "org_admin"] },
+      { name: "Tool Editor", href: "/admin/wellness-tool-editor", icon: FileText, roles: ["super_admin", "org_admin"] },
+      { name: "Exercise Library", href: "/admin/exercise-library", icon: FileText, roles: ["super_admin", "org_admin"] },
+      { name: "Content Performance", href: "/admin/content-performance", icon: BarChart3, roles: ["super_admin", "org_admin"] },
+      { name: "Content Moderation", href: "/admin/content-moderation", icon: Shield, roles: ["super_admin", "org_admin"] },
     ],
   },
   {
     name: "Engagement",
     icon: Zap,
-    roles: ["super", "org"],
+    roles: ["super_admin", "org_admin"],
     pages: [
-      { name: "Nudge Management", href: "/admin/nudge-management", icon: Bell, roles: ["super", "org"] },
-      { name: "Nudge Templates", href: "/admin/nudge-templates", icon: FileText, roles: ["super", "org"] },
-      { name: "Nudge Scheduler", href: "/admin/nudge-scheduler", icon: LayoutDashboard, roles: ["super", "org"] },
-      { name: "Nudge Performance", href: "/admin/nudge-performance", icon: BarChart3, roles: ["super", "org"] },
-      { name: "Wellness Challenges", href: "/admin/wellness-challenges", icon: FileText, roles: ["super", "org"] },
-      { name: "Badge Manager", href: "/admin/badge-manager", icon: FileText, roles: ["super", "org"] },
+      { name: "Nudge Management", href: "/admin/nudge-management", icon: Bell, roles: ["super_admin", "org_admin"] },
+      { name: "Nudge Templates", href: "/admin/nudge-templates", icon: FileText, roles: ["super_admin", "org_admin"] },
+      { name: "Nudge Scheduler", href: "/admin/nudge-scheduler", icon: LayoutDashboard, roles: ["super_admin", "org_admin"] },
+      { name: "Nudge Performance", href: "/admin/nudge-performance", icon: BarChart3, roles: ["super_admin", "org_admin"] },
+      { name: "Wellness Challenges", href: "/admin/wellness-challenges", icon: FileText, roles: ["super_admin", "org_admin"] },
+      { name: "Badge Manager", href: "/admin/badge-manager", icon: FileText, roles: ["super_admin", "org_admin"] },
     ],
   },
   {
     name: "Communications",
     icon: Bell,
-    roles: ["super", "org", "team"],
+    roles: ["super_admin", "org_admin", "team_admin"],
     pages: [
-      { name: "Notifications Center", href: "/admin/notifications-center", icon: Bell, roles: ["super", "org", "team"] },
-      { name: "Manual Notifications", href: "/admin/manual-notifications", icon: Bell, roles: ["super", "org"] },
-      { name: "Email Templates", href: "/admin/email-templates", icon: FileText, roles: ["super", "org"] },
-      { name: "Push Notifications", href: "/admin/push-notifications", icon: Bell, roles: ["super", "org"] },
-      { name: "Support Tickets", href: "/admin/support-tickets", icon: FileText, roles: ["super", "org", "team"] },
-      { name: "Community Management", href: "/admin/community-management", icon: Users, roles: ["super", "org"] },
+      { name: "Notifications Center", href: "/admin/notifications-center", icon: Bell, roles: ["super_admin", "org_admin", "team_admin"] },
+      { name: "Manual Notifications", href: "/admin/manual-notifications", icon: Bell, roles: ["super_admin", "org_admin"] },
+      { name: "Email Templates", href: "/admin/email-templates", icon: FileText, roles: ["super_admin", "org_admin"] },
+      { name: "Push Notifications", href: "/admin/push-notifications", icon: Bell, roles: ["super_admin", "org_admin"] },
+      { name: "Support Tickets", href: "/admin/support-tickets", icon: FileText, roles: ["super_admin", "org_admin", "team_admin"] },
+      { name: "Community Management", href: "/admin/community-management", icon: Users, roles: ["super_admin", "org_admin"] },
     ],
   },
   {
     name: "Monitoring",
     icon: Eye,
-    roles: ["super", "org", "team"],
+    roles: ["super_admin", "org_admin", "team_admin"],
     pages: [
-      { name: "Live Sessions", href: "/admin/live-sessions-monitor", icon: Eye, roles: ["super", "org", "team"] },
-      { name: "Session Recordings", href: "/admin/session-recordings", icon: Eye, roles: ["super", "org"] },
-      { name: "Activity Monitor", href: "/admin/activity-monitor", icon: Eye, roles: ["super", "org"] },
-      { name: "System Health", href: "/admin/system-health-enhanced", icon: Server, roles: ["super"] },
-      { name: "System Health Dashboard", href: "/admin/system-health-dashboard", icon: Server, roles: ["super"] },
-      { name: "Error Tracking", href: "/admin/error-tracking", icon: AlertTriangle, roles: ["super"] },
+      { name: "Live Sessions", href: "/admin/live-sessions-monitor", icon: Eye, roles: ["super_admin", "org_admin", "team_admin"] },
+      { name: "Session Recordings", href: "/admin/session-recordings", icon: Eye, roles: ["super_admin", "org_admin"] },
+      { name: "Activity Monitor", href: "/admin/activity-monitor", icon: Eye, roles: ["super_admin", "org_admin"] },
+      { name: "System Health", href: "/admin/system-health-enhanced", icon: Server, roles: ["super_admin"] },
+      { name: "System Health Dashboard", href: "/admin/system-health-dashboard", icon: Server, roles: ["super_admin"] },
+      { name: "Error Tracking", href: "/admin/error-tracking", icon: AlertTriangle, roles: ["super_admin"] },
     ],
   },
   {
     name: "System",
     icon: Settings,
-    roles: ["super", "org"],
+    roles: ["super_admin", "org_admin"],
     pages: [
-      { name: "System Settings", href: "/admin/system-settings-enhanced", icon: Settings, roles: ["super"] },
-      { name: "Global Configuration", href: "/admin/global-configuration", icon: Globe, roles: ["super"] },
-      { name: "Feature Flags", href: "/admin/feature-flags", icon: Flag, roles: ["super"] },
-      { name: "API Management", href: "/admin/api-management", icon: Server, roles: ["super"] },
-      { name: "Integration Settings", href: "/admin/integration-settings", icon: Settings, roles: ["super", "org"] },
-      { name: "Branding & Customization", href: "/admin/branding-customization", icon: Settings, roles: ["super", "org"] },
-      { name: "A/B Testing", href: "/admin/ab-testing", icon: BarChart3, roles: ["super", "org"] },
-      { name: "Enterprise Features", href: "/admin/enterprise-features", icon: Crown, roles: ["super"] },
+      { name: "System Settings", href: "/admin/system-settings-enhanced", icon: Settings, roles: ["super_admin"] },
+      { name: "Global Configuration", href: "/admin/global-configuration", icon: Globe, roles: ["super_admin"] },
+      { name: "Feature Flags", href: "/admin/feature-flags", icon: Flag, roles: ["super_admin"] },
+      { name: "API Management", href: "/admin/api-management", icon: Server, roles: ["super_admin"] },
+      { name: "Integration Settings", href: "/admin/integration-settings", icon: Settings, roles: ["super_admin", "org_admin"] },
+      { name: "Branding & Customization", href: "/admin/branding-customization", icon: Settings, roles: ["super_admin", "org_admin"] },
+      { name: "A/B Testing", href: "/admin/ab-testing", icon: BarChart3, roles: ["super_admin", "org_admin"] },
+      { name: "Enterprise Features", href: "/admin/enterprise-features", icon: Crown, roles: ["super_admin"] },
     ],
   },
   {
     name: "Billing",
     icon: DollarSign,
-    roles: ["super", "org"],
+    roles: ["super_admin", "org_admin"],
     pages: [
-      { name: "Billing Overview", href: "/admin/billing", icon: DollarSign, roles: ["super", "org"] },
-      { name: "Subscriptions", href: "/admin/billing-subscriptions", icon: DollarSign, roles: ["super", "org"] },
-      { name: "Package Manager", href: "/admin/package-manager", icon: Package, roles: ["super", "org"] },
-      { name: "PAYG Transactions", href: "/admin/payg-transactions", icon: Zap, roles: ["super", "org"] },
+      { name: "Billing Overview", href: "/admin/billing", icon: DollarSign, roles: ["super_admin", "org_admin"] },
+      { name: "Subscriptions", href: "/admin/billing-subscriptions", icon: DollarSign, roles: ["super_admin", "org_admin"] },
+      { name: "Package Manager", href: "/admin/package-manager", icon: Package, roles: ["super_admin", "org_admin"] },
+      { name: "PAYG Transactions", href: "/admin/payg-transactions", icon: Zap, roles: ["super_admin", "org_admin"] },
     ],
   },
   {
     name: "Security & Compliance",
     icon: Lock,
-    roles: ["super", "org"],
+    roles: ["super_admin", "org_admin"],
     pages: [
-      { name: "Security Settings", href: "/admin/security-settings", icon: Lock, roles: ["super"] },
-      { name: "Compliance Dashboard", href: "/admin/compliance-dashboard", icon: Shield, roles: ["super", "org"] },
-      { name: "HIPAA Compliance", href: "/admin/hipaa-compliance", icon: Shield, roles: ["super"] },
-      { name: "Data Privacy", href: "/admin/data-privacy-controls", icon: Lock, roles: ["super"] },
-      { name: "Data Retention", href: "/admin/data-retention-privacy", icon: Database, roles: ["super"] },
-      { name: "Audit Logs", href: "/admin/audit-logs", icon: FileText, roles: ["super", "org"] },
-      { name: "System Logs", href: "/admin/system-logs", icon: FileText, roles: ["super"] },
-      { name: "Legal Documentation", href: "/admin/legal-documentation", icon: FileText, roles: ["super"] },
+      { name: "Security Settings", href: "/admin/security-settings", icon: Lock, roles: ["super_admin"] },
+      { name: "Compliance Dashboard", href: "/admin/compliance-dashboard", icon: Shield, roles: ["super_admin", "org_admin"] },
+      { name: "HIPAA Compliance", href: "/admin/hipaa-compliance", icon: Shield, roles: ["super_admin"] },
+      { name: "Data Privacy", href: "/admin/data-privacy-controls", icon: Lock, roles: ["super_admin"] },
+      { name: "Data Retention", href: "/admin/data-retention-privacy", icon: Database, roles: ["super_admin"] },
+      { name: "Audit Logs", href: "/admin/audit-logs", icon: FileText, roles: ["super_admin", "org_admin"] },
+      { name: "System Logs", href: "/admin/system-logs", icon: FileText, roles: ["super_admin"] },
+      { name: "Legal Documentation", href: "/admin/legal-documentation", icon: FileText, roles: ["super_admin"] },
     ],
   },
   {
     name: "Data",
     icon: Database,
-    roles: ["super"],
+    roles: ["super_admin"],
     pages: [
-      { name: "Data Export", href: "/admin/data-export", icon: Database, roles: ["super"] },
-      { name: "Backup & Recovery", href: "/admin/backup-recovery", icon: Database, roles: ["super"] },
+      { name: "Data Export", href: "/admin/data-export", icon: Database, roles: ["super_admin"] },
+      { name: "Backup & Recovery", href: "/admin/backup-recovery", icon: Database, roles: ["super_admin"] },
     ],
   },
 ];
 
-const roleInfo = {
-  super: {
+const roleInfo: Record<AdminRole, { name: string; gradient: string; icon: any }> = {
+  super_admin: {
     name: "Super Admin",
     gradient: "from-purple-500 to-pink-500",
     icon: Crown,
   },
-  org: {
+  org_admin: {
     name: "Organization Admin",
     gradient: "from-blue-500 to-cyan-500",
     icon: Building2,
   },
-  team: {
+  team_admin: {
     name: "Team Admin",
     gradient: "from-green-500 to-emerald-500",
     icon: Users,
@@ -240,9 +241,12 @@ const roleInfo = {
 export function AdminLayoutNew({ children }: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [adminRole, setAdminRole] = useState<AdminRole>("super");
-  const [adminEmail, setAdminEmail] = useState("admin@ezri.com");
+  
+  // Use profile role or fallback
+  const adminRole: AdminRole = (profile?.role as AdminRole) || "team_admin";
+  const adminEmail = user?.email || "admin@ezri.com";
   
   // Find which section contains the current page
   const findCurrentSection = () => {
@@ -261,13 +265,6 @@ export function AdminLayoutNew({ children }: AdminLayoutProps) {
     return findCurrentSection();
   });
 
-  useEffect(() => {
-    const storedRole = localStorage.getItem("adminRole") as AdminRole;
-    const storedEmail = localStorage.getItem("adminEmail");
-    if (storedRole) setAdminRole(storedRole);
-    if (storedEmail) setAdminEmail(storedEmail);
-  }, []);
-
   // Update expanded section when navigating to a new page
   useEffect(() => {
     const currentSection = findCurrentSection();
@@ -276,9 +273,8 @@ export function AdminLayoutNew({ children }: AdminLayoutProps) {
     }
   }, [location.pathname]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminRole");
-    localStorage.removeItem("adminEmail");
+  const handleLogout = async () => {
+    await signOut();
     localStorage.removeItem("adminExpandedSection");
     navigate("/admin/login");
   };
@@ -306,7 +302,8 @@ export function AdminLayoutNew({ children }: AdminLayoutProps) {
     }))
     .filter(section => section.pages.length > 0);
 
-  const currentRoleInfo = roleInfo[adminRole];
+  // Fallback if roleInfo doesn't match adminRole (e.g. invalid role in DB)
+  const currentRoleInfo = roleInfo[adminRole] || roleInfo["team_admin"];
   const RoleIcon = currentRoleInfo.icon;
 
   return (

@@ -11,10 +11,12 @@ import { Checkbox } from '@/app/components/ui/checkbox';
 import { Card } from '@/app/components/ui/card';
 import { ShieldCheck, AlertCircle, Users, Phone } from 'lucide-react';
 import { useSafetyConsent } from '@/app/contexts/SafetyContext';
+import { useOnboarding } from '@/app/contexts/OnboardingContext';
 
 export function OnboardingSafetyConsent() {
   const navigate = useNavigate();
   const { updateConsent } = useSafetyConsent();
+  const { updateData } = useOnboarding();
   const [agreed, setAgreed] = useState(false);
 
   const handleContinue = () => {
@@ -26,6 +28,9 @@ export function OnboardingSafetyConsent() {
       agreedAt: Date.now(),
       trustedContactEnabled: false, // Can be enabled later in settings
     });
+    
+    // Save to OnboardingContext as well
+    updateData({ agreedToSafety: true });
 
     // Continue to next onboarding step
     navigate('/onboarding/emergency-contact');
@@ -33,11 +38,11 @@ export function OnboardingSafetyConsent() {
 
   return (
     <OnboardingLayout
-      title="Safety & Support"
-      subtitle="Understanding how Ezri keeps you safe"
-      currentStep={5}
-      totalSteps={8}
-    >
+        title="Safety & Support"
+        subtitle="Understanding how Ezri keeps you safe"
+        currentStep={6}
+        totalSteps={8}
+      >
       <div className="space-y-6 max-w-2xl mx-auto">
         {/* Main notice card */}
         <Card className="p-6 bg-blue-50 border-blue-200">

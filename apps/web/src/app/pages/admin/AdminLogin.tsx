@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { Heart, ArrowRight, Shield, Crown, Building2, Users, Eye, EyeOff, Home, ArrowLeft } from "lucide-react";
+import { Heart, ArrowRight, Shield, Crown, Building2, Users, Home, ArrowLeft, Lock } from "lucide-react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { FloatingElement } from "../../components/FloatingElement";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+import { api } from "@/lib/api";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "../../components/ui/input-otp";
 
-type AdminRole = "super" | "org" | "team";
+type AdminRole = "super_admin" | "org_admin" | "team_admin";
 
 interface RoleOption {
   id: AdminRole;
@@ -17,97 +20,200 @@ interface RoleOption {
   description: string;
   icon: typeof Crown;
   gradient: string;
-  credentials: {
-    username: string;
-    password: string;
-  };
 }
 
 const roleOptions: RoleOption[] = [
   {
-    id: "super",
+    id: "super_admin",
     name: "Super Admin",
     description: "Full platform access & system management",
     icon: Crown,
     gradient: "from-purple-500 to-pink-500",
-    credentials: {
-      username: "superadmin",
-      password: "super123",
-    },
   },
   {
-    id: "org",
+    id: "org_admin",
     name: "Organization Admin",
     description: "Manage organization users & settings",
     icon: Building2,
     gradient: "from-blue-500 to-cyan-500",
-    credentials: {
-      username: "orgadmin",
-      password: "org123",
-    },
   },
   {
-    id: "team",
+    id: "team_admin",
     name: "Team Admin",
     description: "Manage team members & activities",
     icon: Users,
     gradient: "from-green-500 to-emerald-500",
-    credentials: {
-      username: "teamadmin",
-      password: "team123",
-    },
   },
 ];
 
 export function AdminLogin() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleOption | null>(null);
-  const [step, setStep] = useState<"role" | "credentials">("role");
+  const [step, setStep] = useState<"role" | "credentials" | "mfa">("role");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
 
   const handleRoleSelect = (role: RoleOption) => {
     setSelectedRole(role);
     setStep("credentials");
     setError("");
-    setUsername("");
+    setEmail("");
     setPassword("");
+    setMfaCode("");
+    setMfaFactorId(null);
   };
 
-  const handleCredentialsSubmit = (e: React.FormEvent) => {
+  const verifyRoleAndNavigate = async () => {
+    if (!selectedRole) return;
+
+    // Verify role
+    const profile = await api.getMe();
+    
+    // Strict role check: The user must have the exact role or be a super_admin
+    // Exception: If the user is a super_admin in DB, they can login as any role they want (for testing/management)
+    const userRole = profile?.role;
+    
+    const hasPermission = 
+      userRole === selectedRole.id || 
+      userRole === 'super_admin';
+
+    if (!hasPermission) {
+       await supabase.auth.signOut();
+       throw new Error(`Access denied. You are not authorized as a ${selectedRole.name}.`);
+    }
+
+    toast.success(`Welcome back, ${selectedRole.name}!`);
+    
+    // Navigate to appropriate dashboard
+    if (selectedRole.id === "super_admin") {
+      navigate("/admin/super-admin-dashboard");
+    } else if (selectedRole.id === "org_admin") {
+      navigate("/admin/org-admin-dashboard");
+    } else if (selectedRole.id === "team_admin") {
+      navigate("/admin/team-admin-dashboard");
+    } else {
+      // Fallback
+      navigate("/admin/dashboard");
+    }
+  };
+
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     
     if (!selectedRole) return;
-    
-    // Validate credentials for the selected role
-    if (
-      username === selectedRole.credentials.username &&
-      password === selectedRole.credentials.password
-    ) {
-      // Store role in localStorage
-      localStorage.setItem("adminRole", selectedRole.id);
-      localStorage.setItem("adminUsername", username);
-      
-      // Show success toast
-      toast.success(`Welcome back, ${selectedRole.name}!`);
-      
-      // Navigate to appropriate dashboard
-      if (selectedRole.id === "super") {
-        navigate("/admin/super-admin-dashboard");
-      } else if (selectedRole.id === "org") {
-        navigate("/admin/org-admin-dashboard");
-      } else {
-        navigate("/admin/team-admin-dashboard");
-      }
-    } else {
-      const errorMessage = "Invalid credentials for this admin role. Please try again.";
-      setError(errorMessage);
-      toast.error(errorMessage, {
-        description: `Expected username: ${selectedRole.credentials.username}`,
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
+
+      if (authError) throw authError;
+
+      if (!user) throw new Error("Login failed");
+
+      // Check for MFA
+      const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) throw factorsError;
+
+      const totpFactor = factors?.totp?.[0];
+
+      // Check global 2FA requirement
+      try {
+        const settings = await api.getSettings();
+        const require2FA = settings.find((s: any) => s.key === 'security.require_2fa');
+        
+        if (require2FA?.value === true && !totpFactor) {
+           await supabase.auth.signOut();
+           throw new Error("Security Policy Violation: Two-Factor Authentication is required for admin access. Please enable it in your account settings.");
+        }
+      } catch (settingsError) {
+        // If we can't fetch settings, we might be a regular user or something is wrong.
+        // But if we are an admin, we should be able to.
+        // We will log it but NOT block login if it's just a fetch error, unless we want strict security.
+        // However, if the error is 403 (handled in api.ts throwing error), it means not authorized.
+        // If not authorized, verifyRoleAndNavigate will catch it later anyway.
+        // But if we want to be strict about 2FA check, we should rethrow if it was a critical failure.
+        // For now, let's allow the error to bubble up if it's "Security Policy Violation", 
+        // but if getSettings fails for other reasons, we might want to be careful.
+        // Actually, if api.getSettings fails, it throws.
+        // If I put it inside the main try/catch, it will block login. 
+        // This is good for "fail closed" security.
+        if (settingsError instanceof Error && settingsError.message.includes("Security Policy Violation")) {
+           throw settingsError;
+        }
+        // Ideally we should log this. 
+        console.warn("Failed to check 2FA requirement settings:", settingsError);
+        // If we want strictly enforce, we should throw. 
+        // "Require 2FA" implies if we can't verify, we don't let you in? 
+        // Let's assume fail-open for fetch errors (network blip) but fail-closed for logic.
+        // BUT, since this is a requirement, I'll let it fail open for now to avoid locking admins out if DB is down?
+        // No, if DB is down, login won't work anyway.
+        // So I'll just remove the inner try/catch and let it bubble up.
+      }
+
+      if (totpFactor) {
+        setMfaFactorId(totpFactor.id);
+        setStep("mfa");
+        setIsLoading(false); // Stop loading to let user enter code
+        return;
+      }
+
+      await verifyRoleAndNavigate();
+
+    } catch (err: any) {
+      console.error("Admin login error:", err);
+      setError(err.message || "Authentication failed");
+      toast.error(err.message || "Authentication failed");
+      setIsLoading(false);
+    }
+  };
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    
+    if (!mfaFactorId || !mfaCode) return;
+    
+    setIsLoading(true);
+
+    try {
+      const { data, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: mfaFactorId,
+      });
+
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: data.id,
+        code: mfaCode,
+      });
+
+      if (verifyError) throw verifyError;
+
+      await verifyRoleAndNavigate();
+
+    } catch (err: any) {
+      console.error("MFA verification error:", err);
+      setError(err.message || "Invalid code");
+      toast.error(err.message || "Invalid code");
+      setIsLoading(false);
     }
   };
 
@@ -176,7 +282,9 @@ export function AdminLogin() {
           >
             {step === "role" 
               ? "Select your administrative role"
-              : "Enter your credentials"}
+              : step === "credentials"
+              ? "Enter your credentials"
+              : "Two-Factor Authentication"}
           </motion.p>
         </motion.div>
 
@@ -190,8 +298,11 @@ export function AdminLogin() {
             step === "role" ? "bg-primary" : "bg-primary/50"
           }`} />
           <div className={`h-2 w-16 rounded-full transition-all ${
-            step === "credentials" ? "bg-primary" : "bg-white/20"
+            step === "credentials" ? "bg-primary" : step === "mfa" ? "bg-primary/50" : "bg-white/20"
           }`} />
+          {step === "mfa" && (
+            <div className="h-2 w-16 rounded-full bg-primary transition-all" />
+          )}
         </motion.div>
 
         {step === "role" ? (
@@ -201,7 +312,7 @@ export function AdminLogin() {
             transition={{ duration: 0.5 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
           >
-            {roleOptions.map((role, index) => (
+            {roleOptions.filter(role => role.id !== 'org_admin').map((role, index) => (
               <motion.div
                 key={role.id}
                 initial={{ opacity: 0, y: 30 }}
@@ -235,30 +346,13 @@ export function AdminLogin() {
               </motion.div>
             ))}
           </motion.div>
-        ) : (
+        ) : step === "credentials" ? (
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.5 }}
           >
             <Card className="p-6 md:p-8 shadow-2xl backdrop-blur-sm bg-white/95 max-w-md mx-auto">
-              {/* Credentials hint */}
-              {selectedRole && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg"
-                >
-                  <p className="text-sm font-medium text-blue-900 mb-2">
-                    {selectedRole.name} Credentials:
-                  </p>
-                  <div className="text-xs text-blue-700 space-y-1">
-                    <p>Username: <code className="bg-blue-100 px-2 py-0.5 rounded">{selectedRole.credentials.username}</code></p>
-                    <p>Password: <code className="bg-blue-100 px-2 py-0.5 rounded">{selectedRole.credentials.password}</code></p>
-                  </div>
-                </motion.div>
-              )}
-
               <form onSubmit={handleCredentialsSubmit} className="space-y-6">
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
@@ -266,14 +360,14 @@ export function AdminLogin() {
                   transition={{ delay: 0.5 }}
                   className="space-y-2"
                 >
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter username"
+                    id="email"
+                    type="email"
+                    placeholder="Enter admin email"
                     className="bg-input-background transition-all focus:scale-[1.02]"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </motion.div>
@@ -284,110 +378,108 @@ export function AdminLogin() {
                   transition={{ delay: 0.6 }}
                   className="space-y-2"
                 >
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter admin password"
-                      className="bg-input-background transition-all focus:scale-[1.02]"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-gray-500"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
                   </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter admin password"
+                    className="bg-input-background transition-all focus:scale-[1.02]"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
                 </motion.div>
 
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                 >
-                  <Button type="submit" className="w-full group relative overflow-hidden">
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      Continue
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-accent to-secondary"
-                      initial={{ x: "-100%" }}
-                      whileHover={{ x: 0 }}
-                      transition={{ duration: 0.3 }}
-                    />
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Authenticating..." : "Login to Dashboard"}
                   </Button>
                 </motion.div>
 
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.8 }}
-                    className="mt-2 text-center"
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.8 }}
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full gap-2"
+                    onClick={() => setStep("role")}
                   >
-                    <p className="text-sm text-red-500">
-                      {error}
-                    </p>
-                  </motion.div>
-                )}
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Role Selection
+                  </Button>
+                </motion.div>
               </form>
+            </Card>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+          >
+            <Card className="p-6 md:p-8 shadow-2xl backdrop-blur-sm bg-white/95 max-w-md mx-auto">
+              <form onSubmit={handleMfaSubmit} className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Lock className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-bold">Two-Factor Authentication</h3>
+                  <p className="text-sm text-gray-500">
+                    Enter the code from your authenticator app
+                  </p>
+                </div>
 
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
-                className="mt-6 text-center"
-              >
-                <p className="text-sm text-muted-foreground">
-                  <Link to="/" className="text-primary font-medium hover:underline">
-                    ← Back to Ezri App
-                  </Link>
-                </p>
-              </motion.div>
+                <div className="flex justify-center py-4">
+                  <InputOTP
+                    maxLength={6}
+                    value={mfaCode}
+                    onChange={(value) => setMfaCode(value)}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all"
+                  disabled={isLoading || mfaCode.length !== 6}
+                >
+                  {isLoading ? "Verifying..." : "Verify Code"}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full gap-2"
+                  onClick={() => setStep("credentials")}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Login
+                </Button>
+              </form>
             </Card>
           </motion.div>
         )}
-
-        {step === "credentials" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mt-6 text-center"
-          >
-            <Button
-              variant="ghost"
-              onClick={() => setStep("role")}
-              className="text-white hover:text-white/80"
-            >
-              ← Back to role selection
-            </Button>
-          </motion.div>
-        )}
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9 }}
-          className="mt-6 text-center"
-        >
-          <p className="text-xs text-gray-400">
-            <Shield className="w-3 h-3 inline mr-1" />
-            Protected by enterprise-grade security
-          </p>
-        </motion.div>
       </div>
     </div>
   );

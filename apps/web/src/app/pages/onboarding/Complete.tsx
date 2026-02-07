@@ -3,10 +3,13 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { Heart, Sparkles, Video, MessageSquare, TrendingUp, ArrowRight } from "lucide-react";
+import { Heart, Sparkles, Video, MessageSquare, TrendingUp, ArrowRight, Loader2 } from "lucide-react";
 import { FloatingElement } from "../../components/FloatingElement";
+import { useOnboarding } from "@/app/contexts/OnboardingContext";
 
 export function OnboardingComplete() {
+  const { completeOnboarding, isLoading } = useOnboarding();
+
   const quickTips = [
     {
       icon: Video,
@@ -174,25 +177,37 @@ export function OnboardingComplete() {
           transition={{ delay: 1.2 }}
           className="pt-4"
         >
-          <Link to="/app/session-lobby">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Button 
+              size="lg" 
+              className="w-full group relative overflow-hidden"
+              onClick={() => completeOnboarding('/app/session-lobby')}
+              disabled={isLoading}
             >
-              <Button size="lg" className="w-full group relative overflow-hidden">
-                <span className="relative z-10 flex items-center justify-center gap-2 text-lg py-6">
-                  Start Your First Session
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </span>
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-accent via-secondary to-primary"
-                  initial={{ x: "-100%" }}
-                  whileHover={{ x: 0 }}
-                  transition={{ duration: 0.5 }}
-                />
-              </Button>
-            </motion.div>
-          </Link>
+              <span className="relative z-10 flex items-center justify-center gap-2 text-lg py-6">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Setting Up Your Space...
+                  </>
+                ) : (
+                  <>
+                    Start Your First Session
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </span>
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-accent via-secondary to-primary"
+                initial={{ x: "-100%" }}
+                whileHover={{ x: 0 }}
+                transition={{ duration: 0.5 }}
+              />
+            </Button>
+          </motion.div>
           
           <div className="flex items-center justify-center gap-4 mt-4 text-sm text-muted-foreground">
             <Link to="/app/settings" className="hover:text-primary transition-colors">
