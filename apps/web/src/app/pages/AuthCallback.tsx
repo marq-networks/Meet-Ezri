@@ -39,10 +39,25 @@ export function AuthCallback() {
       }
 
       // Allow some time for the session to propagate if we just exchanged code
-      // or if Supabase is processing the hash
-      setTimeout(() => {
-        setIsProcessing(false);
-      }, 1000);
+      // or if Supabase is processing the hash.
+      // We'll verify the session exists before finishing processing.
+      const checkSession = async (attempts = 0) => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setIsProcessing(false);
+          return;
+        }
+
+        // Retry every 500ms for up to 5 seconds (10 attempts)
+        if (attempts < 10) {
+          setTimeout(() => checkSession(attempts + 1), 500);
+        } else {
+          console.warn("Session check timed out after 5 seconds");
+          setIsProcessing(false);
+        }
+      };
+      
+      checkSession();
     };
 
     handleCallback();
@@ -50,14 +65,16 @@ export function AuthCallback() {
 
   useEffect(() => {
     if (!isProcessing && !isAuthLoading) {
-      if (user) {
-        // User is verified and logged in
-        navigate("/onboarding/welcome");
-      } else {
-        // If we've finished processing and checking auth, and still no user
-        // But double check we aren't just waiting for the state update
-        navigate("/login");
-      }
+      // Double check session directly from Supabase to be sure
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session || user) {
+          // User is verified and logged in
+          navigate("/onboarding/welcome");
+        } else {
+          // If we've finished processing and checking auth, and still no user
+          navigate("/login");
+        }
+      });
     }
   }, [user, isProcessing, isAuthLoading, navigate]);
 

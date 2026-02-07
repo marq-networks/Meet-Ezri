@@ -78,6 +78,7 @@ export function UserProfile() {
   const loadProfile = async () => {
     try {
       const profile = await api.getMe();
+      console.log("Loaded profile data:", profile); // Debug logging
       setFormData({
         name: profile.full_name || "",
         email: profile.email || user?.email || "",
@@ -163,18 +164,38 @@ export function UserProfile() {
           full_name: formData.name,
           email: formData.email,
           phone: formData.phone,
-          avatar_url: profileImage
-          // Note: Other fields would need to be added to updateProfile schema and UI to be editable here
+          age: formData.birthday, // Mapped from birthday field which is actually age
+          avatar_url: profileImage,
+          pronouns: formData.pronouns,
+          timezone: formData.location,
+          in_therapy: formData.in_therapy,
+          on_medication: formData.on_medication,
+          selected_goals: formData.selected_goals,
+          selected_triggers: formData.selected_triggers,
+          emergency_contact_name: formData.emergency_contact_name,
+          emergency_contact_phone: formData.emergency_contact_phone,
+          emergency_contact_relationship: formData.emergency_contact_relationship
         });
         setFormData(prev => ({
           ...prev,
           name: updatedProfile.full_name || '',
           email: updatedProfile.email || '',
-          phone: updatedProfile.phone || ''
+          phone: updatedProfile.phone || '',
+          birthday: updatedProfile.age || '',
+          pronouns: updatedProfile.pronouns || '',
+          location: updatedProfile.timezone || '',
+          in_therapy: updatedProfile.in_therapy || 'Not specified',
+          on_medication: updatedProfile.on_medication || 'Not specified',
+          selected_goals: updatedProfile.selected_goals || [],
+          selected_triggers: updatedProfile.selected_triggers || [],
+          emergency_contact_name: updatedProfile.emergency_contact_name || '',
+          emergency_contact_phone: updatedProfile.emergency_contact_phone || '',
+          emergency_contact_relationship: updatedProfile.emergency_contact_relationship || ''
         }));
         toast.success("Profile updated successfully!");
         setIsEditing(false);
       } catch (error) {
+        console.error("Profile update error:", error);
         toast.error("Failed to update profile");
       }
     } else {
@@ -453,7 +474,7 @@ export function UserProfile() {
                     </div>
 
                     <div>
-                      <Label className="mb-2 block">Birthday/Age</Label>
+                      <Label className="mb-2 block">Age</Label>
                       <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
                         isEditing 
                           ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
@@ -463,11 +484,12 @@ export function UserProfile() {
                         <input
                           type="text"
                           value={formData.birthday}
-                          disabled={!isEditing} // Age is typically from onboarding
+                          disabled={!isEditing}
                           onChange={(e) =>
                             setFormData({ ...formData, birthday: e.target.value })
                           }
                           className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed"
+                          placeholder="Age"
                         />
                       </div>
                     </div>
@@ -523,9 +545,11 @@ export function UserProfile() {
               transition={{ delay: 0.3 }}
             >
               <Card className="p-6 shadow-xl">
-                <div className="flex items-center gap-2 mb-4">
-                  <Activity className="w-5 h-5 text-primary" />
-                  <h3 className="font-bold text-lg">Wellness Profile</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-primary" />
+                    <h3 className="font-bold text-lg">Wellness Profile</h3>
+                  </div>
                 </div>
                 
                 <div className="space-y-6">
@@ -536,14 +560,41 @@ export function UserProfile() {
                         <Users className="w-4 h-4 text-purple-500" />
                         <span className="font-semibold text-sm">Therapy Status</span>
                       </div>
-                      <p className="text-sm text-gray-700">{formData.in_therapy}</p>
+                      {isEditing ? (
+                        <select
+                          value={formData.in_therapy}
+                          onChange={(e) => setFormData({ ...formData, in_therapy: e.target.value })}
+                          className="w-full p-2 border rounded-md bg-white text-sm"
+                        >
+                          <option value="">Select...</option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                          <option value="Previously">Previously</option>
+                          <option value="Thinking about it">Thinking about it</option>
+                        </select>
+                      ) : (
+                        <p className="text-sm text-gray-700">{formData.in_therapy || "Not specified"}</p>
+                      )}
                     </div>
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <Pill className="w-4 h-4 text-blue-500" />
                         <span className="font-semibold text-sm">Medication</span>
                       </div>
-                      <p className="text-sm text-gray-700">{formData.on_medication}</p>
+                      {isEditing ? (
+                         <select
+                          value={formData.on_medication}
+                          onChange={(e) => setFormData({ ...formData, on_medication: e.target.value })}
+                          className="w-full p-2 border rounded-md bg-white text-sm"
+                        >
+                          <option value="">Select...</option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                          <option value="Prefer not to say">Prefer not to say</option>
+                        </select>
+                      ) : (
+                        <p className="text-sm text-gray-700">{formData.on_medication || "Not specified"}</p>
+                      )}
                     </div>
                   </div>
 
@@ -553,17 +604,32 @@ export function UserProfile() {
                       <Target className="w-4 h-4 text-green-500" />
                       <span className="font-semibold text-sm">Selected Goals</span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.selected_goals.length > 0 ? (
-                        formData.selected_goals.map((goal, i) => (
-                          <Badge key={i} variant="secondary" className="px-3 py-1">
-                            {goal}
-                          </Badge>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">No goals selected</p>
-                      )}
-                    </div>
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={formData.selected_goals.join(', ')}
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            selected_goals: e.target.value.split(',').map(s => s.trim())
+                          })}
+                          className="w-full p-2 border rounded-md text-sm min-h-[80px]"
+                          placeholder="Enter goals separated by commas (e.g., Better sleep, Less anxiety)"
+                        />
+                        <p className="text-xs text-muted-foreground">Separate goals with commas</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {formData.selected_goals.length > 0 ? (
+                          formData.selected_goals.map((goal, i) => (
+                            <Badge key={i} variant="secondary" className="px-3 py-1">
+                              {goal}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">No goals selected</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Triggers */}
@@ -572,17 +638,32 @@ export function UserProfile() {
                       <Zap className="w-4 h-4 text-orange-500" />
                       <span className="font-semibold text-sm">Triggers / Challenges</span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.selected_triggers.length > 0 ? (
-                        formData.selected_triggers.map((trigger, i) => (
-                          <Badge key={i} variant="outline" className="px-3 py-1 border-orange-200 bg-orange-50 text-orange-800">
-                            {trigger}
-                          </Badge>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">No triggers specified</p>
-                      )}
-                    </div>
+                    {isEditing ? (
+                      <div className="space-y-2">
+                         <textarea
+                          value={formData.selected_triggers.join(', ')}
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            selected_triggers: e.target.value.split(',').map(s => s.trim())
+                          })}
+                          className="w-full p-2 border rounded-md text-sm min-h-[80px]"
+                          placeholder="Enter triggers separated by commas (e.g., Work stress, Social anxiety)"
+                        />
+                        <p className="text-xs text-muted-foreground">Separate triggers with commas</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {formData.selected_triggers.length > 0 ? (
+                          formData.selected_triggers.map((trigger, i) => (
+                            <Badge key={i} variant="outline" className="px-3 py-1 border-orange-200 bg-orange-50 text-orange-800">
+                              {trigger}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">No triggers specified</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -603,18 +684,48 @@ export function UserProfile() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label className="text-xs text-muted-foreground uppercase tracking-wider">Name</Label>
-                    <p className="font-medium mt-1">{formData.emergency_contact_name || "Not set"}</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={formData.emergency_contact_name}
+                        onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
+                        className="w-full mt-1 p-2 border rounded-lg border-primary bg-primary/5 ring-2 ring-primary/20 outline-none"
+                        placeholder="Contact Name"
+                      />
+                    ) : (
+                      <p className="font-medium mt-1">{formData.emergency_contact_name || "Not set"}</p>
+                    )}
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground uppercase tracking-wider">Relationship</Label>
-                    <p className="font-medium mt-1">{formData.emergency_contact_relationship || "Not set"}</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={formData.emergency_contact_relationship}
+                        onChange={(e) => setFormData({ ...formData, emergency_contact_relationship: e.target.value })}
+                        className="w-full mt-1 p-2 border rounded-lg border-primary bg-primary/5 ring-2 ring-primary/20 outline-none"
+                        placeholder="Relationship"
+                      />
+                    ) : (
+                      <p className="font-medium mt-1">{formData.emergency_contact_relationship || "Not set"}</p>
+                    )}
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground uppercase tracking-wider">Phone</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Phone className="w-3 h-3 text-gray-400" />
-                      <p className="font-medium">{formData.emergency_contact_phone || "Not set"}</p>
-                    </div>
+                    {isEditing ? (
+                      <input
+                        type="tel"
+                        value={formData.emergency_contact_phone}
+                        onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
+                        className="w-full mt-1 p-2 border rounded-lg border-primary bg-primary/5 ring-2 ring-primary/20 outline-none"
+                        placeholder="Contact Phone"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 mt-1">
+                        <Phone className="w-3 h-3 text-gray-400" />
+                        <p className="font-medium">{formData.emergency_contact_phone || "Not set"}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </Card>

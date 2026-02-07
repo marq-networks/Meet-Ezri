@@ -32,9 +32,19 @@ export const updateProfileSchema = z.object({
   avatar_url: z.string().url().nullable().optional(),
   age: z.string().optional(),
   timezone: z.string().optional(),
+  pronouns: z.string().optional(),
   current_mood: z.string().optional(),
+  selected_goals: z.array(z.string()).optional(),
+  in_therapy: z.string().optional(),
+  on_medication: z.string().optional(),
+  selected_triggers: z.array(z.string()).optional(),
   selected_avatar: z.string().optional(),
   selected_voice: z.string().optional(),
+  selected_environment: z.string().optional(),
+  emergency_contact_name: z.string().optional(),
+  emergency_contact_phone: z.string().optional(),
+  emergency_contact_relationship: z.string().optional(),
+  notification_preferences: z.record(z.any()).optional(),
 });
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>;

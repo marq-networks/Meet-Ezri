@@ -130,16 +130,15 @@ export async function getCredits(userId: string) {
 
 export async function updateProfile(userId: string, data: UpdateProfileInput) {
   // console.log('Updating profile for user:', userId, 'Data:', data);
-  // Extract phone to avoid Prisma error until client is regenerated
-  const { phone, ...updateData } = data as any;
   
   return prisma.profiles.update({
     where: { id: userId },
-    data: updateData,
+    data: data as any,
   });
 }
 
 export async function completeOnboarding(userId: string, data: OnboardingInput) {
+  console.log('Completing onboarding for user:', userId, 'Data:', JSON.stringify(data, null, 2));
   const { role, license_number, specializations, languages, ...profileData } = data;
 
   // Update profile

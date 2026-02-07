@@ -20,8 +20,29 @@ export function OnboardingProfileSetup() {
   const [firstName, setFirstName] = useState(data.firstName || "");
   const [lastName, setLastName] = useState(data.lastName || "");
   const [age, setAge] = useState(data.age || "");
-  const [timezone, setTimezone] = useState(data.timezone || "auto");
+  const [timezone, setTimezone] = useState(data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [isUploading, setIsUploading] = useState(false);
+  const [availableTimezones] = useState(Intl.supportedValuesOf('timeZone'));
+
+  useEffect(() => {
+    if (!data.timezone) {
+      const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      setTimezone(detected);
+    }
+  }, []);
+
+  // Sync local state when context data changes (e.g. on user switch/reset)
+  useEffect(() => {
+    setFirstName(data.firstName || "");
+    setLastName(data.lastName || "");
+    setSelectedPronoun(data.pronouns || "");
+    setAge(data.age || "");
+    if (data.timezone) {
+      setTimezone(data.timezone);
+    } else {
+      setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    }
+  }, [data]);
 
   useEffect(() => {
     if (user?.user_metadata) {
@@ -271,11 +292,11 @@ export function OnboardingProfileSetup() {
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
             >
-              <option value="auto">Auto-detect (Recommended)</option>
-              <option value="PST">Pacific Time (PST)</option>
-              <option value="MST">Mountain Time (MST)</option>
-              <option value="CST">Central Time (CST)</option>
-              <option value="EST">Eastern Time (EST)</option>
+              {availableTimezones.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz.replace(/_/g, " ")}
+                </option>
+              ))}
             </select>
           </motion.div>
 
