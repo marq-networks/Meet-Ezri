@@ -111,8 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(newProfile);
         } catch (initError) {
           console.error('Failed to initialize profile:', initError);
-          // Only sign out if initialization also fails
-          await signOut();
+          // Do not sign out here. Allow the user to proceed to onboarding
+          // where the profile can be created via completeOnboarding.
         }
       }
     } finally {

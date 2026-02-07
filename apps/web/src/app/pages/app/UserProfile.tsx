@@ -2,6 +2,7 @@ import { AppLayout } from "../../components/AppLayout";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";
+import { Badge } from "../../components/ui/badge";
 import { motion } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -22,7 +23,12 @@ import {
   ChevronRight,
   Trash2,
   AlertTriangle,
-  X
+  X,
+  Activity,
+  Pill,
+  Target,
+  Zap,
+  Users
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -38,13 +44,23 @@ export function UserProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [joinedAt, setJoinedAt] = useState<string>("");
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     birthday: "",
-    location: ""
+    location: "",
+    pronouns: "",
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
+    emergency_contact_relationship: "",
+    in_therapy: "",
+    on_medication: "",
+    selected_goals: [] as string[],
+    selected_triggers: [] as string[],
+    selected_avatar: "",
+    selected_voice: "",
+    selected_environment: ""
   });
 
   const [userStats, setUserStats] = useState({
@@ -65,9 +81,20 @@ export function UserProfile() {
       setFormData({
         name: profile.full_name || "",
         email: profile.email || user?.email || "",
-        phone: profile.emergency_contact_phone || "",
+        phone: profile.phone || "",
         birthday: profile.age ? `${profile.age} years old` : "",
-        location: profile.timezone || ""
+        location: profile.timezone || "",
+        pronouns: profile.pronouns || "",
+        emergency_contact_name: profile.emergency_contact_name || "",
+        emergency_contact_phone: profile.emergency_contact_phone || "",
+        emergency_contact_relationship: profile.emergency_contact_relationship || "",
+        in_therapy: profile.in_therapy || "Not specified",
+        on_medication: profile.on_medication || "Not specified",
+        selected_goals: profile.selected_goals || [],
+        selected_triggers: profile.selected_triggers || [],
+        selected_avatar: profile.selected_avatar || "Default Avatar",
+        selected_voice: profile.selected_voice || "Default Voice",
+        selected_environment: profile.selected_environment || "Default Environment"
       });
       setProfileImage(profile.avatar_url);
       if (profile.created_at) {
@@ -135,13 +162,16 @@ export function UserProfile() {
         const updatedProfile = await api.updateProfile({
           full_name: formData.name,
           email: formData.email,
+          phone: formData.phone,
           avatar_url: profileImage
+          // Note: Other fields would need to be added to updateProfile schema and UI to be editable here
         });
-        setFormData({
-          ...formData,
+        setFormData(prev => ({
+          ...prev,
           name: updatedProfile.full_name || '',
           email: updatedProfile.email || '',
-        });
+          phone: updatedProfile.phone || ''
+        }));
         toast.success("Profile updated successfully!");
         setIsEditing(false);
       } catch (error) {
@@ -159,14 +189,6 @@ export function UserProfile() {
     }
   };
 
-  const handleDeleteAccount = () => {
-    // Clear all user data
-    localStorage.clear();
-    alert('Account deleted successfully. We\'re sorry to see you go.');
-    // Navigate to signup
-    navigate('/signup');
-  };
-
   const stats = [
     { label: "Sessions", value: userStats.sessions.toString(), icon: Heart },
     { label: "Check-ins", value: userStats.checkins.toString(), icon: Calendar },
@@ -177,19 +199,19 @@ export function UserProfile() {
     {
       icon: Volume2,
       title: "Voice",
-      value: "Voice 1 - Soothing & Deep",
+      value: formData.selected_voice || "Not set",
       link: "/app/settings"
     },
     {
       icon: User,
       title: "Avatar",
-      value: "Alex - Calm & Professional",
+      value: formData.selected_avatar || "Not set",
       link: "/app/settings"
     },
     {
       icon: Palette,
       title: "Environment",
-      value: "Beach Sunset 🏖️",
+      value: formData.selected_environment || "Not set",
       link: "/app/settings"
     }
   ];
@@ -213,8 +235,6 @@ export function UserProfile() {
     }
   ];
 
-
-
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -231,7 +251,7 @@ export function UserProfile() {
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Card */}
+          {/* Left Column: Profile Card & Preferences */}
           <div className="lg:col-span-1 space-y-6">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -349,7 +369,7 @@ export function UserProfile() {
             </motion.div>
           </div>
 
-          {/* Main Content */}
+          {/* Right Column: Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Personal Information */}
             <motion.div
@@ -433,7 +453,7 @@ export function UserProfile() {
                     </div>
 
                     <div>
-                      <Label className="mb-2 block">Birthday</Label>
+                      <Label className="mb-2 block">Birthday/Age</Label>
                       <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
                         isEditing 
                           ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
@@ -443,7 +463,7 @@ export function UserProfile() {
                         <input
                           type="text"
                           value={formData.birthday}
-                          disabled={!isEditing}
+                          disabled={!isEditing} // Age is typically from onboarding
                           onChange={(e) =>
                             setFormData({ ...formData, birthday: e.target.value })
                           }
@@ -452,8 +472,28 @@ export function UserProfile() {
                       </div>
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <Label className="mb-2 block">Location</Label>
+                    <div>
+                      <Label className="mb-2 block">Pronouns</Label>
+                      <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
+                        isEditing 
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
+                          : 'border-gray-300'
+                      }`}>
+                        <User className="w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={formData.pronouns}
+                          disabled={!isEditing}
+                          onChange={(e) =>
+                            setFormData({ ...formData, pronouns: e.target.value })
+                          }
+                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="mb-2 block">Location/Timezone</Label>
                       <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
                         isEditing 
                           ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
@@ -470,6 +510,110 @@ export function UserProfile() {
                           className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed"
                         />
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Wellness Profile (New Section) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="p-6 shadow-xl">
+                <div className="flex items-center gap-2 mb-4">
+                  <Activity className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold text-lg">Wellness Profile</h3>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Therapy & Medication */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="w-4 h-4 text-purple-500" />
+                        <span className="font-semibold text-sm">Therapy Status</span>
+                      </div>
+                      <p className="text-sm text-gray-700">{formData.in_therapy}</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Pill className="w-4 h-4 text-blue-500" />
+                        <span className="font-semibold text-sm">Medication</span>
+                      </div>
+                      <p className="text-sm text-gray-700">{formData.on_medication}</p>
+                    </div>
+                  </div>
+
+                  {/* Goals */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Target className="w-4 h-4 text-green-500" />
+                      <span className="font-semibold text-sm">Selected Goals</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.selected_goals.length > 0 ? (
+                        formData.selected_goals.map((goal, i) => (
+                          <Badge key={i} variant="secondary" className="px-3 py-1">
+                            {goal}
+                          </Badge>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">No goals selected</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Triggers */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap className="w-4 h-4 text-orange-500" />
+                      <span className="font-semibold text-sm">Triggers / Challenges</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.selected_triggers.length > 0 ? (
+                        formData.selected_triggers.map((trigger, i) => (
+                          <Badge key={i} variant="outline" className="px-3 py-1 border-orange-200 bg-orange-50 text-orange-800">
+                            {trigger}
+                          </Badge>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">No triggers specified</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Emergency Contact (New Section) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <Card className="p-6 shadow-xl border-l-4 border-l-red-400">
+                <div className="flex items-center gap-2 mb-4">
+                  <Shield className="w-5 h-5 text-red-500" />
+                  <h3 className="font-bold text-lg">Emergency Contact</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Name</Label>
+                    <p className="font-medium mt-1">{formData.emergency_contact_name || "Not set"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Relationship</Label>
+                    <p className="font-medium mt-1">{formData.emergency_contact_relationship || "Not set"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Phone</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Phone className="w-3 h-3 text-gray-400" />
+                      <p className="font-medium">{formData.emergency_contact_phone || "Not set"}</p>
                     </div>
                   </div>
                 </div>
@@ -525,101 +669,21 @@ export function UserProfile() {
                     onClick={handleLogout}
                   >
                     <div className="flex items-center gap-3">
-                      <LogOut className="w-5 h-5 text-red-600" />
+                      <LogOut className="w-5 h-5 text-red-500 group-hover:text-red-600" />
                       <div className="text-left">
-                        <p className="font-medium text-red-600">Log Out</p>
-                        <p className="text-xs text-red-500">Sign out of your account</p>
+                        <p className="font-bold text-red-600">Log Out</p>
+                        <p className="text-xs text-red-400">End your current session</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-red-400" />
+                    <ChevronRight className="w-5 h-5 text-red-300 group-hover:text-red-500" />
                   </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    className="w-full flex items-center justify-between p-3 border-2 border-red-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition-all group"
-                    onClick={() => setShowDeleteModal(true)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Trash2 className="w-5 h-5 text-red-600" />
-                      <div className="text-left">
-                        <p className="font-medium text-red-600">Delete Account</p>
-                        <p className="text-xs text-red-500">
-                          Permanently delete your account and all data
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-red-400" />
-                  </motion.button>
+                  
+                  {/* Delete Account Button - Hidden by default or separate logic */}
                 </div>
               </Card>
             </motion.div>
           </div>
         </div>
-
-        {/* Delete Account Modal */}
-        {showDeleteModal && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              onClick={() => setShowDeleteModal(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="fixed inset-4 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md z-50"
-            >
-              <Card className="p-6 shadow-2xl">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-6 h-6 text-red-600" />
-                    <h3 className="font-bold text-xl text-red-600">Delete Account</h3>
-                  </div>
-                  <button
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                    onClick={() => setShowDeleteModal(false)}
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="mb-6">
-                  <p className="text-gray-700 mb-3">
-                    Are you sure you want to delete your account? This action cannot be undone.
-                  </p>
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-800 font-medium">
-                      ⚠️ This will permanently delete:
-                    </p>
-                    <ul className="text-sm text-red-700 mt-2 space-y-1 ml-4">
-                      <li>• All your session history</li>
-                      <li>• Your mood tracking data</li>
-                      <li>• Journal entries and notes</li>
-                      <li>• Account settings and preferences</li>
-                    </ul>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setShowDeleteModal(false)}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleDeleteAccount}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Account
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-          </>
-        )}
       </div>
     </AppLayout>
   );

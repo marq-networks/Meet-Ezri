@@ -25,11 +25,25 @@ export function OnboardingProfileSetup() {
 
   useEffect(() => {
     if (user?.user_metadata) {
-      const { full_name, name, avatar_url, picture } = user.user_metadata;
+      const { full_name, name, avatar_url, picture, first_name, last_name } = user.user_metadata;
       const updates: any = {};
       let hasUpdates = false;
 
-      if (!data.firstName && !firstName && (full_name || name)) {
+      // Handle separately stored first/last name (from Signup)
+      if (!data.firstName && !firstName && first_name) {
+        setFirstName(first_name);
+        updates.firstName = first_name;
+        hasUpdates = true;
+      }
+
+      if (!data.lastName && !lastName && last_name) {
+        setLastName(last_name);
+        updates.lastName = last_name;
+        hasUpdates = true;
+      }
+
+      // Handle combined full_name (e.g. from OAuth) if separate fields aren't set
+      if (!data.firstName && !firstName && !first_name && (full_name || name)) {
         const fullName = full_name || name;
         const parts = fullName.split(" ");
         const first = parts[0];

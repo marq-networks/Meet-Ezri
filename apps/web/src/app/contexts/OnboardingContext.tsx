@@ -97,7 +97,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       localStorage.removeItem(STORAGE_KEY);
       
       toast.success("Onboarding completed!");
-      navigate(redirectPath);
+      // Force reload to ensure AuthContext fetches the new profile
+      window.location.href = redirectPath;
     } catch (error: any) {
       toast.error(error.message || "Failed to complete onboarding");
     } finally {
