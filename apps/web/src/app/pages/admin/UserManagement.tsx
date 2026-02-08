@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -27,9 +27,11 @@ import {
   UserCheck,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { api } from "../../../lib/api";
+import { format } from "date-fns";
 
 interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   status: "active" | "suspended" | "inactive";
@@ -47,13 +49,24 @@ type SubscriptionFilter = "all" | "free" | "premium" | "enterprise";
 type SortField = "name" | "joinDate" | "lastActive" | "sessions";
 type SortDirection = "asc" | "desc";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+
 export function UserManagement() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<FilterType>("all");
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
   const [subscriptionFilter, setSubscriptionFilter] = useState<SubscriptionFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,100 +80,57 @@ export function UserManagement() {
   });
   const usersPerPage = 10;
 
-  const users: User[] = [
-    {
-      id: 1,
-      name: "Sarah Mitchell",
-      email: "sarah.m@example.com",
-      status: "active",
-      joinDate: "2024-01-15",
-      sessions: 45,
-      lastActive: "2 hours ago",
-      riskLevel: "low",
-      subscription: "premium",
-      organization: "HealthCare Corp",
-    },
-    {
-      id: 2,
-      name: "John Davis",
-      email: "john.d@example.com",
-      status: "active",
-      joinDate: "2024-02-03",
-      sessions: 32,
-      lastActive: "5 minutes ago",
-      riskLevel: "medium",
-      subscription: "free",
-    },
-    {
-      id: 3,
-      name: "Emily Rodriguez",
-      email: "emily.r@example.com",
-      status: "active",
-      joinDate: "2024-01-28",
-      sessions: 67,
-      lastActive: "1 day ago",
-      riskLevel: "low",
-      subscription: "premium",
-      organization: "Wellness Inc",
-    },
-    {
-      id: 4,
-      name: "Michael Chen",
-      email: "michael.c@example.com",
-      status: "suspended",
-      joinDate: "2024-03-10",
-      sessions: 12,
-      lastActive: "3 days ago",
-      riskLevel: "high",
-      subscription: "free",
-    },
-    {
-      id: 5,
-      name: "Jessica Taylor",
-      email: "jessica.t@example.com",
-      status: "active",
-      joinDate: "2024-02-18",
-      sessions: 89,
-      lastActive: "30 minutes ago",
-      riskLevel: "low",
-      subscription: "enterprise",
-      organization: "MindCare Solutions",
-    },
-    {
-      id: 6,
-      name: "David Wilson",
-      email: "david.w@example.com",
-      status: "inactive",
-      joinDate: "2024-01-05",
-      sessions: 5,
-      lastActive: "2 weeks ago",
-      riskLevel: "medium",
-      subscription: "free",
-    },
-    {
-      id: 7,
-      name: "Amanda Brown",
-      email: "amanda.b@example.com",
-      status: "active",
-      joinDate: "2024-03-01",
-      sessions: 28,
-      lastActive: "1 hour ago",
-      riskLevel: "low",
-      subscription: "premium",
-    },
-    {
-      id: 8,
-      name: "Robert Lee",
-      email: "robert.l@example.com",
-      status: "active",
-      joinDate: "2024-02-20",
-      sessions: 54,
-      lastActive: "4 hours ago",
-      riskLevel: "medium",
-      subscription: "premium",
-      organization: "HealthCare Corp",
-    },
-  ];
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.admin.getUsers();
+      
+      const mappedUsers = data.map((u: any) => ({
+        id: u.id,
+        name: u.full_name || u.email.split('@')[0],
+        email: u.email,
+        status: u.status || 'active',
+        joinDate: u.created_at,
+        sessions: 0, // TODO: Fetch from backend
+        lastActive: u.updated_at,
+        riskLevel: 'low', // TODO: Fetch from backend
+        subscription: 'free', // TODO: Fetch from backend
+        organization: ''
+      }));
+      setUsers(mappedUsers);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleAction = async (userId: string, action: 'suspend' | 'activate' | 'delete' | 'email') => {
+    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+    try {
+      if (action === 'delete') {
+        await api.admin.deleteUser(userId);
+        setUsers(users.filter(u => u.id !== userId));
+      } else if (action === 'suspend') {
+        await api.admin.updateUser(userId, { status: 'suspended' });
+        setUsers(users.map(u => u.id === userId ? { ...u, status: 'suspended' } : u));
+      } else if (action === 'activate') {
+        await api.admin.updateUser(userId, { status: 'active' });
+        setUsers(users.map(u => u.id === userId ? { ...u, status: 'active' } : u));
+      } else if (action === 'email') {
+        // Redirect to email composition or show modal
+        alert("Email feature pending implementation");
+      }
+    } catch (error) {
+      console.error(`Failed to ${action} user:`, error);
+      alert(`Failed to ${action} user`);
+    }
+  };
 
   // Filter users
   let filteredUsers = users.filter((user) => {
@@ -244,7 +214,7 @@ export function UserManagement() {
     }
   };
 
-  const toggleUserSelection = (userId: number) => {
+  const toggleUserSelection = (userId: string) => {
     setSelectedUsers((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
@@ -757,25 +727,40 @@ export function UserManagement() {
                             variant="ghost" 
                             size="sm" 
                             className="gap-2"
-                            onClick={() => navigate('/admin/user-details-enhanced', { 
-                              state: { user }
-                            })}
+                            onClick={() => navigate(`/admin/user-details-enhanced/${user.id}`)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => {
-                              // Show a simple action menu
-                              const action = confirm(`Select action for ${user.name}:\n\n✉️ Email User\n🚫 Suspend User\n🗑️ Delete User\n\n(This is a demo - click OK to simulate)`);
-                              if (action) {
-                                alert(`Action performed for ${user.name}`);
-                              }
-                            }}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleAction(user.id, 'email')}>
+                                <Mail className="w-4 h-4 mr-2" />
+                                Email User
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {user.status === 'active' ? (
+                                <DropdownMenuItem onClick={() => handleAction(user.id, 'suspend')} className="text-red-600">
+                                  <Ban className="w-4 h-4 mr-2" />
+                                  Suspend User
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => handleAction(user.id, 'activate')} className="text-green-600">
+                                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                                  Activate User
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => handleAction(user.id, 'delete')} className="text-red-600">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </td>
                     </motion.tr>

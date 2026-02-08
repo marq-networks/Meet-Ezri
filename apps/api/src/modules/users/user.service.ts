@@ -43,6 +43,49 @@ function calculateStreak(moodEntries: any[]) {
   return streak;
 }
 
+export async function getAllUsers() {
+  const users = await prisma.profiles.findMany({
+    orderBy: { created_at: 'desc' },
+    include: {
+      mood_entries: {
+        orderBy: { created_at: 'desc' },
+        take: 1
+      },
+      appointments_appointments_user_idToprofiles: {
+        where: { status: 'completed' }
+      }
+    }
+  });
+
+  return users.map(user => {
+    // Calculate basic stats or risk level mock
+    const lastActive = user.updated_at || user.created_at;
+    const sessionCount = user.appointments_appointments_user_idToprofiles.length;
+    
+    // Simple risk logic (mock)
+    let riskLevel = 'low';
+    const lastMood = user.mood_entries[0];
+    if (lastMood && lastMood.mood === 'Sad' && lastMood.intensity > 8) {
+      riskLevel = 'high';
+    } else if (lastMood && lastMood.mood === 'Anxious') {
+      riskLevel = 'medium';
+    }
+
+    return {
+      id: user.id,
+      name: user.full_name || user.email.split('@')[0],
+      email: user.email,
+      status: 'active', // In a real app, check auth status or soft delete
+      joinDate: user.created_at,
+      sessions: sessionCount,
+      lastActive: lastActive,
+      riskLevel: riskLevel,
+      subscription: user.credits > 100 ? 'premium' : 'free', // Mock logic based on credits
+      organization: 'Individual' // Mock
+    };
+  });
+}
+
 export async function getUserEmail(userId: string): Promise<string | null> {
   const user = await prisma.users.findUnique({
     where: { id: userId },

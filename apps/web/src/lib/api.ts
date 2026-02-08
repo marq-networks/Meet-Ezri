@@ -150,6 +150,7 @@ export const api = {
       const res = await fetch(`${API_URL}/sessions${query}`, {
         method: 'GET',
         headers,
+        cache: 'no-store',
       });
       return handleResponse(res, 'Failed to fetch sessions');
     },
@@ -159,6 +160,7 @@ export const api = {
       const res = await fetch(`${API_URL}/sessions/${id}`, {
         method: 'GET',
         headers,
+        cache: 'no-store',
       });
       return handleResponse(res, 'Failed to fetch session details');
     },
@@ -190,6 +192,16 @@ export const api = {
         headers,
       });
       return handleResponse(res, 'Failed to fetch transcript');
+    },
+
+    async getUserSessions(userId: string) { // Admin only
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/sessions/admin/users/${userId}/sessions`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch user sessions');
     },
   },
 
@@ -223,6 +235,16 @@ export const api = {
         cache: 'no-store',
       });
       return handleResponse(res, 'Failed to fetch all mood entries');
+    },
+
+    async getUserMoods(userId: string) { // Admin only
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/moods/admin/users/${userId}/moods`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch user moods');
     }
   },
 
@@ -236,6 +258,353 @@ export const api = {
         cache: 'no-store',
       });
       return handleResponse(res, 'Failed to fetch admin stats');
+    },
+
+    async getUsers() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/users`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch users');
+    },
+
+    async getUserProfile(userId: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/users/${userId}`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch user profile');
+    },
+
+    async updateUser(userId: string, data: { status?: string; role?: string }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to update user');
+    },
+
+    async deleteUser(userId: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers,
+      });
+      return handleResponse(res, 'Failed to delete user');
+    },
+
+    async getUserAuditLogs(userId: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/users/${userId}/audit-logs`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch user audit logs');
+    }
+  },
+
+  // Journal API
+  journal: {
+    async create(data: { title?: string; content?: string; mood_tags?: string[]; is_private?: boolean; location?: string }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/journal`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to create journal entry');
+    },
+
+    async getAll() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/journal`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch journal entries');
+    },
+
+    async getById(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/journal/${id}`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch journal entry');
+    },
+
+    async update(id: string, data: { title?: string; content?: string; mood_tags?: string[]; is_private?: boolean; location?: string }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/journal/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to update journal entry');
+    },
+
+    async delete(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/journal/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (res.status === 204) return true;
+      return handleResponse(res, 'Failed to delete journal entry');
+    },
+
+    async getUserJournals(userId: string) { // Admin only
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/journal/admin/users/${userId}/journals`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch user journals');
+    }
+  },
+
+  // Billing API
+  billing: {
+    async getSubscription() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch subscription');
+    },
+
+    async createSubscription(data: { plan_type: 'free' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly'; payment_method?: string }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to create subscription');
+    },
+
+    async updateSubscription(data: { plan_type?: 'free' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly' }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to update subscription');
+    },
+
+    async cancelSubscription() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/cancel`, {
+        method: 'POST',
+        headers,
+      });
+      return handleResponse(res, 'Failed to cancel subscription');
+    },
+
+    async getHistory() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/history`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch billing history');
+    },
+
+    async getAllSubscriptions() { // Admin only
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/admin/subscriptions`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch all subscriptions');
+    },
+
+    async updateSubscriptionById(id: string, data: { plan_type?: 'free' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly'; status?: string }) { // Admin only
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/admin/subscriptions/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to update subscription');
+    },
+
+    async getUserSubscription(userId: string) { // Admin only
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/admin/users/${userId}/subscription`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch user subscription');
+    }
+  },
+
+  // Wellness Tools API
+  wellness: {
+    async getAll(category?: string) {
+      const headers = await getHeaders();
+      const query = category ? `?category=${category}` : '';
+      const res = await fetch(`${API_URL}/wellness${query}`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch wellness tools');
+    },
+
+    async getById(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness/${id}`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch wellness tool');
+    },
+
+    async create(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to create wellness tool');
+    },
+
+    async update(id: string, data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to update wellness tool');
+    },
+
+    async delete(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (res.status === 204) return true;
+      return handleResponse(res, 'Failed to delete wellness tool');
+    }
+  },
+
+  // Sleep API
+  sleep: {
+    async getEntries() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/sleep`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch sleep entries');
+    },
+
+    async createEntry(data: { bed_time: string; wake_time: string; quality_rating?: number; factors?: string[]; notes?: string }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/sleep`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to create sleep entry');
+    },
+
+    async getUserEntries(userId: string) { // Admin only
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/sleep/admin/users/${userId}/sleep`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch user sleep entries');
+    }
+  },
+
+  // Habits API
+  habits: {
+    async getAll() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/habits`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch habits');
+    },
+
+    async create(data: { name: string; category?: string; frequency?: 'daily' | 'weekly'; color?: string; icon?: string }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/habits`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to create habit');
+    },
+
+    async update(id: string, data: { name?: string; category?: string; frequency?: 'daily' | 'weekly'; color?: string; icon?: string }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/habits/${id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to update habit');
+    },
+
+    async delete(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/habits/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (res.status === 204) return true;
+      return handleResponse(res, 'Failed to delete habit');
+    },
+
+    async complete(id: string, date?: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/habits/${id}/complete`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ completed_at: date }),
+      });
+      return handleResponse(res, 'Failed to complete habit');
+    },
+
+    async uncomplete(id: string, date: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/habits/${id}/complete?date=${date}`, {
+        method: 'DELETE',
+        headers,
+      });
+      return handleResponse(res, 'Failed to uncomplete habit');
+    },
+
+    async getUserHabits(userId: string) { // Admin only
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/habits/admin/users/${userId}/habits`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch user habits');
     }
   }
 };

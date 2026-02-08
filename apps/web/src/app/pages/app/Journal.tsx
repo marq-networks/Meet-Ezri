@@ -17,63 +17,41 @@ import {
   Filter,
   Download
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "../../../lib/api";
+import { useAuth } from "../../contexts/AuthContext";
+
+interface JournalEntry {
+  id: string;
+  title: string | null;
+  content: string | null;
+  mood_tags: string[];
+  is_private: boolean | null;
+  location: string | null;
+  created_at: string;
+  updated_at: string;
+  // Derived fields for UI
+  date?: string;
+  preview?: string;
+  mood?: string;
+  favorite?: boolean; // TODO: Add favorite field to backend or handle it via metadata
+}
 
 export function Journal() {
+  const { session } = useAuth();
   const [showNewEntry, setShowNewEntry] = useState(false);
   const [newEntryTitle, setNewEntryTitle] = useState("");
   const [newEntryContent, setNewEntryContent] = useState("");
   const [selectedMood, setSelectedMood] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportFormat, setExportFormat] = useState<"pdf" | "json">("pdf");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportComplete, setExportComplete] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<number | null>(null);
+  const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterMood, setFilterMood] = useState<string>("");
   const [filterFavorites, setFilterFavorites] = useState(false);
   const [filterDateRange, setFilterDateRange] = useState<"all" | "week" | "month" | "year">("all");
-  const [entries, setEntries] = useState([
-    {
-      id: 1,
-      title: "A Beautiful Day",
-      date: "December 28, 2024",
-      mood: "😊",
-      preview: "Today was filled with joy and gratitude. I spent time with my family and felt truly connected...",
-      content: "Full entry content here...",
-      favorite: true
-    },
-    {
-      id: 2,
-      title: "Reflections on Progress",
-      date: "December 25, 2024",
-      mood: "😌",
-      preview: "Looking back at how far I've come. The journey hasn't been easy, but I'm proud of myself...",
-      content: "Full entry content here...",
-      favorite: false
-    },
-    {
-      id: 3,
-      title: "Dealing with Uncertainty",
-      date: "December 22, 2024",
-      mood: "😰",
-      preview: "Feeling anxious about upcoming changes. Writing helps me process these emotions...",
-      content: "Full entry content here...",
-      favorite: false
-    },
-    {
-      id: 4,
-      title: "Gratitude Practice",
-      date: "December 20, 2024",
-      mood: "🤩",
-      preview: "Three things I'm grateful for today: my health, my support system, and new opportunities...",
-      content: "Full entry content here...",
-      favorite: true
-    }
-  ]);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const moods = [
     { value: "happy", emoji: "😊" },
@@ -83,30 +61,186 @@ export function Journal() {
     { value: "excited", emoji: "🤩" }
   ];
 
-  const handleSaveEntry = () => {
-    // Save logic here
-    setShowNewEntry(false);
-    setNewEntryTitle("");
-    setNewEntryContent("");
-    setSelectedMood("");
+  const fetchEntries = async () => {
+    if (!session) return;
+    try {
+      setIsLoading(true);
+      const data = await api.journal.getAll();
+      
+      const formattedEntries = data.map((entry: any) => ({
+        ...entry,
+        date: new Date(entry.created_at).toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        }),
+        preview: entry.content ? entry.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...' : '',
+        mood: entry.mood_tags && entry.mood_tags.length > 0 ? entry.mood_tags[0] : '😐',
+        favorite: false // Default to false as backend doesn't support it yet
+      }));
+
+      setEntries(formattedEntries);
+    } catch (error) {
+      console.error("Failed to fetch journal entries", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleEditEntry = (entryId: number) => {
+  useEffect(() => {
+    fetchEntries();
+  }, [session]);
+
+  const handleSaveEntry = async () => {
+    if (!session) return;
+    
+    try {
+      const entryData = {
+        title: newEntryTitle,
+        content: newEntryContent,
+        mood_tags: selectedMood ? [selectedMood] : [],
+        is_private: true
+      };
+
+      if (editingEntry) {
+        await api.journal.update(editingEntry, entryData);
+      } else {
+        await api.journal.create(entryData);
+      }
+
+      await fetchEntries();
+      
+      setShowNewEntry(false);
+      setNewEntryTitle("");
+      setNewEntryContent("");
+      setSelectedMood("");
+      setEditingEntry(null);
+    } catch (error) {
+      console.error("Failed to save journal entry", error);
+      alert("Failed to save entry. Please try again.");
+    }
+  };
+
+  const handleEditEntry = (entryId: string) => {
     const entry = entries.find(e => e.id === entryId);
     if (entry) {
-      setNewEntryTitle(entry.title);
-      setNewEntryContent(entry.content);
-      setSelectedMood(entry.mood);
+      setNewEntryTitle(entry.title || "");
+      setNewEntryContent(entry.content || "");
+      // Map emoji back to mood value if possible, or just use first tag
+      const moodEmoji = entry.mood_tags?.[0];
+      const moodObj = moods.find(m => m.emoji === moodEmoji) || moods.find(m => m.value === moodEmoji);
+      setSelectedMood(moodObj ? moodObj.value : (moodEmoji || ""));
+      
       setEditingEntry(entryId);
       setShowNewEntry(true);
     }
   };
 
-  const handleDeleteEntry = (entryId: number) => {
+  const handleDeleteEntry = async (entryId: string) => {
     if (confirm("Are you sure you want to delete this journal entry?")) {
-      setEntries(entries.filter(e => e.id !== entryId));
+      try {
+        await api.journal.delete(entryId);
+        setEntries(entries.filter(e => e.id !== entryId));
+      } catch (error) {
+        console.error("Failed to delete journal entry", error);
+        alert("Failed to delete entry.");
+      }
     }
   };
+
+  // Filter logic
+  const filteredEntries = entries.filter(entry => {
+    // Search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const titleMatch = entry.title?.toLowerCase().includes(query);
+      const contentMatch = entry.content?.toLowerCase().includes(query);
+      if (!titleMatch && !contentMatch) return false;
+    }
+
+    // Mood filter
+    if (filterMood) {
+      // filterMood is emoji, entry.mood is likely emoji (mapped in fetchEntries) or value
+      // Let's check both
+      const moodValue = moods.find(m => m.emoji === filterMood)?.value;
+      const entryMood = entry.mood_tags?.[0];
+      if (entryMood !== filterMood && entryMood !== moodValue) return false;
+    }
+
+    // Date range filter
+    if (filterDateRange !== 'all') {
+      const entryDate = new Date(entry.created_at);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - entryDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (filterDateRange === 'week' && diffDays > 7) return false;
+      if (filterDateRange === 'month' && diffDays > 30) return false;
+      if (filterDateRange === 'year' && diffDays > 365) return false;
+    }
+
+    return true;
+  });
+
+  // Stats calculation
+  const totalEntries = entries.length;
+  // Simple streak calculation (consecutive days with entries)
+  const calculateStreak = () => {
+    if (entries.length === 0) return 0;
+    
+    // Sort entries by date descending
+    const sortedEntries = [...entries].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Check if there's an entry today
+    const lastEntryDate = new Date(sortedEntries[0].created_at);
+    lastEntryDate.setHours(0, 0, 0, 0);
+    
+    if (lastEntryDate.getTime() === today.getTime()) {
+      streak = 1;
+    } else if ((today.getTime() - lastEntryDate.getTime()) > (1000 * 60 * 60 * 24)) {
+      // If last entry was before yesterday, streak is broken
+      return 0;
+    }
+
+    // Iterate backwards
+    let currentDate = lastEntryDate;
+    
+    for (let i = 1; i < sortedEntries.length; i++) {
+      const entryDate = new Date(sortedEntries[i].created_at);
+      entryDate.setHours(0, 0, 0, 0);
+      
+      const diffTime = currentDate.getTime() - entryDate.getTime();
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      
+      if (diffDays === 1) {
+        streak++;
+        currentDate = entryDate;
+      } else if (diffDays === 0) {
+        // Multiple entries same day, continue
+        continue;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  };
+
+  const streak = calculateStreak();
+
+  const entriesThisWeek = entries.filter(e => {
+    const entryDate = new Date(e.created_at);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - entryDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 7;
+  }).length;
 
   return (
     <AppLayout>
@@ -140,7 +274,13 @@ export function Journal() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setShowNewEntry(true)}
+                onClick={() => {
+                  setEditingEntry(null);
+                  setNewEntryTitle("");
+                  setNewEntryContent("");
+                  setSelectedMood("");
+                  setShowNewEntry(true);
+                }}
                 className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-lg shadow-lg hover:shadow-xl transition-shadow"
               >
                 <Plus className="w-5 h-5" />
@@ -191,7 +331,7 @@ export function Journal() {
               >
                 <Card className="p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold">New Journal Entry</h2>
+                    <h2 className="text-2xl font-bold">{editingEntry ? 'Edit Journal Entry' : 'New Journal Entry'}</h2>
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -222,9 +362,9 @@ export function Journal() {
                             key={mood.value}
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() => setSelectedMood(mood.value)}
+                            onClick={() => setSelectedMood(mood.emoji)}
                             className={`text-4xl p-2 rounded-lg transition-all ${
-                              selectedMood === mood.value
+                              selectedMood === mood.emoji
                                 ? "bg-primary/10 ring-2 ring-primary"
                                 : "hover:bg-gray-100"
                             }`}
@@ -277,7 +417,7 @@ export function Journal() {
             transition={{ delay: 0.1 }}
           >
             <Card className="p-4 text-center shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50">
-              <div className="text-3xl font-bold text-primary mb-1">42</div>
+              <div className="text-3xl font-bold text-primary mb-1">{totalEntries}</div>
               <div className="text-sm text-muted-foreground">Total Entries</div>
             </Card>
           </motion.div>
@@ -288,7 +428,7 @@ export function Journal() {
             transition={{ delay: 0.15 }}
           >
             <Card className="p-4 text-center shadow-lg bg-gradient-to-br from-purple-50 to-pink-50">
-              <div className="text-3xl font-bold text-purple-600 mb-1">7</div>
+              <div className="text-3xl font-bold text-purple-600 mb-1">{streak}</div>
               <div className="text-sm text-muted-foreground">Day Streak</div>
             </Card>
           </motion.div>
@@ -299,7 +439,7 @@ export function Journal() {
             transition={{ delay: 0.2 }}
           >
             <Card className="p-4 text-center shadow-lg bg-gradient-to-br from-amber-50 to-orange-50">
-              <div className="text-3xl font-bold text-amber-600 mb-1">4</div>
+              <div className="text-3xl font-bold text-amber-600 mb-1">{entriesThisWeek}</div>
               <div className="text-sm text-muted-foreground">This Week</div>
             </Card>
           </motion.div>
@@ -307,64 +447,70 @@ export function Journal() {
 
         {/* Journal Entries */}
         <div className="space-y-4">
-          {entries.map((entry, index) => (
-            <motion.div
-              key={entry.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 + index * 0.05 }}
-              whileHover={{ scale: 1.01, y: -2 }}
-            >
-              <Card className="p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer group">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <motion.span
-                      whileHover={{ scale: 1.2, rotate: 10 }}
-                      className="text-3xl"
-                    >
-                      {entry.mood}
-                    </motion.span>
-                    <div>
-                      <h3 className="font-bold text-lg group-hover:text-primary transition-colors">
-                        {entry.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="w-4 h-4" />
-                        {entry.date}
+          {isLoading ? (
+            <div className="text-center py-10">Loading entries...</div>
+          ) : filteredEntries.length === 0 ? (
+             <div className="text-center py-10 text-muted-foreground">No entries found. Start writing!</div>
+          ) : (
+            filteredEntries.map((entry, index) => (
+              <motion.div
+                key={entry.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + index * 0.05 }}
+                whileHover={{ scale: 1.01, y: -2 }}
+              >
+                <Card className="p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer group">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <motion.span
+                        whileHover={{ scale: 1.2, rotate: 10 }}
+                        className="text-3xl"
+                      >
+                        {entry.mood}
+                      </motion.span>
+                      <div>
+                        <h3 className="font-bold text-lg group-hover:text-primary transition-colors">
+                          {entry.title || "Untitled Entry"}
+                        </h3>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4" />
+                          {entry.date}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {entry.favorite && (
-                      <motion.div
-                        animate={{ scale: [1, 1.2, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
+                    <div className="flex items-center gap-2">
+                      {entry.favorite && (
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+                        </motion.div>
+                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-100 rounded-lg transition-all"
+                        onClick={() => handleEditEntry(entry.id)}
                       >
-                        <Heart className="w-5 h-5 text-red-500 fill-red-500" />
-                      </motion.div>
-                    )}
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-100 rounded-lg transition-all"
-                      onClick={() => handleEditEntry(entry.id)}
-                    >
-                      <Edit className="w-4 h-4 text-gray-600" />
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 rounded-lg transition-all"
-                      onClick={() => handleDeleteEntry(entry.id)}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </motion.button>
+                        <Edit className="w-4 h-4 text-gray-600" />
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 rounded-lg transition-all"
+                        onClick={() => handleDeleteEntry(entry.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </motion.button>
+                    </div>
                   </div>
-                </div>
-                <p className="text-muted-foreground line-clamp-2">{entry.preview}</p>
-              </Card>
-            </motion.div>
-          ))}
+                  <p className="text-muted-foreground line-clamp-2">{entry.preview}</p>
+                </Card>
+              </motion.div>
+            ))
+          )}
         </div>
 
         {/* Inspiration Card */}

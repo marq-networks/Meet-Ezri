@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { getDashboardStatsHandler } from './admin.controller';
-import { dashboardStatsSchema } from './admin.schema';
+import { getDashboardStatsHandler, getUsersHandler, getUserHandler, updateUserHandler, deleteUserHandler, getUserAuditLogsHandler } from './admin.controller';
+import { dashboardStatsSchema, userListSchema, userSchema, updateUserSchema } from './admin.schema';
 import { z } from 'zod';
 
 export async function adminRoutes(fastify: FastifyInstance) {
@@ -15,5 +15,71 @@ export async function adminRoutes(fastify: FastifyInstance) {
       },
     },
     getDashboardStatsHandler
+  );
+
+  fastify.get(
+    '/users',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        response: {
+          200: userListSchema,
+        },
+      },
+    },
+    getUsersHandler
+  );
+
+  fastify.get(
+    '/users/:id',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        response: {
+          200: userSchema,
+        },
+      },
+    },
+    getUserHandler
+  );
+
+  fastify.patch(
+    '/users/:id',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        body: updateUserSchema,
+        response: {
+          200: userSchema,
+        },
+      },
+    },
+    updateUserHandler
+  );
+
+  fastify.delete(
+    '/users/:id',
+    {
+      preHandler: [fastify.authenticate],
+    },
+    deleteUserHandler
+  );
+
+  fastify.get(
+    '/users/:id/audit-logs',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        response: {
+          200: z.array(z.object({
+            id: z.string(),
+            action: z.string(),
+            created_at: z.date(),
+            details: z.any().optional(),
+          })),
+        },
+      },
+    },
+    getUserAuditLogsHandler
   );
 }

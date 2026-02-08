@@ -23,12 +23,15 @@ import {
   Sparkles,
   Target,
   X,
+  Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
+import { api } from "../../../lib/api";
+import { formatDistanceToNow } from "date-fns";
 
 interface WellnessTool {
   id: string;
@@ -46,6 +49,17 @@ interface WellnessTool {
   createdBy: string;
 }
 
+const iconMap: Record<string, any> = {
+  Wind,
+  Brain,
+  Moon,
+  Target,
+  Heart,
+  Sparkles,
+  Sun,
+  Zap,
+};
+
 export function WellnessToolsCMS() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,10 +67,43 @@ export function WellnessToolsCMS() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [wellnessTools, setWellnessTools] = useState<WellnessTool[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Modal states
   const [viewModalTool, setViewModalTool] = useState<WellnessTool | null>(null);
   const [deleteModalTool, setDeleteModalTool] = useState<WellnessTool | null>(null);
+
+  useEffect(() => {
+    fetchTools();
+  }, []);
+
+  const fetchTools = async () => {
+    try {
+      setIsLoading(true);
+      const tools = await api.wellness.getAll();
+      const mappedTools: WellnessTool[] = tools.map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        category: t.category,
+        description: t.description || "",
+        duration: t.duration_minutes || 0,
+        difficulty: (t.difficulty as any) || "Beginner",
+        status: (t.status as any) || "draft",
+        icon: iconMap[t.icon || "Sparkles"] || Sparkles,
+        iconColor: "#8b5cf6", // Default purple for now, could be dynamic
+        usageCount: t.usage_count || 0,
+        rating: Number(t.rating) || 0,
+        lastUpdated: formatDistanceToNow(new Date(t.updated_at), { addSuffix: true }),
+        createdBy: t.profiles?.full_name || "Admin",
+      }));
+      setWellnessTools(mappedTools);
+    } catch (error) {
+      console.error("Failed to fetch wellness tools:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const categories = [
     "All Categories",
@@ -67,129 +114,6 @@ export function WellnessToolsCMS() {
     "Stress Management",
     "Mindfulness",
     "Energy Boost",
-  ];
-
-  const wellnessTools: WellnessTool[] = [
-    {
-      id: "1",
-      title: "Box Breathing Technique",
-      category: "Breathing",
-      description: "4-4-4-4 breathing pattern for instant calm",
-      duration: 5,
-      difficulty: "Beginner",
-      status: "published",
-      icon: Wind,
-      iconColor: "#06b6d4",
-      usageCount: 2845,
-      rating: 4.8,
-      lastUpdated: "2 days ago",
-      createdBy: "Sarah Chen",
-    },
-    {
-      id: "2",
-      title: "Body Scan Meditation",
-      category: "Meditation",
-      description: "Progressive relaxation through body awareness",
-      duration: 15,
-      difficulty: "Intermediate",
-      status: "published",
-      icon: Brain,
-      iconColor: "#8b5cf6",
-      usageCount: 1923,
-      rating: 4.9,
-      lastUpdated: "1 week ago",
-      createdBy: "Dr. Michael Ross",
-    },
-    {
-      id: "3",
-      title: "Sleep Preparation Routine",
-      category: "Sleep",
-      description: "Wind down ritual for better sleep quality",
-      duration: 20,
-      difficulty: "Beginner",
-      status: "published",
-      icon: Moon,
-      iconColor: "#3b82f6",
-      usageCount: 3421,
-      rating: 4.7,
-      lastUpdated: "3 days ago",
-      createdBy: "Emma Wilson",
-    },
-    {
-      id: "4",
-      title: "5-4-3-2-1 Grounding",
-      category: "Anxiety Relief",
-      description: "Sensory grounding technique for anxiety",
-      duration: 10,
-      difficulty: "Beginner",
-      status: "published",
-      icon: Target,
-      iconColor: "#10b981",
-      usageCount: 2156,
-      rating: 4.6,
-      lastUpdated: "5 days ago",
-      createdBy: "Sarah Chen",
-    },
-    {
-      id: "5",
-      title: "Progressive Muscle Relaxation",
-      category: "Stress Management",
-      description: "Systematic tension and release exercise",
-      duration: 12,
-      difficulty: "Intermediate",
-      status: "draft",
-      icon: Heart,
-      iconColor: "#ec4899",
-      usageCount: 0,
-      rating: 0,
-      lastUpdated: "1 hour ago",
-      createdBy: "Dr. Michael Ross",
-    },
-    {
-      id: "6",
-      title: "Mindful Walking Practice",
-      category: "Mindfulness",
-      description: "Walking meditation for present moment awareness",
-      duration: 15,
-      difficulty: "Beginner",
-      status: "published",
-      icon: Sparkles,
-      iconColor: "#f59e0b",
-      usageCount: 1678,
-      rating: 4.5,
-      lastUpdated: "1 week ago",
-      createdBy: "Emma Wilson",
-    },
-    {
-      id: "7",
-      title: "Morning Energy Boost",
-      category: "Energy Boost",
-      description: "Energizing breathwork and visualization",
-      duration: 8,
-      difficulty: "Beginner",
-      status: "published",
-      icon: Sun,
-      iconColor: "#f59e0b",
-      usageCount: 2934,
-      rating: 4.8,
-      lastUpdated: "4 days ago",
-      createdBy: "Sarah Chen",
-    },
-    {
-      id: "8",
-      title: "Quick Desk Reset",
-      category: "Stress Management",
-      description: "5-minute stress relief at your desk",
-      duration: 5,
-      difficulty: "Beginner",
-      status: "archived",
-      icon: Zap,
-      iconColor: "#6b7280",
-      usageCount: 1245,
-      rating: 4.3,
-      lastUpdated: "2 months ago",
-      createdBy: "Dr. Michael Ross",
-    },
   ];
 
   const filteredTools = wellnessTools.filter((tool) => {
@@ -248,10 +172,26 @@ export function WellnessToolsCMS() {
     }
   };
 
-  const handleBulkAction = (action: string) => {
+  const handleBulkAction = async (action: string) => {
     console.log(`Bulk action: ${action} for tools:`, selectedTools);
-    // Implementation would go here
-    setSelectedTools([]);
+    try {
+      if (action === "delete") {
+        if (!confirm(`Are you sure you want to delete ${selectedTools.length} tools?`)) return;
+        await Promise.all(selectedTools.map(id => api.wellness.delete(id)));
+        alert(`Successfully deleted ${selectedTools.length} tools`);
+      } else if (action === "publish") {
+        await Promise.all(selectedTools.map(id => api.wellness.update(id, { status: "published" })));
+        alert(`Successfully published ${selectedTools.length} tools`);
+      } else if (action === "archive") {
+        await Promise.all(selectedTools.map(id => api.wellness.update(id, { status: "archived" })));
+        alert(`Successfully archived ${selectedTools.length} tools`);
+      }
+      await fetchTools();
+      setSelectedTools([]);
+    } catch (error) {
+      console.error("Bulk action failed:", error);
+      alert("Failed to perform bulk action");
+    }
   };
 
   // Handle individual tool actions
@@ -265,6 +205,19 @@ export function WellnessToolsCMS() {
 
   const handleDeleteTool = (tool: WellnessTool) => {
     setDeleteModalTool(tool);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModalTool) return;
+    try {
+      await api.wellness.delete(deleteModalTool.id);
+      await fetchTools();
+      setDeleteModalTool(null);
+      alert("Tool deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete tool:", error);
+      alert("Failed to delete tool");
+    }
   };
 
   return (
@@ -797,10 +750,7 @@ export function WellnessToolsCMS() {
                   </Button>
                   <Button
                     className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => {
-                      alert(`Deleted: ${deleteModalTool.title}`);
-                      setDeleteModalTool(null);
-                    }}
+                    onClick={handleConfirmDelete}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete

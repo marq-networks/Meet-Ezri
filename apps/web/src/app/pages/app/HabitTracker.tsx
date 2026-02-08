@@ -17,7 +17,14 @@ import {
   Trash2,
   X
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import { api } from "../../../lib/api";
+import { format, isToday, isSameDay, subDays, startOfWeek, endOfWeek, isWithinInterval, differenceInDays } from "date-fns";
+
+interface HabitLog {
+  completed_at: string;
+}
 
 interface Habit {
   id: string;
@@ -31,90 +38,13 @@ interface Habit {
   completedThisWeek: number;
   category: string;
   weekProgress: boolean[];
+  habit_logs?: HabitLog[];
 }
 
 export function HabitTracker() {
-  const [habits, setHabits] = useState<Habit[]>([
-    {
-      id: "1",
-      name: "Morning Meditation",
-      icon: "🧘",
-      color: "from-purple-400 to-indigo-500",
-      frequency: "daily",
-      currentStreak: 12,
-      bestStreak: 28,
-      completedToday: true,
-      completedThisWeek: 6,
-      category: "Mindfulness",
-      weekProgress: [true, true, true, true, true, true, false]
-    },
-    {
-      id: "2",
-      name: "Exercise",
-      icon: "💪",
-      color: "from-orange-400 to-red-500",
-      frequency: "daily",
-      currentStreak: 5,
-      bestStreak: 15,
-      completedToday: false,
-      completedThisWeek: 4,
-      category: "Physical",
-      weekProgress: [true, false, true, true, false, true, false]
-    },
-    {
-      id: "3",
-      name: "Gratitude Journal",
-      icon: "📝",
-      color: "from-green-400 to-teal-500",
-      frequency: "daily",
-      currentStreak: 8,
-      bestStreak: 20,
-      completedToday: true,
-      completedThisWeek: 7,
-      category: "Mental",
-      weekProgress: [true, true, true, true, true, true, true]
-    },
-    {
-      id: "4",
-      name: "Drink 8 Glasses of Water",
-      icon: "💧",
-      color: "from-blue-400 to-cyan-500",
-      frequency: "daily",
-      currentStreak: 3,
-      bestStreak: 10,
-      completedToday: false,
-      completedThisWeek: 5,
-      category: "Health",
-      weekProgress: [true, true, false, true, true, false, true]
-    },
-    {
-      id: "5",
-      name: "Read for 30 min",
-      icon: "📚",
-      color: "from-amber-400 to-orange-500",
-      frequency: "daily",
-      currentStreak: 7,
-      bestStreak: 14,
-      completedToday: true,
-      completedThisWeek: 5,
-      category: "Personal Growth",
-      weekProgress: [true, false, true, true, true, false, true]
-    },
-    {
-      id: "6",
-      name: "Connect with Loved Ones",
-      icon: "❤️",
-      color: "from-pink-400 to-rose-500",
-      frequency: "weekly",
-      currentStreak: 4,
-      bestStreak: 12,
-      completedToday: false,
-      completedThisWeek: 3,
-      category: "Social",
-      weekProgress: [false, true, false, true, false, true, false]
-    }
-  ]);
-
+  const { session } = useAuth();
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showNewHabit, setShowNewHabit] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [habitFormData, setHabitFormData] = useState({
@@ -124,6 +54,125 @@ export function HabitTracker() {
     frequency: "daily" as "daily" | "weekly",
     color: "from-blue-400 to-cyan-500"
   });
+
+  useEffect(() => {
+    if (session) {
+      fetchHabits();
+    }
+  }, [session]);
+
+  const processHabitData = (backendHabit: any): Habit => {
+    const logs = backendHabit.habit_logs || [];
+    const sortedLogs = logs
+      .map((log: any) => new Date(log.completed_at))
+      .sort((a: Date, b: Date) => b.getTime() - a.getTime());
+
+    const today = new Date();
+    const completedToday = sortedLogs.some((date: Date) => isSameDay(date, today));
+
+    // Calculate streaks
+    let currentStreak = 0;
+    let bestStreak = 0;
+    
+    // Simple daily streak calculation
+    // This is a simplified version. Robust streak calculation is complex.
+    // We assume one log per day matters.
+    const uniqueDates = Array.from(new Set(sortedLogs.map((d: Date) => format(d, 'yyyy-MM-dd'))))
+      .map((d: string) => new Date(d))
+      .sort((a: Date, b: Date) => b.getTime() - a.getTime());
+
+    if (uniqueDates.length > 0) {
+      let streak = 0;
+      let checkDate = today;
+      
+      // If not completed today, check if completed yesterday to continue streak
+      if (!completedToday) {
+        checkDate = subDays(today, 1);
+      }
+
+      for (const logDate of uniqueDates) {
+        if (isSameDay(logDate, checkDate)) {
+          streak++;
+          checkDate = subDays(checkDate, 1);
+        } else if (isSameDay(logDate, subDays(checkDate, 1))) {
+           // Gap of one day? No, strict daily streak means consecutive days.
+           // But if we are iterating sorted dates, and we missed a day, streak breaks.
+           // Wait, logic above: checkDate decrements only if match found.
+           // If match not found for checkDate, but found for earlier date, streak broke.
+           break;
+        } else {
+           // Date is older than checkDate, streak broke.
+           if (differenceInDays(checkDate, logDate) > 0) {
+             break;
+           }
+        }
+      }
+      currentStreak = streak;
+    }
+
+    // Calculate best streak (simplified: just current streak or some random logic if historical data is complex)
+    // For now, let's just use current streak as best streak if it's higher than stored, but we don't store best streak in backend yet.
+    // We can iterate all logs to find longest sequence.
+    let tempStreak = 0;
+    let maxStreak = 0;
+    if (uniqueDates.length > 0) {
+       // uniqueDates is desc
+       const ascDates = [...uniqueDates].reverse();
+       let prevDate: Date | null = null;
+       for (const d of ascDates) {
+         if (!prevDate) {
+           tempStreak = 1;
+         } else {
+           if (differenceInDays(d, prevDate) === 1) {
+             tempStreak++;
+           } else {
+             tempStreak = 1;
+           }
+         }
+         maxStreak = Math.max(maxStreak, tempStreak);
+         prevDate = d;
+       }
+    }
+    bestStreak = maxStreak;
+
+    // Week progress
+    const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+    const weekProgress = Array(7).fill(false).map((_, i) => {
+      const day = new Date(startOfCurrentWeek);
+      day.setDate(day.getDate() + i);
+      return sortedLogs.some((logDate: Date) => isSameDay(logDate, day));
+    });
+
+    const completedThisWeek = weekProgress.filter(Boolean).length;
+
+    return {
+      id: backendHabit.id,
+      name: backendHabit.name,
+      icon: backendHabit.icon || "🎯",
+      color: backendHabit.color || "from-blue-400 to-cyan-500",
+      frequency: backendHabit.frequency as "daily" | "weekly",
+      currentStreak,
+      bestStreak,
+      completedToday,
+      completedThisWeek,
+      category: backendHabit.category || "General",
+      weekProgress,
+      habit_logs: logs
+    };
+  };
+
+  const fetchHabits = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.habits.getAll();
+      const processedHabits = data.map(processHabitData);
+      setHabits(processedHabits);
+    } catch (error) {
+      console.error("Failed to fetch habits", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const resetForm = () => {
     setHabitFormData({
@@ -136,61 +185,41 @@ export function HabitTracker() {
     setEditingHabit(null);
   };
 
-  const handleCreateHabit = () => {
-    const newHabit: Habit = {
-      id: Date.now().toString(),
-      name: habitFormData.name,
-      icon: habitFormData.icon,
-      color: habitFormData.color,
-      frequency: habitFormData.frequency,
-      currentStreak: 0,
-      bestStreak: 0,
-      completedToday: false,
-      completedThisWeek: 0,
-      category: habitFormData.category,
-      weekProgress: [false, false, false, false, false, false, false]
-    };
-    
-    setHabits([...habits, newHabit]);
-    setShowNewHabit(false);
-    resetForm();
+  const handleCreateHabit = async () => {
+    try {
+      await api.habits.create(habitFormData);
+      fetchHabits();
+      setShowNewHabit(false);
+      resetForm();
+    } catch (error) {
+      console.error("Failed to create habit", error);
+      alert("Failed to create habit");
+    }
   };
 
-  const handleEditHabit = (habit: Habit) => {
-    setEditingHabit(habit);
-    setHabitFormData({
-      name: habit.name,
-      icon: habit.icon,
-      category: habit.category,
-      frequency: habit.frequency,
-      color: habit.color
-    });
-    setShowNewHabit(true);
-  };
-
-  const handleUpdateHabit = () => {
+  const handleUpdateHabit = async () => {
     if (!editingHabit) return;
     
-    setHabits(habits.map(h => 
-      h.id === editingHabit.id
-        ? {
-            ...h,
-            name: habitFormData.name,
-            icon: habitFormData.icon,
-            category: habitFormData.category,
-            frequency: habitFormData.frequency,
-            color: habitFormData.color
-          }
-        : h
-    ));
-    
-    setShowNewHabit(false);
-    resetForm();
+    try {
+      await api.habits.update(editingHabit.id, habitFormData);
+      fetchHabits();
+      setShowNewHabit(false);
+      resetForm();
+    } catch (error) {
+      console.error("Failed to update habit", error);
+      alert("Failed to update habit");
+    }
   };
 
-  const handleDeleteHabit = (id: string) => {
+  const handleDeleteHabit = async (id: string) => {
     if (confirm("Are you sure you want to delete this habit?")) {
-      setHabits(habits.filter(h => h.id !== id));
+      try {
+        await api.habits.delete(id);
+        setHabits(habits.filter(h => h.id !== id));
+      } catch (error) {
+        console.error("Failed to delete habit", error);
+        alert("Failed to delete habit");
+      }
     }
   };
 
@@ -202,19 +231,22 @@ export function HabitTracker() {
     }
   };
 
-  const toggleHabit = (id: string) => {
-    setHabits(habits.map(habit => {
-      if (habit.id === id) {
-        const newCompletedToday = !habit.completedToday;
-        return {
-          ...habit,
-          completedToday: newCompletedToday,
-          currentStreak: newCompletedToday ? habit.currentStreak + 1 : Math.max(0, habit.currentStreak - 1),
-          completedThisWeek: newCompletedToday ? habit.completedThisWeek + 1 : Math.max(0, habit.completedThisWeek - 1)
-        };
+  const toggleHabit = async (id: string) => {
+    const habit = habits.find(h => h.id === id);
+    if (!habit) return;
+
+    try {
+      if (habit.completedToday) {
+        // Uncomplete
+        await api.habits.uncomplete(id, format(new Date(), 'yyyy-MM-dd'));
+      } else {
+        // Complete
+        await api.habits.complete(id, new Date().toISOString());
       }
-      return habit;
-    }));
+      fetchHabits(); // Refresh to update streaks and logs
+    } catch (error) {
+      console.error("Failed to toggle habit", error);
+    }
   };
 
   const totalHabits = habits.length;

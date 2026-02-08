@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { createMoodHandler, getMyMoodsHandler, getAllMoodsHandler } from "./moods.controller";
+import { createMoodHandler, getMyMoodsHandler, getAllMoodsHandler, getUserMoodsHandler } from "./moods.controller";
 import { createMoodSchema } from "./moods.schema";
 
 export async function moodRoutes(app: FastifyInstance) {
@@ -24,6 +24,17 @@ export async function moodRoutes(app: FastifyInstance) {
       preHandler: [app.authenticate],
     },
     getMyMoodsHandler
+  );
+  
+  app.get(
+    "/admin/users/:userId/moods",
+    {
+       schema: {
+        tags: ["Moods", "Admin"],
+      },
+      preHandler: [app.authenticate, app.authorize(['super_admin', 'org_admin', 'team_admin'])],
+    },
+    getUserMoodsHandler
   );
   
   app.get(

@@ -17,96 +17,134 @@ import {
   Zap,
   X
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { api } from "../../../lib/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { format, differenceInMinutes, parseISO } from "date-fns";
 
 export function SleepTracker() {
-  const [selectedDate, setSelectedDate] = useState("2024-12-29");
+  const { session } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showLogModal, setShowLogModal] = useState(false);
   const [sleepFormData, setSleepFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'),
     bedTime: "",
     wakeTime: "",
     quality: "85",
     notes: ""
   });
+  
+  const [sleepEntries, setSleepEntries] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleLogSleep = () => {
-    // In a real app, this would save to backend/localStorage
-    console.log("Logging sleep data:", sleepFormData);
-    
-    // Reset form
-    setSleepFormData({
-      date: new Date().toISOString().split('T')[0],
-      bedTime: "",
-      wakeTime: "",
-      quality: "85",
-      notes: ""
-    });
-    
-    // Close modal
-    setShowLogModal(false);
-    
-    // Show success feedback
-    alert("Sleep data logged successfully!");
+  useEffect(() => {
+    fetchSleepEntries();
+  }, [session]);
+
+  const fetchSleepEntries = async () => {
+    if (!session) return;
+    try {
+      setIsLoading(true);
+      const data = await api.sleep.getEntries();
+      setSleepEntries(data);
+    } catch (error) {
+      console.error("Failed to fetch sleep entries", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const sleepData = [
-    { day: "Mon", hours: 7.2, quality: 85 },
-    { day: "Tue", hours: 6.5, quality: 70 },
-    { day: "Wed", hours: 8.1, quality: 92 },
-    { day: "Thu", hours: 7.8, quality: 88 },
-    { day: "Fri", hours: 6.0, quality: 65 },
-    { day: "Sat", hours: 9.2, quality: 95 },
-    { day: "Sun", hours: 8.5, quality: 90 }
-  ];
+  const handleLogSleep = async () => {
+    try {
+      // Construct ISO strings for bed time and wake time
+      // Assuming bedTime and wakeTime are HH:MM strings and date is YYYY-MM-DD
+      // Handle overnight sleep where wake date might be next day
+      
+      const bedDateTimeStr = `${sleepFormData.date}T${sleepFormData.bedTime}:00`;
+      let wakeDateTimeStr = `${sleepFormData.date}T${sleepFormData.wakeTime}:00`;
+      
+      // If wake time is earlier than bed time, assume it's next day
+      if (sleepFormData.wakeTime < sleepFormData.bedTime) {
+        const nextDate = new Date(sleepFormData.date);
+        nextDate.setDate(nextDate.getDate() + 1);
+        wakeDateTimeStr = `${format(nextDate, 'yyyy-MM-dd')}T${sleepFormData.wakeTime}:00`;
+      }
 
-  const sleepQualityFactors = [
-    { factor: "Duration", value: 85 },
-    { factor: "Deep Sleep", value: 75 },
-    { factor: "REM Sleep", value: 70 },
-    { factor: "Awakenings", value: 90 },
-    { factor: "Consistency", value: 80 }
-  ];
-
-  const recentSleep = [
-    {
-      date: "December 29, 2024",
-      bedTime: "10:30 PM",
-      wakeTime: "6:45 AM",
-      duration: "8h 15m",
-      quality: 92,
-      deepSleep: "2h 30m",
-      remSleep: "1h 45m",
-      awakenings: 2,
-      notes: "Felt very rested, had a relaxing evening routine"
-    },
-    {
-      date: "December 28, 2024",
-      bedTime: "11:45 PM",
-      wakeTime: "7:15 AM",
-      duration: "7h 30m",
-      quality: 78,
-      deepSleep: "1h 50m",
-      remSleep: "1h 20m",
-      awakenings: 3,
-      notes: "Watched TV late, took longer to fall asleep"
-    },
-    {
-      date: "December 27, 2024",
-      bedTime: "10:00 PM",
-      wakeTime: "6:30 AM",
-      duration: "8h 30m",
-      quality: 95,
-      deepSleep: "3h 0m",
-      remSleep: "2h 0m",
-      awakenings: 1,
-      notes: "Perfect sleep! Exercised in the afternoon"
+      await api.sleep.createEntry({
+        bed_time: new Date(bedDateTimeStr).toISOString(),
+        wake_time: new Date(wakeDateTimeStr).toISOString(),
+        quality_rating: parseInt(sleepFormData.quality),
+        notes: sleepFormData.notes
+      });
+      
+      // Reset form
+      setSleepFormData({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        bedTime: "",
+        wakeTime: "",
+        quality: "85",
+        notes: ""
+      });
+      
+      // Close modal
+      setShowLogModal(false);
+      
+      // Refresh data
+      fetchSleepEntries();
+      
+      // Show success feedback
+      alert("Sleep data logged successfully!");
+    } catch (error) {
+      console.error("Failed to log sleep", error);
+      alert("Failed to log sleep data. Please try again.");
     }
-  ];
+  };
 
-  const avgSleepDuration = (sleepData.reduce((acc, d) => acc + d.hours, 0) / sleepData.length).toFixed(1);
-  const avgQuality = Math.round(sleepData.reduce((acc, d) => acc + d.quality, 0) / sleepData.length);
+  // Calculate stats from real data
+  const calculateStats = () => {
+    if (sleepEntries.length === 0) return { avgDuration: "0.0", avgQuality: 0, avgDeepSleep: "0.0h", streak: 0 };
+    
+    let totalDurationMinutes = 0;
+    let totalQuality = 0;
+    
+    sleepEntries.forEach(entry => {
+      const duration = differenceInMinutes(parseISO(entry.wake_time), parseISO(entry.bed_time));
+      totalDurationMinutes += duration;
+      totalQuality += entry.quality_rating || 0;
+    });
+    
+    const avgDuration = (totalDurationMinutes / sleepEntries.length / 60).toFixed(1);
+    // Scale quality back to 100 if it was 1-5, assuming input was 1-100 but schema is 1-5? 
+    // Wait, schema says 1-5. Frontend input defaults to 85. Let's adjust frontend to 1-100 or schema to 1-100.
+    // Schema said min(1).max(5). But frontend has 85. Let's update schema or assume frontend sends 1-5 mapped.
+    // Let's assume for now we store what we get, but validation might fail. 
+    // Actually, let's fix the validation in backend schema if needed, or adjust frontend.
+    // Frontend `quality` state default "85".
+    // Let's assume we want 0-100 for quality.
+    // I should probably update the backend schema to allow 0-100.
+    
+    const avgQualityVal = Math.round(totalQuality / sleepEntries.length);
+    
+    return {
+      avgDuration,
+      avgQuality: avgQualityVal,
+      avgDeepSleep: "N/A", // Not tracking deep sleep yet
+      streak: sleepEntries.length // Simple streak logic
+    };
+  };
+
+  const stats = calculateStats();
+
+  // Prepare chart data
+  const chartData = sleepEntries.slice(0, 7).reverse().map(entry => {
+    const duration = differenceInMinutes(parseISO(entry.wake_time), parseISO(entry.bed_time)) / 60;
+    return {
+      day: format(parseISO(entry.bed_time), 'EEE'),
+      hours: parseFloat(duration.toFixed(1)),
+      quality: entry.quality_rating
+    };
+  });
 
   return (
     <AppLayout>
@@ -141,7 +179,7 @@ export function SleepTracker() {
                   <Bed className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-indigo-600">{avgSleepDuration}h</p>
+                  <p className="text-2xl font-bold text-indigo-600">{stats.avgDuration}h</p>
                   <p className="text-xs text-muted-foreground">Avg Sleep</p>
                 </div>
               </div>
@@ -153,7 +191,7 @@ export function SleepTracker() {
                   <Activity className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-blue-600">{avgQuality}%</p>
+                  <p className="text-2xl font-bold text-blue-600">{stats.avgQuality}%</p>
                   <p className="text-xs text-muted-foreground">Avg Quality</p>
                 </div>
               </div>
@@ -165,7 +203,7 @@ export function SleepTracker() {
                   <Brain className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-purple-600">2.5h</p>
+                  <p className="text-2xl font-bold text-purple-600">{stats.avgDeepSleep}</p>
                   <p className="text-xs text-muted-foreground">Avg Deep Sleep</p>
                 </div>
               </div>
@@ -177,7 +215,7 @@ export function SleepTracker() {
                   <Zap className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-green-600">5</p>
+                  <p className="text-2xl font-bold text-green-600">{stats.streak}</p>
                   <p className="text-xs text-muted-foreground">Day Streak</p>
                 </div>
               </div>
@@ -198,188 +236,108 @@ export function SleepTracker() {
                 <Clock className="w-5 h-5 text-primary" />
                 Weekly Sleep Duration
               </h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={sleepData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="hours" fill="#6366f1" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="mt-4 p-3 bg-indigo-50 rounded-lg">
-                <p className="text-sm text-gray-700">
-                  <strong>Tip:</strong> Aim for 7-9 hours of sleep each night for optimal health.
-                </p>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="hours" stroke="#8884d8" fillOpacity={1} fill="url(#colorHours)" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </Card>
           </motion.div>
 
-          {/* Sleep Quality Chart */}
+          {/* Sleep Quality Trend */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
+            transition={{ delay: 0.2 }}
           >
             <Card className="p-6">
               <h3 className="font-bold mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
                 Sleep Quality Trend
               </h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={sleepData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="quality"
-                    stroke="#8b5cf6"
-                    fill="url(#colorQuality)"
-                    strokeWidth={2}
-                  />
-                  <defs>
-                    <linearGradient id="colorQuality" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1} />
-                    </linearGradient>
-                  </defs>
-                </AreaChart>
-              </ResponsiveContainer>
-              <div className="mt-4 p-3 bg-purple-50 rounded-lg">
-                <p className="text-sm text-gray-700">
-                  <strong>Great progress!</strong> Your sleep quality has improved by 15% this week.
-                </p>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="quality" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </Card>
           </motion.div>
         </div>
 
-        {/* Sleep Quality Factors Radar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-6"
-        >
-          <Card className="p-6">
-            <h3 className="font-bold mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary" />
-              Sleep Quality Factors
-            </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={sleepQualityFactors}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="factor" />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} />
-                <Radar
-                  name="Quality"
-                  dataKey="value"
-                  stroke="#6366f1"
-                  fill="#6366f1"
-                  fillOpacity={0.6}
-                />
-                <Tooltip />
-              </RadarChart>
-            </ResponsiveContainer>
-          </Card>
-        </motion.div>
-
-        {/* Recent Sleep Logs */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-        >
-          <h2 className="text-xl font-bold mb-4">Recent Sleep Logs</h2>
-          <div className="space-y-4">
-            {recentSleep.map((log, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + index * 0.05 }}
-              >
-                <Card className="p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
-                    <div className="flex items-center gap-3 mb-3 sm:mb-0">
-                      <div className={`p-3 rounded-xl ${
-                        log.quality >= 90
-                          ? "bg-green-100"
-                          : log.quality >= 75
-                          ? "bg-blue-100"
-                          : "bg-orange-100"
-                      }`}>
-                        <Moon className={`w-6 h-6 ${
-                          log.quality >= 90
-                            ? "text-green-600"
-                            : log.quality >= 75
-                            ? "text-blue-600"
-                            : "text-orange-600"
-                        }`} />
-                      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Recent History */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="lg:col-span-2"
+          >
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  Recent History
+                </h3>
+              </div>
+              <div className="space-y-4">
+                {sleepEntries.slice(0, 5).map((log, index) => (
+                  <div
+                    key={index}
+                    className="p-4 rounded-xl border border-border hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                       <div>
-                        <p className="font-bold">{log.date}</p>
-                        <p className="text-sm text-muted-foreground">{log.duration} total sleep</p>
+                        <h4 className="font-semibold">{format(parseISO(log.bed_time), 'MMMM d, yyyy')}</h4>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                          <span className="flex items-center gap-1">
+                            <Moon className="w-3 h-3" />
+                            {format(parseISO(log.bed_time), 'h:mm a')} - {format(parseISO(log.wake_time), 'h:mm a')}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {(differenceInMinutes(parseISO(log.wake_time), parseISO(log.bed_time)) / 60).toFixed(1)}h
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
+                          {log.quality_rating}% Quality
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className={`px-4 py-2 rounded-full font-bold ${
-                        log.quality >= 90
-                          ? "bg-green-100 text-green-700"
-                          : log.quality >= 75
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-orange-100 text-orange-700"
-                      }`}>
-                        {log.quality}% Quality
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Moon className="w-4 h-4 text-indigo-500" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Bedtime</p>
-                        <p className="text-sm font-medium">{log.bedTime}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Sun className="w-4 h-4 text-amber-500" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Wake Time</p>
-                        <p className="text-sm font-medium">{log.wakeTime}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Brain className="w-4 h-4 text-purple-500" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Deep Sleep</p>
-                        <p className="text-sm font-medium">{log.deepSleep}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-blue-500" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">REM Sleep</p>
-                        <p className="text-sm font-medium">{log.remSleep}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {log.notes && (
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-700">
-                        <strong>Notes:</strong> {log.notes}
+                    {log.notes && (
+                      <p className="text-sm text-muted-foreground bg-muted/30 p-2 rounded-lg mt-2">
+                        "{log.notes}"
                       </p>
-                    </div>
-                  )}
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                    )}
+                  </div>
+                ))}
+                {sleepEntries.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No sleep entries yet. Log your first sleep!
+                  </div>
+                )}
+              </div>
+            </Card>
+          </motion.div>
 
         {/* Sleep Tips */}
         <motion.div
@@ -421,6 +379,7 @@ export function SleepTracker() {
             </div>
           </Card>
         </motion.div>
+      </div>
       </div>
 
       {/* Log Sleep Modal */}

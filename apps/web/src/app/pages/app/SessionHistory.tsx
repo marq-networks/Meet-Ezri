@@ -20,8 +20,10 @@ import {
   Frown,
   Star
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { api } from "../../../lib/api";
 
 interface SessionData {
   id: string;
@@ -40,12 +42,85 @@ interface SessionData {
   status?: "completed" | "upcoming";
 }
 
+interface BackendSession {
+  id: string;
+  user_id: string;
+  title: string | null;
+  status: string;
+  type: string;
+  scheduled_at: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  duration_minutes: number | null;
+  created_at: string;
+  updated_at: string;
+  _count?: {
+    session_messages: number;
+  };
+}
+
 export function SessionHistory() {
   const navigate = useNavigate();
+  const { session } = useAuth();
   const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
   const [filterMood, setFilterMood] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"completed" | "upcoming">("completed");
+  
+  const [completedSessions, setCompletedSessions] = useState<SessionData[]>([]);
+  const [upcomingSessions, setUpcomingSessions] = useState<SessionData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!session?.access_token) return;
+      
+      try {
+        const data: BackendSession[] = await api.sessions.list();
+        
+        const mapSession = (s: BackendSession): SessionData => ({
+          id: s.id,
+          date: new Date(s.scheduled_at || s.started_at || s.created_at).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+            hour: s.scheduled_at ? 'numeric' : undefined,
+            minute: s.scheduled_at ? 'numeric' : undefined,
+          }),
+          duration: s.duration_minutes ? `${s.duration_minutes} min` : "N/A",
+          type: s.type === 'instant' ? 'video' : (s.type as "video" | "chat") || 'video', // Default to video if unknown
+          mood: "neutral", // Placeholder
+          moodEmoji: "😐", // Placeholder
+          messagesCount: s._count?.session_messages || 0,
+          highlightsCount: 0, // Placeholder
+          topicsDiscussed: [], // Placeholder
+          thumbnail: `gradient-${(s.id.charCodeAt(0) % 5) + 1}`, // Deterministic random
+          summary: s.title || "No summary available",
+          sentiment: 0, // Placeholder
+          favorite: false, // Placeholder
+          status: s.status === 'completed' ? 'completed' : 'upcoming'
+        });
+
+        const completed = data
+          .filter(s => s.status === 'completed' || s.status === 'cancelled') // Treat cancelled as completed history for now? Or just completed.
+          .filter(s => s.status === 'completed') // Strict for now
+          .map(mapSession);
+          
+        const upcoming = data
+          .filter(s => s.status === 'scheduled' || s.status === 'active')
+          .map(mapSession);
+
+        setCompletedSessions(completed);
+        setUpcomingSessions(upcoming);
+      } catch (error) {
+        console.error('Error fetching sessions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, [session]);
 
   const handleReplaySession = () => {
     // Navigate to active session page to replay the session
@@ -83,139 +158,6 @@ export function SessionHistory() {
     URL.revokeObjectURL(url);
   };
 
-  const completedSessions: SessionData[] = [
-    {
-      id: "1",
-      date: "December 29, 2024",
-      duration: "45 min",
-      type: "video",
-      mood: "positive",
-      moodEmoji: "😊",
-      messagesCount: 28,
-      highlightsCount: 5,
-      topicsDiscussed: ["Work Stress", "Coping Strategies", "Self-Care"],
-      thumbnail: "gradient-1",
-      summary: "We discussed managing work-related stress and explored healthy coping mechanisms. You identified three key self-care activities to incorporate into your routine.",
-      sentiment: 85,
-      favorite: true,
-      status: "completed"
-    },
-    {
-      id: "2",
-      date: "December 27, 2024",
-      duration: "38 min",
-      type: "chat",
-      mood: "neutral",
-      moodEmoji: "😐",
-      messagesCount: 22,
-      highlightsCount: 3,
-      topicsDiscussed: ["Daily Routine", "Goals", "Motivation"],
-      thumbnail: "gradient-2",
-      summary: "Focused on establishing a consistent daily routine and setting achievable short-term goals. Discussed strategies for maintaining motivation.",
-      sentiment: 70,
-      favorite: false,
-      status: "completed"
-    },
-    {
-      id: "3",
-      date: "December 25, 2024",
-      duration: "52 min",
-      type: "video",
-      mood: "concerned",
-      moodEmoji: "😟",
-      messagesCount: 35,
-      highlightsCount: 7,
-      topicsDiscussed: ["Anxiety", "Breathing Exercises", "Support System"],
-      thumbnail: "gradient-3",
-      summary: "Addressed feelings of anxiety and practiced breathing exercises together. Identified key members of your support system and ways to reach out.",
-      sentiment: 55,
-      favorite: true,
-      status: "completed"
-    },
-    {
-      id: "4",
-      date: "December 22, 2024",
-      duration: "40 min",
-      type: "chat",
-      mood: "positive",
-      moodEmoji: "😊",
-      messagesCount: 25,
-      highlightsCount: 4,
-      topicsDiscussed: ["Achievements", "Gratitude", "Future Plans"],
-      thumbnail: "gradient-4",
-      summary: "Celebrated recent achievements and practiced gratitude. Discussed exciting plans for the future and steps to get there.",
-      sentiment: 90,
-      favorite: false,
-      status: "completed"
-    },
-    {
-      id: "5",
-      date: "December 20, 2024",
-      duration: "35 min",
-      type: "video",
-      mood: "neutral",
-      moodEmoji: "😐",
-      messagesCount: 20,
-      highlightsCount: 2,
-      topicsDiscussed: ["Sleep Patterns", "Energy Levels", "Exercise"],
-      thumbnail: "gradient-5",
-      summary: "Explored your sleep patterns and energy levels throughout the day. Discussed the connection between physical activity and mental wellness.",
-      sentiment: 75,
-      favorite: false,
-      status: "completed"
-    }
-  ];
-
-  const upcomingSessions: SessionData[] = [
-    {
-      id: "u1",
-      date: "December 31, 2024 at 2:00 PM",
-      duration: "45 min",
-      type: "video",
-      mood: "positive",
-      moodEmoji: "😊",
-      messagesCount: 0,
-      highlightsCount: 0,
-      topicsDiscussed: ["Year Review", "Goal Setting", "New Year Plans"],
-      thumbnail: "gradient-1",
-      summary: "Scheduled year-end review session to reflect on progress and set intentions for the new year.",
-      sentiment: 0,
-      favorite: false,
-      status: "upcoming"
-    },
-    {
-      id: "u2",
-      date: "January 2, 2025 at 10:00 AM",
-      duration: "30 min",
-      type: "chat",
-      mood: "neutral",
-      moodEmoji: "😊",
-      messagesCount: 0,
-      highlightsCount: 0,
-      topicsDiscussed: ["Weekly Check-in"],
-      thumbnail: "gradient-2",
-      summary: "Regular weekly check-in to discuss progress and any challenges.",
-      sentiment: 0,
-      favorite: false,
-      status: "upcoming"
-    },
-    {
-      id: "u3",
-      date: "January 5, 2025 at 4:00 PM",
-      duration: "60 min",
-      type: "video",
-      mood: "positive",
-      moodEmoji: "😊",
-      messagesCount: 0,
-      highlightsCount: 0,
-      topicsDiscussed: ["Deep Dive Session", "Personal Growth"],
-      thumbnail: "gradient-3",
-      summary: "Extended session for in-depth discussion on personal growth strategies.",
-      sentiment: 0,
-      favorite: true,
-      status: "upcoming"
-    }
-  ];
 
   const sessions = activeTab === "completed" ? completedSessions : upcomingSessions;
 
@@ -244,6 +186,13 @@ export function SessionHistory() {
       default: return null;
     }
   };
+
+  // Calculate stats
+  const totalDurationMinutes = completedSessions.reduce((acc, s) => {
+    const minutes = parseInt(s.duration.split(' ')[0]) || 0;
+    return acc + minutes;
+  }, 0);
+  const totalHours = (totalDurationMinutes / 60).toFixed(1);
 
   return (
     <AppLayout>
@@ -287,7 +236,7 @@ export function SessionHistory() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Time</p>
-                  <p className="text-2xl font-bold">3.5h</p>
+                  <p className="text-2xl font-bold">{totalHours}h</p>
                 </div>
                 <Clock className="w-8 h-8 text-secondary" />
               </div>
@@ -296,7 +245,7 @@ export function SessionHistory() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Avg Sentiment</p>
-                  <p className="text-2xl font-bold">75%</p>
+                  <p className="text-2xl font-bold">N/A</p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-green-500" />
               </div>

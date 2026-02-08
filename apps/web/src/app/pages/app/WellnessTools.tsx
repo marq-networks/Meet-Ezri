@@ -23,8 +23,11 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
+import { api } from "../../../lib/api";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function WellnessTools() {
+  const { session } = useAuth();
   const [activeExercise, setActiveExercise] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [timer, setTimer] = useState(0);
@@ -32,6 +35,9 @@ export function WellnessTools() {
   const [phaseTimer, setPhaseTimer] = useState(0);
   const [guidedExercise, setGuidedExercise] = useState<string | null>(null);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  
+  const [exercises, setExercises] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const categories = [
     { icon: Wind, label: "Breathing", color: "from-blue-400 to-cyan-500" },
@@ -40,101 +46,65 @@ export function WellnessTools() {
     { icon: Smile, label: "Gratitude", color: "from-amber-400 to-orange-500" }
   ];
 
-  const exercises = [
-    {
-      id: "box-breathing",
-      category: "Breathing",
-      title: "Box Breathing",
-      description: "4-4-4-4 breathing pattern to reduce stress",
-      duration: "5 min",
-      difficulty: "Beginner",
-      icon: Wind,
-      color: "from-blue-400 to-cyan-500",
-      favorite: true
-    },
-    {
-      id: "body-scan",
-      category: "Meditation",
-      title: "Body Scan Meditation",
-      description: "Progressive relaxation from head to toe",
-      duration: "10 min",
-      difficulty: "Beginner",
-      icon: Brain,
-      color: "from-purple-400 to-pink-500",
-      favorite: false
-    },
-    {
-      id: "478-breathing",
-      category: "Breathing",
-      title: "4-7-8 Breathing",
-      description: "Natural tranquilizer for the nervous system",
-      duration: "3 min",
-      difficulty: "Beginner",
-      icon: Wind,
-      color: "from-blue-400 to-cyan-500",
-      favorite: true
-    },
-    {
-      id: "mindfulness",
-      category: "Meditation",
-      title: "Mindfulness Practice",
-      description: "Present moment awareness meditation",
-      duration: "15 min",
-      difficulty: "Intermediate",
-      icon: Brain,
-      color: "from-purple-400 to-pink-500",
-      favorite: false
-    },
-    {
-      id: "rain-sounds",
-      category: "Sounds",
-      title: "Rain & Thunder",
-      description: "Calming nature sounds for relaxation",
-      duration: "∞",
-      difficulty: "Any",
-      icon: Music,
-      color: "from-green-400 to-emerald-500",
-      favorite: true
-    },
-    {
-      id: "gratitude",
-      category: "Gratitude",
-      title: "Gratitude Reflection",
-      description: "Focus on three things you're grateful for",
-      duration: "5 min",
-      difficulty: "Beginner",
-      icon: Smile,
-      color: "from-amber-400 to-orange-500",
-      favorite: false
-    },
-    {
-      id: "morning-meditation",
-      category: "Meditation",
-      title: "Morning Meditation",
-      description: "Start your day with positive intentions",
-      duration: "10 min",
-      difficulty: "Beginner",
-      icon: Sun,
-      color: "from-purple-400 to-pink-500",
-      favorite: false
-    },
-    {
-      id: "sleep-meditation",
-      category: "Meditation",
-      title: "Sleep Meditation",
-      description: "Wind down and prepare for restful sleep",
-      duration: "20 min",
-      difficulty: "Beginner",
-      icon: Moon,
-      color: "from-indigo-400 to-purple-500",
-      favorite: true
+  useEffect(() => {
+    const fetchTools = async () => {
+      if (!session) return;
+      try {
+        setIsLoading(true);
+        const data = await api.wellness.getAll();
+        
+        // Map backend data to frontend format or use as is
+        // For now, if DB is empty, we might want to seed it or just show empty
+        // But since we want to remove dummy data, let's just use what comes from API
+        // If API returns empty, we should probably handle that gracefully or seed initial data
+        
+        const mappedExercises = data.map((tool: any) => ({
+          id: tool.id,
+          category: tool.category,
+          title: tool.title,
+          description: tool.description,
+          duration: tool.duration ? `${tool.duration} min` : "5 min",
+          difficulty: "Beginner", // Default for now
+          icon: getIconForCategory(tool.category),
+          color: getColorForCategory(tool.category),
+          favorite: false // Need to implement favorites in backend
+        }));
+
+        setExercises(mappedExercises);
+      } catch (error) {
+        console.error("Failed to fetch wellness tools", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTools();
+  }, [session]);
+
+  const getIconForCategory = (category: string) => {
+    switch (category) {
+      case 'Breathing': return Wind;
+      case 'Meditation': return Brain;
+      case 'Sounds': return Music;
+      case 'Gratitude': return Smile;
+      default: return Sparkles;
     }
-  ];
+  };
+
+  const getColorForCategory = (category: string) => {
+    switch (category) {
+      case 'Breathing': return "from-blue-400 to-cyan-500";
+      case 'Meditation': return "from-purple-400 to-pink-500";
+      case 'Sounds': return "from-green-400 to-emerald-500";
+      case 'Gratitude': return "from-amber-400 to-orange-500";
+      default: return "from-gray-400 to-gray-500";
+    }
+  };
 
   const stats = [
-    { label: "Completed", value: "24", icon: Star },
-    { label: "Minutes", value: "186", icon: Clock },
-    { label: "Streak", value: "5 days", icon: Heart }
+    { label: "Completed", value: "0", icon: Star },
+    { label: "Minutes", value: "0", icon: Clock },
+    { label: "Streak", value: "0 days", icon: Heart }
   ];
 
   const handleStartExercise = (exerciseId: string) => {

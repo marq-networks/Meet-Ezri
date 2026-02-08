@@ -282,7 +282,7 @@ export default function App() {
             <Route path="/admin/org-admin-dashboard" element={<OrgAdminDashboard />} />
             <Route path="/admin/team-admin-dashboard" element={<TeamAdminDashboard />} />
             <Route path="/admin/user-management" element={<UserManagement />} />
-            <Route path="/admin/user-details-enhanced" element={<UserDetailsEnhanced />} />
+            <Route path="/admin/user-details-enhanced/:userId" element={<UserDetailsEnhanced />} />
             <Route path="/admin/crisis-monitoring" element={<CrisisMonitoring />} />
             <Route path="/admin/crisis-dashboard" element={<CrisisDashboard />} />
             <Route path="/admin/crisis-event-details" element={<CrisisEventDetails />} />

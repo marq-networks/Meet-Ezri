@@ -85,6 +85,14 @@ export async function getSessionsHandler(
   return reply.send(sessions);
 }
 
+export async function getUserSessionsHandler(
+  request: FastifyRequest<{ Params: { userId: string } }>,
+  reply: FastifyReply
+) {
+  const sessions = await getSessions(request.params.userId);
+  return reply.send(sessions);
+}
+
 export async function getSessionHandler(
   request: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply

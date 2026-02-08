@@ -8,6 +8,33 @@ interface UserPayload {
   role?: string;
 }
 
+export async function getAllUsersHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const users = await userService.getAllUsers();
+    return users;
+  } catch (error) {
+    request.log.error({ error }, 'Failed to fetch all users');
+    return reply.code(500).send({ message: 'Failed to fetch users' });
+  }
+}
+
+export async function getUserProfileAdminHandler(
+  request: FastifyRequest<{ Params: { userId: string } }>,
+  reply: FastifyReply
+) {
+  const { userId } = request.params;
+  const profile = await userService.getProfile(userId);
+
+  if (!profile) {
+    return reply.code(404).send({ message: 'Profile not found' });
+  }
+
+  return profile;
+}
+
 export async function getMeHandler(
   request: FastifyRequest,
   reply: FastifyReply

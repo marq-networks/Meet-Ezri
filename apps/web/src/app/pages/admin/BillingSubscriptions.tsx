@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { api } from "../../../lib/api";
+import { format } from "date-fns";
 import {
   CreditCard,
   DollarSign,
@@ -27,7 +29,7 @@ import {
 } from "lucide-react";
 
 interface Subscription {
-  id: number;
+  id: string;
   organization: string;
   plan: "free" | "basic" | "pro" | "enterprise";
   status: "active" | "trial" | "cancelled" | "past_due";
@@ -35,10 +37,11 @@ interface Subscription {
   mrr: number;
   nextBilling: string;
   startDate: string;
+  billing_cycle?: "monthly" | "yearly";
 }
 
 interface Transaction {
-  id: number;
+  id: string;
   date: string;
   organization: string;
   amount: number;
@@ -54,6 +57,73 @@ export function BillingSubscriptions() {
   const [showProcessPaymentModal, setShowProcessPaymentModal] = useState(false);
   const [showManageSubscriptionModal, setShowManageSubscriptionModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Edit states
+  const [editPlan, setEditPlan] = useState<string>("free");
+  const [editStatus, setEditStatus] = useState<string>("active");
+  const [editBillingCycle, setEditBillingCycle] = useState<string>("monthly");
+
+  useEffect(() => {
+    fetchSubscriptions();
+  }, []);
+
+  const fetchSubscriptions = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.billing.getAllSubscriptions();
+      
+      const mappedSubscriptions: Subscription[] = data.map((sub: any) => {
+        // Calculate MRR based on plan and cycle
+        let mrr = 0;
+        if (sub.plan_type === 'pro') {
+          mrr = sub.billing_cycle === 'yearly' ? 25 : 29.99;
+        } else if (sub.plan_type === 'enterprise') {
+          mrr = sub.billing_cycle === 'yearly' ? 80 : 99.99;
+        }
+
+        return {
+          id: sub.id,
+          organization: sub.users?.profiles?.full_name || sub.users?.email || "Unknown User",
+          plan: (sub.plan_type || "free") as any,
+          status: (sub.status === 'canceled' ? 'cancelled' : sub.status) as any,
+          users: 1, // Default to 1 as current model is individual subscriptions
+          mrr: mrr,
+          nextBilling: sub.current_period_end ? new Date(sub.current_period_end).toISOString().split('T')[0] : 'N/A',
+          startDate: sub.created_at ? new Date(sub.created_at).toISOString().split('T')[0] : 'N/A',
+          billing_cycle: sub.billing_cycle || 'monthly'
+        };
+      });
+
+      setSubscriptions(mappedSubscriptions);
+    } catch (error) {
+      console.error("Failed to fetch subscriptions:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleUpdateSubscription = async () => {
+    if (!selectedSubscription) return;
+    
+    try {
+      await api.billing.updateSubscriptionById(selectedSubscription.id, {
+        plan_type: editPlan as any,
+        status: editStatus === 'cancelled' ? 'canceled' : editStatus, // backend uses 'canceled'
+        billing_cycle: editBillingCycle as any
+      });
+      
+      // Refresh list
+      await fetchSubscriptions();
+      setShowManageSubscriptionModal(false);
+      alert("Subscription updated successfully");
+    } catch (error) {
+      console.error("Failed to update subscription:", error);
+      alert("Failed to update subscription");
+    }
+  };
+
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
@@ -117,93 +187,15 @@ export function BillingSubscriptions() {
     window.URL.revokeObjectURL(url);
   };
 
-  const subscriptions: Subscription[] = [
-    {
-      id: 1,
-      organization: "Healthcare Corp",
-      plan: "enterprise",
-      status: "active",
-      users: 250,
-      mrr: 2499,
-      nextBilling: "Jan 15, 2025",
-      startDate: "Jan 15, 2024",
-    },
-    {
-      id: 2,
-      organization: "Wellness Clinic",
-      plan: "pro",
-      status: "active",
-      users: 50,
-      mrr: 499,
-      nextBilling: "Jan 8, 2025",
-      startDate: "Mar 8, 2024",
-    },
-    {
-      id: 3,
-      organization: "Mental Health Services",
-      plan: "basic",
-      status: "active",
-      users: 15,
-      mrr: 149,
-      nextBilling: "Jan 12, 2025",
-      startDate: "Jun 12, 2024",
-    },
-    {
-      id: 4,
-      organization: "Community Health Center",
-      plan: "pro",
-      status: "trial",
-      users: 25,
-      mrr: 0,
-      nextBilling: "Jan 5, 2025",
-      startDate: "Dec 22, 2024",
-    },
-    {
-      id: 5,
-      organization: "Therapy Practice",
-      plan: "basic",
-      status: "past_due",
-      users: 10,
-      mrr: 149,
-      nextBilling: "Dec 28, 2024",
-      startDate: "Feb 28, 2024",
-    },
-  ];
-
-  const transactions: Transaction[] = [
-    {
-      id: 1,
-      date: "Dec 28, 2024",
-      organization: "Healthcare Corp",
-      amount: 2499,
-      status: "paid",
-      invoice: "INV-2024-1234",
-    },
-    {
-      id: 2,
-      date: "Dec 27, 2024",
-      organization: "Wellness Clinic",
-      amount: 499,
-      status: "paid",
-      invoice: "INV-2024-1233",
-    },
-    {
-      id: 3,
-      date: "Dec 26, 2024",
-      organization: "Therapy Practice",
-      amount: 149,
-      status: "failed",
-      invoice: "INV-2024-1232",
-    },
-    {
-      id: 4,
-      date: "Dec 25, 2024",
-      organization: "Mental Health Services",
-      amount: 149,
-      status: "paid",
-      invoice: "INV-2024-1231",
-    },
-  ];
+  // Derived from subscriptions for now
+  const transactions: Transaction[] = subscriptions.map((sub, index) => ({
+    id: `txn-${sub.id}-${index}`,
+    date: sub.startDate,
+    organization: sub.organization,
+    amount: sub.mrr,
+    status: "paid",
+    invoice: `INV-${new Date().getFullYear()}-${index + 1000}`
+  }));
 
   const filteredSubscriptions = subscriptions.filter((sub) => {
     const matchesSearch = sub.organization.toLowerCase().includes(searchQuery.toLowerCase());
@@ -823,11 +815,41 @@ export function BillingSubscriptions() {
 
               <div>
                 <label className="block text-sm font-medium mb-2">Plan</label>
-                <select className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
+                <select 
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                  value={editPlan}
+                  onChange={(e) => setEditPlan(e.target.value)}
+                >
                   <option value="free">Free</option>
                   <option value="basic">Basic</option>
                   <option value="pro">Pro</option>
                   <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Status</label>
+                <select 
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                >
+                  <option value="active">Active</option>
+                  <option value="trial">Trial</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="past_due">Past Due</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Billing Cycle</label>
+                <select 
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                  value={editBillingCycle}
+                  onChange={(e) => setEditBillingCycle(e.target.value)}
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
                 </select>
               </div>
 
@@ -837,6 +859,8 @@ export function BillingSubscriptions() {
                   type="number"
                   placeholder="Number of Users"
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+                  value={selectedSubscription.users}
+                  readOnly
                 />
               </div>
 
@@ -866,16 +890,6 @@ export function BillingSubscriptions() {
                 />
               </div>
 
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-blue-900">Placeholder Mode</p>
-                  <p className="text-xs text-blue-700">
-                    This would update the subscription details in your connected payment processor.
-                  </p>
-                </div>
-              </div>
-
               <div className="flex gap-2 pt-4">
                 <Button
                   variant="outline"
@@ -886,10 +900,7 @@ export function BillingSubscriptions() {
                 </Button>
                 <Button
                   className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-                  onClick={() => {
-                    console.log("Updating subscription...");
-                    setShowManageSubscriptionModal(false);
-                  }}
+                  onClick={handleUpdateSubscription}
                 >
                   Update Subscription
                 </Button>

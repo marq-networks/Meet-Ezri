@@ -39,8 +39,13 @@ export async function getSessions(userId: string, status?: string) {
       user_id: userId,
       ...(status ? { status } : {}),
     },
+    include: {
+      _count: {
+        select: { session_messages: true }
+      }
+    },
     orderBy: {
-      scheduled_at: 'asc',
+      scheduled_at: 'desc', // Changed to desc to show recent sessions first
     },
   });
 }

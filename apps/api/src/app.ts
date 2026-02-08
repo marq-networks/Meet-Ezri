@@ -10,6 +10,11 @@ import { systemSettingsRoutes } from './modules/system-settings/system-settings.
 import { sessionRoutes } from './modules/sessions/sessions.routes';
 import { moodRoutes } from './modules/moods/moods.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
+import { journalRoutes } from './modules/journal/journal.routes';
+import { billingRoutes } from './modules/billing/billing.routes';
+import { wellnessRoutes } from './modules/wellness/wellness.routes';
+import { sleepRoutes } from './modules/sleep/sleep.routes';
+import { habitsRoutes } from './modules/habits/habits.routes';
 import jwkToPem from 'jwk-to-pem';
 const jwtLib = require('jsonwebtoken');
 
@@ -132,6 +137,11 @@ app.register(systemSettingsRoutes, { prefix: '/api/settings' });
 app.register(sessionRoutes, { prefix: '/api/sessions' });
 app.register(moodRoutes, { prefix: '/api/moods' });
 app.register(adminRoutes, { prefix: '/api/admin' });
+app.register(journalRoutes, { prefix: '/api/journal' });
+app.register(billingRoutes, { prefix: '/api/billing' });
+app.register(wellnessRoutes, { prefix: '/api/wellness' });
+app.register(sleepRoutes, { prefix: '/api/sleep' });
+app.register(habitsRoutes, { prefix: '/api/habits' });
 
 const start = async () => {
   try {

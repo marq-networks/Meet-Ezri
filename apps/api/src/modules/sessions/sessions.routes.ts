@@ -1,8 +1,16 @@
 import { FastifyInstance } from 'fastify';
-import { createSessionHandler, getSessionsHandler, getSessionHandler, endSessionHandler, createMessageHandler, getSessionTranscriptHandler, scheduleSessionHandler } from './sessions.controller';
+import { createSessionHandler, getSessionsHandler, getSessionHandler, endSessionHandler, createMessageHandler, getSessionTranscriptHandler, scheduleSessionHandler, getUserSessionsHandler } from './sessions.controller';
 import { createSessionSchema, endSessionSchema, createMessageSchema } from './sessions.schema';
 
 export async function sessionRoutes(app: FastifyInstance) {
+  app.get(
+    '/admin/users/:userId/sessions',
+    {
+      preHandler: [app.authenticate, app.authorize(['super_admin', 'org_admin'])],
+    },
+    getUserSessionsHandler
+  );
+
   app.post(
     '/',
     {

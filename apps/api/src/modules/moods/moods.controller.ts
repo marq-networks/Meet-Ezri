@@ -27,3 +27,12 @@ export async function getAllMoodsHandler(
   const moods = await getAllMoods();
   return reply.send(moods);
 }
+
+export async function getUserMoodsHandler(
+  request: FastifyRequest<{ Params: { userId: string } }>,
+  reply: FastifyReply
+) {
+  const { userId } = request.params;
+  const moods = await getMoodsByUserId(userId);
+  return reply.send(moods);
+}

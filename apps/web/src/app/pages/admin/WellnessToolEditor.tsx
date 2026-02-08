@@ -28,9 +28,12 @@ import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
+import { api } from "../../../lib/api";
+
 export function WellnessToolEditor() {
   const navigate = useNavigate();
   const [showPreview, setShowPreview] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     category: "Breathing",
@@ -115,16 +118,42 @@ export function WellnessToolEditor() {
     });
   };
 
-  const handleSaveDraft = () => {
-    console.log("Saving as draft:", formData);
-    // Implementation would save to localStorage/backend
-    navigate("/admin/wellness-tools-cms");
+  const handleSaveDraft = async () => {
+    await handleSave("draft");
   };
 
-  const handlePublish = () => {
-    console.log("Publishing tool:", formData);
-    // Implementation would validate and publish
-    navigate("/admin/wellness-tools-cms");
+  const handlePublish = async () => {
+    await handleSave("published");
+  };
+
+  const handleSave = async (status: "draft" | "published") => {
+    try {
+      setIsSaving(true);
+      const payload = {
+        title: formData.title,
+        category: formData.category,
+        description: formData.description,
+        duration_minutes: formData.duration,
+        difficulty: formData.difficulty,
+        icon: formData.icon,
+        status: status,
+        content: JSON.stringify({
+          scriptSteps: formData.scriptSteps,
+          tags: formData.tags,
+          enabledForGuidedMode: formData.enabledForGuidedMode,
+          audioEnabled: formData.audioEnabled,
+          visualsEnabled: formData.visualsEnabled
+        })
+      };
+
+      await api.wellness.create(payload);
+      navigate("/admin/wellness-tools-cms");
+    } catch (error) {
+      console.error("Failed to save tool:", error);
+      alert("Failed to save tool. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const selectedIcon = iconOptions.find((opt) => opt.name === formData.icon);

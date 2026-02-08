@@ -18,8 +18,16 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     Promise.resolve([])
   ]);
 
-  // Mock revenue for now as we don't have a payments table
-  const revenue = 284; 
+  // Calculate MRR (Monthly Recurring Revenue) from active subscriptions
+  const revenueResult = await prisma.subscriptions.aggregate({
+    _sum: {
+      amount: true
+    },
+    where: {
+      status: 'active'
+    }
+  });
+  const revenue = revenueResult._sum.amount?.toNumber() || 0;
 
   // Mock system health
   const systemHealth = [
@@ -77,4 +85,123 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     revenueData,
     platformDistribution
   };
+}
+
+export async function getAllUsers() {
+  const users = await prisma.profiles.findMany({
+    orderBy: {
+      created_at: 'desc'
+    },
+    select: {
+      id: true,
+      email: true,
+      full_name: true,
+      avatar_url: true,
+      created_at: true,
+      updated_at: true,
+      role: true,
+    }
+  });
+
+  return users.map(user => ({
+    ...user,
+    email: user.email || '',
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+    status: 'active' // Defaulting to active as we don't have a status field in profiles yet
+  }));
+}
+
+export async function getUserById(id: string) {
+  const user = await prisma.profiles.findUnique({
+    where: { id },
+    include: {
+      org_members: {
+        include: {
+          organizations: true
+        }
+      },
+      _count: {
+        select: {
+          app_sessions: true,
+          journal_entries: true,
+          mood_entries: true,
+          wellness_tools: true // using this for wellness streak proxy for now
+        }
+      }
+    }
+  });
+
+  if (!user) return null;
+
+  return {
+    ...user,
+    email: user.email || '',
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+    status: 'active',
+    // Map additional fields for frontend convenience
+    organization: user.org_members[0]?.organizations.name || 'Individual',
+    stats: {
+      total_sessions: user._count.app_sessions,
+      journal_entries: user._count.journal_entries,
+      mood_entries: user._count.mood_entries,
+    }
+  };
+}
+
+export async function updateUser(id: string, data: { status?: string; role?: string }) {
+  // If status is handled (e.g. for suspension), we might need a new field or use metadata. 
+  // For now, we only persist role changes if provided.
+  // We can treat 'suspended' status as a role or a specific flag if we add it to schema later.
+  
+  const updateData: any = {};
+  if (data.role) {
+    updateData.role = data.role;
+  }
+  
+  // Note: 'status' is not yet in the profiles schema, so we are ignoring it for persistence 
+  // but simpler implementation might map 'suspended' to a role or specific field.
+  // For this task, we will just update the role.
+
+  const user = await prisma.profiles.update({
+    where: { id },
+    data: updateData,
+    select: {
+      id: true,
+      email: true,
+      full_name: true,
+      avatar_url: true,
+      created_at: true,
+      updated_at: true,
+      role: true,
+    }
+  });
+
+  return {
+    ...user,
+    email: user.email || '',
+    status: data.status || 'active'
+  };
+}
+
+export async function deleteUser(id: string) {
+  // We should likely cascade delete or soft delete.
+  // For now, we'll try to delete the profile.
+  // Note: Foreign key constraints might prevent this if not handled.
+  // Since we have cascading deletes on many relations, this might work, 
+  // but 'users' table in auth schema might be the parent.
+  // However, we can only control the public.profiles here easily.
+  
+  return prisma.profiles.delete({
+    where: { id }
+  });
+}
+
+export async function getUserAuditLogs(userId: string) {
+  return prisma.audit_logs.findMany({
+    where: { actor_id: userId },
+    orderBy: { created_at: 'desc' },
+    take: 50 // Limit to recent 50 logs
+  });
 }

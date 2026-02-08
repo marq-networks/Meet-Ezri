@@ -6,9 +6,29 @@ import {
   deleteUserHandler,
   getCreditsHandler,
   initProfileHandler,
+  getAllUsersHandler,
+  getUserProfileAdminHandler,
 } from './user.controller';
 
 export async function userRoutes(fastify: FastifyInstance) {
+  // Admin Routes
+  fastify.get(
+    '/admin/users',
+    {
+      preHandler: [fastify.authenticate, fastify.authorize(['super_admin', 'org_admin'])],
+    },
+    getAllUsersHandler
+  );
+
+  fastify.get(
+    '/admin/users/:userId',
+    {
+      preHandler: [fastify.authenticate, fastify.authorize(['super_admin', 'org_admin'])],
+    },
+    getUserProfileAdminHandler
+  );
+
+  // User Routes
   fastify.post(
     '/init',
     {

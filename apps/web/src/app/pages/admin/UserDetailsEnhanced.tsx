@@ -1,168 +1,174 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { ArrowLeft, Mail, Phone, Calendar, Activity, MessageSquare, Heart, AlertTriangle, Ban, CheckCircle2, Clock, MapPin, Shield, Star, TrendingUp, TrendingDown, Edit, Trash2, Key, Send, Download, Eye, EyeOff, User, CreditCard, Bell, Settings } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ArrowLeft, Mail, Phone, Calendar, Activity, MessageSquare, Heart, AlertTriangle, Ban, CheckCircle2, Clock, MapPin, Shield, Star, TrendingUp, TrendingDown, Edit, Trash2, Key, Send, Download, Eye, EyeOff, User, CreditCard, Bell, Settings, Moon, Sun } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { api } from "../../../lib/api";
 
 export function UserDetailsEnhanced() {
+  const { userId } = useParams<{ userId: string }>();
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"overview" | "activity" | "sessions" | "security">("overview");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [userData, setUserData] = useState<any>(null);
+  const [activityTimeline, setActivityTimeline] = useState<any[]>([]);
+  const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  
+  const [securityLogs, setSecurityLogs] = useState<any[]>([]);
 
-  const user = {
-    id: 1,
-    name: "Sarah Mitchell",
-    email: "sarah.m@example.com",
-    phone: "+1 (555) 123-4567",
-    avatar: "S",
-    status: "active",
-    riskLevel: "low",
-    subscription: "premium",
-    organization: "HealthCare Corp",
-    joinDate: "Jan 15, 2024",
-    lastActive: "2 hours ago",
-    location: "San Francisco, CA",
-    timezone: "PST (UTC-8)",
-    preferredAvatar: "Serena (Empathetic)",
-    totalSessions: 45,
-    avgSessionDuration: "42 min",
-    completionRate: "94%",
-    avgMoodScore: 7.2,
-    journalEntries: 38,
-    wellnessStreak: 12,
+  useEffect(() => {
+    async function fetchData() {
+      if (!userId) return;
+      
+      try {
+        setLoading(true);
+        // Fetch user profile
+        const userProfile = await api.admin.getUserProfile(userId);
+        
+        // Fetch related data
+        const [sessions, moods, journals, sleep, habits, auditLogs, subscription] = await Promise.all([
+          api.sessions.getUserSessions(userId).catch(() => []),
+          api.moods.getUserMoods(userId).catch(() => []),
+          api.journal.getUserJournals(userId).catch(() => []),
+          api.sleep.getUserEntries(userId).catch(() => []),
+          api.habits.getUserHabits(userId).catch(() => []),
+          api.getUserAuditLogs(userId).catch(() => []),
+          api.getUserSubscription(userId).catch(() => null)
+        ]);
+        
+        // Calculate stats
+        const totalDuration = sessions.reduce((acc: number, s: any) => acc + (s.duration_minutes || 0), 0);
+        const avgDuration = sessions.length ? Math.round(totalDuration / sessions.length) : 0;
+        
+        const completedSessions = sessions.filter((s: any) => s.status === 'completed').length;
+        const completionRate = sessions.length ? Math.round((completedSessions / sessions.length) * 100) : 0;
+
+        // Process user data
+        const processedUser = {
+          id: userProfile.id,
+          name: userProfile.full_name || userProfile.email?.split('@')[0] || "Unknown User",
+          email: userProfile.email || "No Email",
+          phone: userProfile.phone || "Not set",
+          avatar: userProfile.full_name?.[0] || userProfile.email?.[0] || "U",
+          status: userProfile.status || "active",
+          riskLevel: userProfile.riskLevel || "low", // Assuming backend might return this or we default
+          subscription: subscription?.plan_type || "free",
+          organization: userProfile.organization || "Individual",
+          joinDate: new Date(userProfile.created_at).toLocaleDateString(),
+          lastActive: new Date(userProfile.updated_at).toLocaleDateString(), // Proxy for last active
+          location: userProfile.timezone || "Unknown Location",
+          timezone: userProfile.timezone || "UTC",
+          preferredAvatar: userProfile.selected_avatar || "Not set",
+          totalSessions: userProfile.stats?.total_sessions || sessions.length || 0,
+          avgSessionDuration: `${avgDuration} min`,
+          completionRate: `${completionRate}%`,
+          avgMoodScore: calculateAvgMood(moods),
+          journalEntries: userProfile.stats?.journal_entries || journals.length || 0,
+          wellnessStreak: (userProfile.stats?.mood_entries || 0) + (habits.length > 0 ? habits.length : 0), // Improved proxy
+          sleepEntries: sleep.length || 0,
+          habitsCount: habits.length || 0
+        };
+        
+        setUserData(processedUser);
+        setRecentSessions(sessions);
+        setSecurityLogs(auditLogs);
+        
+        // Build timeline
+        const timeline = [
+          ...sessions.map((s: any) => ({
+            id: s.id,
+            type: "session",
+            title: "Session",
+            description: `${s.type} session`,
+            time: new Date(s.created_at).toLocaleString(),
+            timestamp: new Date(s.created_at).getTime(),
+            icon: MessageSquare,
+            color: "text-blue-600",
+            bg: "bg-blue-100"
+          })),
+          ...moods.map((m: any) => ({
+            id: m.id,
+            type: "mood",
+            title: "Mood Check-in",
+            description: `Mood: ${m.mood} (${m.intensity}/10)`,
+            time: new Date(m.created_at).toLocaleString(),
+            timestamp: new Date(m.created_at).getTime(),
+            icon: Heart,
+            color: "text-pink-600",
+            bg: "bg-pink-100"
+          })),
+          ...journals.map((j: any) => ({
+            id: j.id,
+            type: "journal",
+            title: "Journal Entry",
+            description: j.title || "Untitled Entry",
+            time: new Date(j.created_at).toLocaleString(),
+            timestamp: new Date(j.created_at).getTime(),
+            icon: Edit,
+            color: "text-purple-600",
+            bg: "bg-purple-100"
+          })),
+          ...sleep.map((s: any) => ({
+            id: s.id,
+            type: "sleep",
+            title: "Sleep Log",
+            description: `Sleep Quality: ${s.quality_rating || 'N/A'}/5`,
+            time: new Date(s.created_at).toLocaleString(),
+            timestamp: new Date(s.created_at).getTime(),
+            icon: Moon,
+            color: "text-indigo-600",
+            bg: "bg-indigo-100"
+          })),
+          // Assuming habits have a created_at or we want to show them as "Habit Active"
+          // If we had completion history for habits, we'd add it here. 
+          // For now, we'll just list the habits themselves as 'Created Habit' events if we use created_at
+          ...habits.map((h: any) => ({
+            id: h.id,
+            type: "habit",
+            title: "Habit Created",
+            description: `Habit: ${h.name}`,
+            time: new Date(h.created_at).toLocaleString(),
+            timestamp: new Date(h.created_at).getTime(),
+            icon: CheckCircle2,
+            color: "text-teal-600",
+            bg: "bg-teal-100"
+          }))
+        ].sort((a, b) => b.timestamp - a.timestamp);
+        
+        setActivityTimeline(timeline);
+        
+      } catch (err: any) {
+        console.error("Error fetching user details:", err);
+        setError(err.message || "Failed to load user details");
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchData();
+  }, [userId]);
+
+  const calculateAvgMood = (moods: any[]) => {
+    if (!moods.length) return 0;
+    const sum = moods.reduce((acc, curr) => acc + (curr.intensity || 0), 0);
+    return (sum / moods.length).toFixed(1);
   };
-
-  const stats = [
-    { label: "Total Sessions", value: "45", icon: MessageSquare, color: "text-blue-600", bg: "bg-blue-100" },
-    { label: "Mood Score", value: "7.2/10", icon: Heart, color: "text-pink-600", bg: "bg-pink-100" },
-    { label: "Wellness Streak", value: "12 days", icon: TrendingUp, color: "text-green-600", bg: "bg-green-100" },
-    { label: "Journal Entries", value: "38", icon: Edit, color: "text-purple-600", bg: "bg-purple-100" },
-  ];
-
-  const activityTimeline = [
-    {
-      id: 1,
-      type: "session",
-      title: "Completed therapy session",
-      description: "45-minute session with Serena - Anxiety Management",
-      time: "2 hours ago",
-      icon: MessageSquare,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-    },
-    {
-      id: 2,
-      type: "mood",
-      title: "Logged mood check-in",
-      description: "Mood: Good (7/10) - Feeling productive and focused",
-      time: "5 hours ago",
-      icon: Heart,
-      color: "text-pink-600",
-      bg: "bg-pink-100",
-    },
-    {
-      id: 3,
-      type: "journal",
-      title: "Created journal entry",
-      description: "Daily reflection: Work-life balance insights",
-      time: "1 day ago",
-      icon: Edit,
-      color: "text-purple-600",
-      bg: "bg-purple-100",
-    },
-    {
-      id: 4,
-      type: "session",
-      title: "Completed therapy session",
-      description: "32-minute session with Luna - Sleep Issues",
-      time: "3 days ago",
-      icon: MessageSquare,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-    },
-    {
-      id: 5,
-      type: "achievement",
-      title: "Earned wellness badge",
-      description: "7-Day Wellness Warrior - Maintained daily check-ins",
-      time: "5 days ago",
-      icon: Star,
-      color: "text-orange-600",
-      bg: "bg-orange-100",
-    },
-  ];
-
-  const recentSessions = [
-    {
-      id: 1,
-      date: "Dec 28, 2024",
-      avatar: "Serena",
-      topic: "Anxiety Management",
-      duration: "45 min",
-      sentiment: "Positive",
-      rating: 5,
-    },
-    {
-      id: 2,
-      date: "Dec 25, 2024",
-      avatar: "Luna",
-      topic: "Sleep Issues",
-      duration: "32 min",
-      sentiment: "Neutral",
-      rating: 4,
-    },
-    {
-      id: 3,
-      date: "Dec 22, 2024",
-      avatar: "Marcus",
-      topic: "Work Stress",
-      duration: "58 min",
-      sentiment: "Positive",
-      rating: 5,
-    },
-    {
-      id: 4,
-      date: "Dec 19, 2024",
-      avatar: "Serena",
-      topic: "Relationship Issues",
-      duration: "41 min",
-      sentiment: "Positive",
-      rating: 4,
-    },
-  ];
-
-  const securityEvents = [
-    {
-      id: 1,
-      event: "Password changed",
-      time: "2 weeks ago",
-      ip: "192.168.1.1",
-      device: "iPhone 14 Pro",
-      location: "San Francisco, CA",
-    },
-    {
-      id: 2,
-      event: "Login from new device",
-      time: "1 month ago",
-      ip: "192.168.1.24",
-      device: "MacBook Pro",
-      location: "San Francisco, CA",
-    },
-    {
-      id: 3,
-      event: "Email verified",
-      time: "3 months ago",
-      ip: "192.168.1.1",
-      device: "iPhone 14 Pro",
-      location: "San Francisco, CA",
-    },
-  ];
 
   const handleAction = (action: string) => {
     alert(`Performing action: ${action}`);
     setShowActionMenu(false);
   };
+  
+  const statsCards = userData ? [
+    { label: "Total Sessions", value: userData.totalSessions.toString(), icon: MessageSquare, color: "text-blue-600", bg: "bg-blue-100" },
+    { label: "Mood Score", value: `${userData.avgMoodScore}/10`, icon: Heart, color: "text-pink-600", bg: "bg-pink-100" },
+    { label: "Wellness Streak", value: `${userData.wellnessStreak} entries`, icon: TrendingUp, color: "text-green-600", bg: "bg-green-100" },
+    { label: "Journal Entries", value: userData.journalEntries.toString(), icon: Edit, color: "text-purple-600", bg: "bg-purple-100" },
+  ] : [];
 
   const tabs = [
     { id: "overview", label: "Overview", icon: User },
@@ -170,6 +176,31 @@ export function UserDetailsEnhanced() {
     { id: "sessions", label: "Sessions", icon: MessageSquare },
     { id: "security", label: "Security", icon: Shield },
   ];
+
+  if (loading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error || !userData) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex flex-col items-center justify-center h-96 space-y-4">
+          <AlertTriangle className="h-12 w-12 text-red-500" />
+          <h2 className="text-xl font-bold">Error Loading User</h2>
+          <p className="text-muted-foreground">{error || "User not found"}</p>
+          <Link to="/admin/user-management">
+            <Button>Back to Users</Button>
+          </Link>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
@@ -189,26 +220,26 @@ export function UserDetailsEnhanced() {
                 whileHover={{ scale: 1.05 }}
                 className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-3xl font-bold shadow-lg"
               >
-                {user.avatar}
+                {userData.avatar}
               </motion.div>
               <div>
-                <h1 className="text-3xl font-bold mb-1">{user.name}</h1>
-                <p className="text-muted-foreground mb-2">{user.email}</p>
+                <h1 className="text-3xl font-bold mb-1">{userData.name}</h1>
+                <p className="text-muted-foreground mb-2">{userData.email}</p>
                 <div className="flex items-center gap-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    user.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    userData.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                   }`}>
-                    {user.status}
+                    {userData.status}
                   </span>
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium capitalize">
-                    {user.subscription}
+                    {userData.subscription}
                   </span>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${
-                    user.riskLevel === "low" ? "bg-green-100 text-green-700" :
-                    user.riskLevel === "medium" ? "bg-yellow-100 text-yellow-700" :
+                    userData.riskLevel === "low" ? "bg-green-100 text-green-700" :
+                    userData.riskLevel === "medium" ? "bg-yellow-100 text-yellow-700" :
                     "bg-red-100 text-red-700"
                   }`}>
-                    {user.riskLevel} Risk
+                    {userData.riskLevel} Risk
                   </span>
                 </div>
               </div>
@@ -288,7 +319,7 @@ export function UserDetailsEnhanced() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {stats.map((stat, index) => (
+          {statsCards.map((stat, index) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
@@ -355,48 +386,48 @@ export function UserDetailsEnhanced() {
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Full Name</p>
-                    <p className="font-medium">{user.name}</p>
+                    <p className="font-medium">{userData.name}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Email</p>
-                    <p className="font-medium">{user.email}</p>
+                    <p className="font-medium">{userData.email}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Phone</p>
-                    <p className="font-medium">{user.phone}</p>
+                    <p className="font-medium">{userData.phone}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Organization</p>
-                    <p className="font-medium">{user.organization}</p>
+                    <p className="font-medium">{userData.organization}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Location</p>
                     <p className="font-medium flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-muted-foreground" />
-                      {user.location}
+                      {userData.location}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Timezone</p>
-                    <p className="font-medium">{user.timezone}</p>
+                    <p className="font-medium">{userData.timezone}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Join Date</p>
                     <p className="font-medium flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
-                      {user.joinDate}
+                      {userData.joinDate}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Last Active</p>
                     <p className="font-medium flex items-center gap-2">
                       <Clock className="w-4 h-4 text-muted-foreground" />
-                      {user.lastActive}
+                      {userData.lastActive}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Preferred Avatar</p>
-                    <p className="font-medium">{user.preferredAvatar}</p>
+                    <p className="font-medium">{userData.preferredAvatar}</p>
                   </div>
                 </div>
               </Card>
@@ -411,45 +442,45 @@ export function UserDetailsEnhanced() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground">Avg Session Duration</p>
-                      <p className="font-bold text-blue-600">{user.avgSessionDuration}</p>
+                      <p className="font-bold text-blue-600">{userData.avgSessionDuration}</p>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: "70%" }} />
+                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: "0%" }} />
                     </div>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground">Completion Rate</p>
-                      <p className="font-bold text-green-600">{user.completionRate}</p>
+                      <p className="font-bold text-green-600">{userData.completionRate}</p>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-green-600 h-2 rounded-full" style={{ width: "94%" }} />
+                      <div className="bg-green-600 h-2 rounded-full" style={{ width: "0%" }} />
                     </div>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground">Avg Mood Score</p>
-                      <p className="font-bold text-pink-600">{user.avgMoodScore}/10</p>
+                      <p className="font-bold text-pink-600">{userData.avgMoodScore}/10</p>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-pink-600 h-2 rounded-full" style={{ width: "72%" }} />
+                      <div className="bg-pink-600 h-2 rounded-full" style={{ width: `${(userData.avgMoodScore / 10) * 100}%` }} />
                     </div>
                   </div>
 
                   <div className="pt-4 space-y-3">
                     <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                       <span className="text-sm font-medium">Journal Entries</span>
-                      <span className="font-bold text-purple-600">{user.journalEntries}</span>
+                      <span className="font-bold text-purple-600">{userData.journalEntries}</span>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                       <span className="text-sm font-medium">Wellness Streak</span>
-                      <span className="font-bold text-green-600">{user.wellnessStreak} days</span>
+                      <span className="font-bold text-green-600">{userData.wellnessStreak} entries</span>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                       <span className="text-sm font-medium">Risk Assessment</span>
-                      <span className="font-bold text-green-600 capitalize">{user.riskLevel}</span>
+                      <span className="font-bold text-green-600 capitalize">{userData.riskLevel}</span>
                     </div>
                   </div>
                 </div>
@@ -470,7 +501,7 @@ export function UserDetailsEnhanced() {
                   Activity Timeline
                 </h2>
                 <div className="space-y-4">
-                  {activityTimeline.map((activity, index) => (
+                  {activityTimeline.length > 0 ? activityTimeline.map((activity, index) => (
                     <motion.div
                       key={activity.id}
                       initial={{ opacity: 0, x: -20 }}
@@ -492,7 +523,9 @@ export function UserDetailsEnhanced() {
                         <p className="text-sm text-muted-foreground">{activity.description}</p>
                       </div>
                     </motion.div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-8 text-muted-foreground">No recent activity</div>
+                  )}
                 </div>
               </Card>
             </motion.div>
@@ -512,47 +545,35 @@ export function UserDetailsEnhanced() {
                 </h2>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avatar</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Topic</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sentiment</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                    <thead>
+                      <tr className="border-b text-left text-sm text-muted-foreground">
+                        <th className="pb-3 pl-4">Date</th>
+                        <th className="pb-3">Type</th>
+                        <th className="pb-3">Duration</th>
+                        <th className="pb-3">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {recentSessions.map((session, index) => (
-                        <motion.tr
-                          key={session.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="hover:bg-gray-50"
-                        >
-                          <td className="px-4 py-3 text-sm">{session.date}</td>
-                          <td className="px-4 py-3 text-sm font-medium">{session.avatar}</td>
-                          <td className="px-4 py-3 text-sm">{session.topic}</td>
-                          <td className="px-4 py-3 text-sm">{session.duration}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              session.sentiment === "Positive" ? "bg-green-100 text-green-700" :
-                              session.sentiment === "Neutral" ? "bg-gray-100 text-gray-700" :
-                              "bg-red-100 text-red-700"
+                    <tbody>
+                      {recentSessions.length > 0 ? recentSessions.map((session: any) => (
+                        <tr key={session.id} className="border-b last:border-0 hover:bg-gray-50">
+                          <td className="py-4 pl-4">{new Date(session.created_at).toLocaleDateString()}</td>
+                          <td className="py-4 capitalize">{session.type}</td>
+                          <td className="py-4">{session.duration_minutes || session.duration || 0} min</td>
+                          <td className="py-4">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              session.status === 'completed' ? 'bg-green-100 text-green-700' :
+                              session.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                              'bg-blue-100 text-blue-700'
                             }`}>
-                              {session.sentiment}
+                              {session.status || 'Scheduled'}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1">
-                              {[...Array(session.rating)].map((_, i) => (
-                                <Star key={i} className="w-4 h-4 text-orange-500 fill-orange-500" />
-                              ))}
-                            </div>
-                          </td>
-                        </motion.tr>
-                      ))}
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={4} className="text-center py-8 text-muted-foreground">No sessions found</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -573,56 +594,27 @@ export function UserDetailsEnhanced() {
                   Security Events
                 </h2>
                 <div className="space-y-4">
-                  {securityEvents.map((event, index) => (
-                    <motion.div
-                      key={event.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="p-4 border rounded-lg hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <p className="font-medium">{event.event}</p>
-                        <span className="text-xs text-muted-foreground">{event.time}</span>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-muted-foreground">
-                        <div>
-                          <p className="text-xs">IP Address</p>
-                          <p className="font-medium">{event.ip}</p>
+                  {securityLogs.length > 0 ? securityLogs.map((log: any) => (
+                    <div key={log.id} className="flex items-start justify-between p-4 border rounded-lg">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                          <Key className="w-5 h-5 text-gray-600" />
                         </div>
                         <div>
-                          <p className="text-xs">Device</p>
-                          <p className="font-medium">{event.device}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs">Location</p>
-                          <p className="font-medium">{event.location}</p>
+                          <p className="font-medium">{log.action}</p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            {log.details?.device && <span>{log.details.device}</span>}
+                            {log.details?.device && <span>•</span>}
+                            {log.details?.ip_address && <span>{log.details.ip_address}</span>}
+                            {!log.details?.device && !log.details?.ip_address && <span>No details available</span>}
+                          </div>
                         </div>
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-
-                <div className="mt-6 pt-6 border-t">
-                  <h3 className="font-bold mb-4">Security Actions</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Button variant="outline" className="justify-start gap-2">
-                      <Key className="w-4 h-4" />
-                      Force Password Reset
-                    </Button>
-                    <Button variant="outline" className="justify-start gap-2">
-                      <Ban className="w-4 h-4" />
-                      Revoke All Sessions
-                    </Button>
-                    <Button variant="outline" className="justify-start gap-2">
-                      <Bell className="w-4 h-4" />
-                      Enable 2FA
-                    </Button>
-                    <Button variant="outline" className="justify-start gap-2">
-                      <Download className="w-4 h-4" />
-                      Download Security Log
-                    </Button>
-                  </div>
+                      <span className="text-sm text-muted-foreground">{new Date(log.created_at).toLocaleString()}</span>
+                    </div>
+                  )) : (
+                    <div className="text-center py-8 text-muted-foreground">No security events found</div>
+                  )}
                 </div>
               </Card>
             </motion.div>
