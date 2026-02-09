@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link } from "react-router";
+import { useAuth } from "../../contexts/AuthContext";
+import { api } from "@/lib/api";
 import { 
   CreditCard, 
   Clock, 
@@ -25,61 +27,83 @@ import { Card } from "../../components/ui/card";
 import { AppLayout } from "../../components/AppLayout";
 import { SUBSCRIPTION_PLANS, formatMinutes } from "../../utils/subscriptionPlans";
 import type { PlanTier, UserSubscription, UsageRecord } from "../../utils/subscriptionPlans";
-import { api } from "../../../lib/api";
-import { useAuth } from "../../contexts/AuthContext";
 
 export function Billing() {
-  const { session } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
-
-  const [showPAYGModal, setShowPAYGModal] = useState(false);
-  const [paygMinutes, setPaygMinutes] = useState(60);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [userSubscription, setUserSubscription] = useState<UserSubscription>({
+    userId: "",
+    planId: "free",
+    status: "active",
+    creditsRemaining: 0,
+    creditsTotal: 0,
+    billingCycle: {
+      startDate: new Date().toISOString(),
+      endDate: new Date().toISOString(),
+      renewsOn: undefined
+    },
+    payAsYouGoCredits: 0,
+    totalSpent: 0,
+    usageHistory: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!session) return;
+      if (!session?.user) return;
+      
       try {
-        setIsLoading(true);
+        // Refresh profile to get latest credits
+        await refreshProfile();
+
         const [subData, sessionsData] = await Promise.all([
           api.billing.getSubscription(),
-          api.sessions.getSessions()
+          api.sessions.list()
         ]);
 
         const planId = (subData.plan_type as PlanTier) || 'free';
         const plan = SUBSCRIPTION_PLANS[planId];
-        
-        // Calculate usage from sessions
-        // Filter sessions in current billing cycle (assuming monthly starting from created_at or last billing)
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         
-        const currentCycleSessions = sessionsData.filter((s: any) => new Date(s.start_time) >= startOfMonth);
-        const minutesUsed = currentCycleSessions.reduce((acc: number, s: any) => acc + (s.duration || 0), 0);
+        // Calculate credits from profile (Single Source of Truth)
+        // profile.credits contains the total available credits (Plan + PAYG)
+        const totalAvailableCredits = profile?.credits || 0;
         
-        const usageHistory: UsageRecord[] = sessionsData.map((s: any) => ({
-          id: s.id,
-          date: s.start_time,
-          minutesUsed: s.duration || 0,
-          sessionType: 'ai-avatar',
-          avatarName: 'AI Companion', // Backend doesn't return avatar name yet in session list clearly?
-          cost: 0 // Mock cost
-        })).slice(0, 5); // Last 5 sessions
+        // Calculate PAYG credits as any excess over the plan limit
+        // This is a simplified logic: if you have more than plan limit, the rest is PAYG
+        // In reality, you might want to track them separately in DB, but for now this works for UI
+        const payAsYouGoCredits = Math.max(0, totalAvailableCredits - plan.credits);
+        
+        // Credits remaining in the plan bucket (capped at plan limit)
+        const creditsRemaining = Math.min(totalAvailableCredits, plan.credits);
+
+        const usageHistory: UsageRecord[] = sessionsData
+          .filter((s: any) => s.status === 'completed')
+          .sort((a: any, b: any) => new Date(b.started_at || b.created_at).getTime() - new Date(a.started_at || a.created_at).getTime())
+          .map((s: any) => ({
+            id: s.id,
+            date: s.started_at || s.scheduled_at || s.created_at,
+            minutesUsed: s.duration_minutes || 0,
+            sessionType: 'ai-avatar',
+            avatarName: s.config?.avatar || 'Ezri',
+            cost: 0 // Included in subscription
+          }))
+          .slice(0, 5); // Last 5 sessions
 
         const subscription: UserSubscription = {
           userId: subData.user_id,
           planId: planId,
           status: subData.status as any,
-          creditsRemaining: Math.max(0, plan.credits - minutesUsed),
+          creditsRemaining,
           creditsTotal: plan.credits,
           billingCycle: {
             startDate: subData.start_date || new Date().toISOString(),
             endDate: subData.next_billing_at || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString(),
             renewsOn: subData.next_billing_at
           },
-          payAsYouGoCredits: 0, // Not implemented in backend yet
-          totalSpent: 0, // specific to invoices, skipped for now
+          payAsYouGoCredits,
+          totalSpent: 0,
           usageHistory,
           createdAt: subData.created_at || new Date().toISOString(),
           updatedAt: subData.updated_at || new Date().toISOString()
@@ -87,7 +111,7 @@ export function Billing() {
 
         setUserSubscription(subscription);
       } catch (error) {
-        console.error("Failed to fetch billing data", error);
+        console.error('Failed to fetch billing data:', error);
       } finally {
         setIsLoading(false);
       }
@@ -96,49 +120,15 @@ export function Billing() {
     fetchData();
   }, [session]);
 
-  const handleUpgrade = async (planId: PlanTier) => {
-    try {
-      if (planId === userSubscription?.planId) return;
-      
-      if (userSubscription?.planId === 'free') {
-        await api.billing.createSubscription({ plan_type: planId as any });
-      } else {
-        await api.billing.updateSubscription({ plan_type: planId as any });
-      }
-      
-      // Reload data
-      window.location.reload();
-    } catch (error) {
-      console.error("Failed to upgrade plan", error);
-      alert("Failed to upgrade plan");
-    }
-  };
-
-  const handleCancel = async () => {
-    if (!confirm("Are you sure you want to cancel your subscription?")) return;
-    try {
-      await api.billing.cancelSubscription();
-      window.location.reload();
-    } catch (error) {
-      console.error("Failed to cancel subscription", error);
-    }
-  };
-
-  if (isLoading || !userSubscription) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </AppLayout>
-    );
-  }
-
   const currentPlan = SUBSCRIPTION_PLANS[userSubscription.planId];
-  const usagePercentage = ((userSubscription.creditsTotal - userSubscription.creditsRemaining) / userSubscription.creditsTotal) * 100;
-  const daysUntilRenewal = userSubscription.billingCycle.renewsOn 
-    ? Math.ceil((new Date(userSubscription.billingCycle.renewsOn).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+  const usagePercentage = userSubscription.creditsTotal > 0 
+    ? ((userSubscription.creditsTotal - userSubscription.creditsRemaining) / userSubscription.creditsTotal) * 100
     : 0;
+  const daysUntilRenewal = Math.ceil((new Date(userSubscription.billingCycle.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+
+  const [showPAYGModal, setShowPAYGModal] = useState(false);
+  const [paygMinutes, setPaygMinutes] = useState(60);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const paygCost = currentPlan.payAsYouGoRate ? (currentPlan.payAsYouGoRate * paygMinutes) : 0;
 
@@ -181,38 +171,21 @@ export function Billing() {
                   <span className="text-muted-foreground">/month</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
-                {currentPlan.id !== 'enterprise' && (
-                    <Button 
-                    onClick={() => setShowUpgradeModal(true)}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                    >
-                    <Crown className="w-4 h-4 mr-2" />
-                    Upgrade
-                    </Button>
-                )}
-                {userSubscription.planId !== 'free' && (
-                    <Button 
-                        variant="outline"
-                        onClick={handleCancel}
-                        className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                        Cancel Plan
-                    </Button>
-                )}
-              </div>
+              <Button 
+                onClick={() => setShowUpgradeModal(true)}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade
+              </Button>
             </div>
 
             {/* Renewal Info */}
             <div className="flex items-center gap-2 p-3 bg-white/60 backdrop-blur-sm rounded-lg border border-purple-200">
               <Calendar className="w-4 h-4 text-purple-600" />
               <span className="text-sm">
-                <span className="font-medium">
-                    {userSubscription.status === 'active' ? `Renews in ${daysUntilRenewal} days` : 'Subscription Cancelled'}
-                </span> 
-                {userSubscription.billingCycle.renewsOn && (
-                    <span className="text-muted-foreground"> • Next billing: {new Date(userSubscription.billingCycle.renewsOn).toLocaleDateString()}</span>
-                )}
+                <span className="font-medium">Renews in {daysUntilRenewal} days</span> 
+                <span className="text-muted-foreground"> • Next billing: {new Date(userSubscription.billingCycle.renewsOn!).toLocaleDateString()}</span>
               </span>
             </div>
           </Card>
@@ -384,31 +357,40 @@ export function Billing() {
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-3`}>
-                    <Package className="w-5 h-5 text-white" />
+                    {planId === 'basic' && <Package className="w-5 h-5 text-white" />}
+                    {planId === 'pro' && <Zap className="w-5 h-5 text-white" />}
+                    {planId === 'enterprise' && <Crown className="w-5 h-5 text-white" />}
                   </div>
+                  
                   <h4 className="font-bold mb-1">{plan.displayName}</h4>
-                  <p className="text-2xl font-bold text-purple-700 mb-3">${plan.price}<span className="text-sm text-muted-foreground font-normal">/mo</span></p>
-                  <ul className="space-y-2 mb-4">
-                    {plan.features.slice(0, 4).map((feature, i) => (
-                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
-                            <Check className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
-                            {feature}
-                        </li>
-                    ))}
-                  </ul>
-                  {!isCurrent && (
+                  <div className="flex items-baseline gap-1 mb-3">
+                    <span className="text-2xl font-bold">${plan.price}</span>
+                    <span className="text-sm text-muted-foreground">/mo</span>
+                  </div>
+                  
+                  <div className="mb-3 p-2 bg-background rounded-lg">
+                    <p className="text-sm font-medium">{plan.credits} minutes/mo</p>
+                    {plan.payAsYouGoRate && (
+                      <p className="text-xs text-muted-foreground">
+                        PAYG: ${plan.payAsYouGoRate}/min
+                      </p>
+                    )}
+                  </div>
+
+                  {isCurrent ? (
+                    <div className="flex items-center justify-center gap-2 py-2 bg-purple-100 text-purple-700 rounded-lg font-medium">
+                      <Check className="w-4 h-4" />
+                      Current Plan
+                    </div>
+                  ) : (
                     <Button 
-                        size="sm" 
-                        className="w-full"
-                        onClick={() => handleUpgrade(planId)}
+                      className="w-full" 
+                      variant={planId === 'pro' ? 'default' : 'outline'}
+                      onClick={() => setShowUpgradeModal(true)}
                     >
-                        Switch to {plan.name}
+                      {SUBSCRIPTION_PLANS[planId].price > currentPlan.price ? 'Upgrade' : 'Switch'}
+                      <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
-                  )}
-                  {isCurrent && (
-                      <Button size="sm" variant="outline" className="w-full" disabled>
-                          Current Plan
-                      </Button>
                   )}
                 </div>
               );
@@ -436,55 +418,78 @@ export function Billing() {
             >
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Zap className="w-8 h-8 text-white" />
+                  <ShoppingCart className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2">Buy Extra Minutes</h3>
+                <h3 className="text-2xl font-bold mb-2">Buy Additional Minutes</h3>
                 <p className="text-muted-foreground">
-                  Purchase additional time at ${currentPlan.payAsYouGoRate}/min
+                  Your rate: <span className="font-bold text-green-600">${currentPlan.payAsYouGoRate}/minute</span>
                 </p>
               </div>
 
-              <div className="mb-8">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium">Minutes to purchase</span>
-                  <span className="font-bold text-2xl">{paygMinutes}</span>
+              {/* Minutes Selector */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-3">How many minutes?</label>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {[30, 60, 120].map((mins) => (
+                    <button
+                      key={mins}
+                      onClick={() => setPaygMinutes(mins)}
+                      className={`p-3 rounded-xl border-2 transition-all ${
+                        paygMinutes === mins
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-border hover:border-green-300'
+                      }`}
+                    >
+                      <p className="font-bold">{mins}</p>
+                      <p className="text-xs text-muted-foreground">minutes</p>
+                    </button>
+                  ))}
                 </div>
-                <input
-                  type="range"
-                  min="30"
-                  max="300"
-                  step="30"
-                  value={paygMinutes}
-                  onChange={(e) => setPaygMinutes(parseInt(e.target.value))}
-                  className="w-full accent-green-500 h-2 bg-muted rounded-lg appearance-none cursor-pointer"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                  <span>30m</span>
-                  <span>150m</span>
-                  <span>300m</span>
+                
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="15"
+                    max="300"
+                    step="15"
+                    value={paygMinutes}
+                    onChange={(e) => setPaygMinutes(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="font-mono font-bold text-lg w-16">{paygMinutes}m</span>
                 </div>
               </div>
 
-              <div className="bg-muted/50 p-4 rounded-xl mb-6 flex justify-between items-center">
-                <span className="font-medium">Total Cost</span>
-                <span className="text-2xl font-bold text-green-700">
-                  ${paygCost.toFixed(2)}
-                </span>
+              {/* Cost Summary */}
+              <div className="mb-6 p-4 bg-green-50 rounded-xl border-2 border-green-200">
+                <div className="flex justify-between mb-2">
+                  <span className="text-muted-foreground">Minutes:</span>
+                  <span className="font-semibold">{paygMinutes}</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-muted-foreground">Rate:</span>
+                  <span className="font-semibold">${currentPlan.payAsYouGoRate}/min</span>
+                </div>
+                <div className="border-t border-green-300 pt-2 mt-2 flex justify-between">
+                  <span className="font-bold text-green-900">Total:</span>
+                  <span className="text-2xl font-bold text-green-700">${paygCost.toFixed(2)}</span>
+                </div>
               </div>
 
+              {/* Actions */}
               <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
+                <Button
+                  variant="outline"
                   onClick={() => setShowPAYGModal(false)}
+                  className="flex-1"
                 >
                   Cancel
                 </Button>
-                <Button 
-                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                <Button
                   onClick={handleBuyPAYG}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                 >
-                  Confirm Purchase
+                  Purchase
                 </Button>
               </div>
             </motion.div>
@@ -507,71 +512,24 @@ export function Billing() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-background rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+              className="bg-background rounded-2xl p-8 max-w-md w-full border-2 border-purple-500/30 shadow-2xl"
             >
-              <div className="text-center mb-8">
-                <h3 className="text-3xl font-bold mb-2">Upgrade Your Plan</h3>
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Crown className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Upgrade Your Plan</h3>
                 <p className="text-muted-foreground">
-                  Choose the plan that best fits your wellness journey
+                  Feature coming soon! You'll be able to upgrade, downgrade, or cancel your plan anytime.
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-6">
-                {(Object.keys(SUBSCRIPTION_PLANS) as PlanTier[]).filter(id => id !== 'free').map((planId) => {
-                  const plan = SUBSCRIPTION_PLANS[planId];
-                  const isCurrent = planId === userSubscription.planId;
-                  
-                  return (
-                    <div 
-                      key={planId}
-                      className={`relative p-6 rounded-xl border-2 ${
-                        plan.popular 
-                          ? 'border-purple-500 shadow-xl scale-105 z-10 bg-white' 
-                          : 'border-border bg-muted/30'
-                      }`}
-                    >
-                      {plan.popular && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                          MOST POPULAR
-                        </div>
-                      )}
-                      
-                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-4`}>
-                        <Package className="w-6 h-6 text-white" />
-                      </div>
-                      
-                      <h4 className="text-xl font-bold mb-2">{plan.displayName}</h4>
-                      <p className="text-3xl font-bold text-purple-700 mb-6">
-                        ${plan.price}<span className="text-sm text-muted-foreground font-normal">/month</span>
-                      </p>
-                      
-                      <ul className="space-y-3 mb-8">
-                        {plan.features.map((feature, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm">
-                            <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                      
-                      <Button 
-                        className={`w-full ${plan.popular ? 'bg-gradient-to-r from-purple-500 to-pink-500' : ''}`}
-                        variant={plan.popular ? 'default' : 'outline'}
-                        disabled={isCurrent}
-                        onClick={() => handleUpgrade(planId)}
-                      >
-                        {isCurrent ? 'Current Plan' : `Upgrade to ${plan.name}`}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-8 text-center">
-                <Button variant="ghost" onClick={() => setShowUpgradeModal(false)}>
-                  Maybe Later
-                </Button>
-              </div>
+              <Button
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                Got It
+              </Button>
             </motion.div>
           </motion.div>
         )}

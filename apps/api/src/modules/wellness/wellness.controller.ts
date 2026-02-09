@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool } from './wellness.service';
-import { CreateWellnessToolInput, UpdateWellnessToolInput } from './wellness.schema';
+import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool, trackWellnessProgress } from './wellness.service';
+import { CreateWellnessToolInput, UpdateWellnessToolInput, TrackProgressInput } from './wellness.schema';
 
 export async function createWellnessToolHandler(
   request: FastifyRequest<{ Body: CreateWellnessToolInput }>,
@@ -51,6 +51,23 @@ export async function deleteWellnessToolHandler(
   try {
     await deleteWellnessTool(request.params.id);
     return reply.code(204).send();
+  } catch (error) {
+    return reply.code(404).send({ message: 'Wellness tool not found' });
+  }
+}
+
+export async function trackWellnessProgressHandler(
+  request: FastifyRequest<{ Params: { id: string }; Body: TrackProgressInput }>,
+  reply: FastifyReply
+) {
+  try {
+    const progress = await trackWellnessProgress(
+      request.user.id,
+      request.params.id,
+      request.body.duration_spent,
+      request.body.feedback_rating
+    );
+    return reply.code(201).send(progress);
   } catch (error) {
     return reply.code(404).send({ message: 'Wellness tool not found' });
   }

@@ -6,11 +6,16 @@ export async function createSession(userId: string, input: CreateSessionInput) {
     // Ensure user profile exists to satisfy foreign key constraint
     const profile = await prisma.profiles.findUnique({
       where: { id: userId },
-      select: { id: true }
+      select: { id: true, credits: true }
     });
 
     if (!profile) {
       throw new Error('User profile not found. Please complete onboarding first.');
+    }
+
+    // Check if user has sufficient credits (minimum 5 minutes for new session)
+    if ((profile.credits || 0) < 5) {
+      throw new Error('Insufficient credits. Please upgrade your plan or purchase more minutes.');
     }
 
     const result = await prisma.app_sessions.create({
@@ -45,7 +50,7 @@ export async function getSessions(userId: string, status?: string) {
       }
     },
     orderBy: {
-      scheduled_at: 'desc', // Changed to desc to show recent sessions first
+      created_at: 'desc',
     },
   });
 }
@@ -54,6 +59,26 @@ export async function endSession(userId: string, sessionId: string, durationSeco
   const session = await getSessionById(userId, sessionId);
   if (!session) {
     throw new Error('Session not found');
+  }
+
+  // Deduct credits if duration is provided
+  if (durationSeconds) {
+    const minutesUsed = Math.ceil(durationSeconds / 60);
+    
+    // Update user credits
+    try {
+      await prisma.profiles.update({
+        where: { id: userId },
+        data: {
+          credits: {
+            decrement: minutesUsed
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Failed to deduct credits:', error);
+      // Continue to end session even if credit deduction fails
+    }
   }
 
   return prisma.app_sessions.update({

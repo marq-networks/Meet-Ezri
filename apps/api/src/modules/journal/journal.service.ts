@@ -1,4 +1,4 @@
-import { prisma } from '../../lib/prisma';
+import prisma from '../../lib/prisma';
 import { CreateJournalInput, UpdateJournalInput } from './journal.schema';
 
 export async function createJournalEntry(userId: string, data: CreateJournalInput) {

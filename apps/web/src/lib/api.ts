@@ -550,6 +550,16 @@ export const api = {
       });
       if (res.status === 204) return true;
       return handleResponse(res, 'Failed to delete wellness tool');
+    },
+
+    async trackProgress(id: string, data: { duration_spent: number; feedback_rating?: number }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness/${id}/progress`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to track progress');
     }
   },
 

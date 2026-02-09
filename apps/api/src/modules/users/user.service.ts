@@ -101,6 +101,7 @@ export async function createProfile(userId: string, email: string, fullName?: st
       email,
       full_name: fullName || email.split('@')[0],
       role: 'user',
+      credits: 200, // Initialize with 200 minutes
     },
   });
 }

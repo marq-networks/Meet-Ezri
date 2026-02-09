@@ -1,4 +1,4 @@
-import { prisma } from '../../lib/prisma';
+import prisma from '../../lib/prisma';
 import { CreateSubscriptionInput, UpdateSubscriptionInput } from './billing.schema';
 
 export async function getSubscription(userId: string) {
@@ -108,14 +108,10 @@ export async function getBillingHistory(userId: string) {
 export async function getAllSubscriptions() {
   return prisma.subscriptions.findMany({
     include: {
-      users: {
+      profiles: {
         select: {
           email: true,
-          profiles: {
-            select: {
-              full_name: true,
-            }
-          }
+          full_name: true,
         }
       }
     },

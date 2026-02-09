@@ -9,14 +9,13 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
-  Download
+  Download,
+  Loader2
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -26,91 +25,286 @@ import {
   Pie,
   Cell
 } from "recharts";
+import { api } from "../../../lib/api";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, isSameDay, subMonths, addMonths, subWeeks, addWeeks, subYears, addYears } from "date-fns";
+
+interface MoodEntry {
+  id: string;
+  created_at: string;
+  mood: string;
+  intensity: number;
+  activities?: string[];
+  notes?: string;
+  source: 'journal' | 'check-in';
+}
+
+const MOOD_MAPPING: Record<string, { label: string; score: number; color: string }> = {
+  "😊": { label: "Happy", score: 10, color: "#fbbf24" }, // amber-400
+  "😌": { label: "Calm", score: 8, color: "#3b82f6" },  // blue-500
+  "🤩": { label: "Excited", score: 9, color: "#a855f7" }, // purple-500
+  "😰": { label: "Anxious", score: 4, color: "#f97316" }, // orange-500
+  "😢": { label: "Sad", score: 2, color: "#6366f1" },    // indigo-500
+  "😡": { label: "Angry", score: 1, color: "#ef4444" }    // red-500
+};
+
+// Helper to get mood info from emoji or label
+const getMoodInfo = (mood: string) => {
+  if (!mood) return null;
+  
+  // Try direct lookup (emoji)
+  if (MOOD_MAPPING[mood]) return { ...MOOD_MAPPING[mood], emoji: mood };
+  
+  // Try finding by label (case-insensitive)
+  const entry = Object.entries(MOOD_MAPPING).find(([emoji, info]) => 
+    info.label.toLowerCase() === mood.toLowerCase()
+  );
+  if (entry) return { ...entry[1], emoji: entry[0] };
+  
+  return null;
+};
 
 export function MoodHistory() {
   const [selectedView, setSelectedView] = useState<"week" | "month" | "year">("week");
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [entries, setEntries] = useState<MoodEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Functions to navigate months
-  const goToPreviousMonth = () => {
-    setCurrentMonth(prev => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() - 1);
-      return newDate;
-    });
-  };
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const goToNextMonth = () => {
-    setCurrentMonth(prev => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() + 1);
-      return newDate;
-    });
-  };
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [journalData, moodData] = await Promise.all([
+        api.journal.getAll().catch(() => []),
+        api.moods.getMyMoods().catch(() => [])
+      ]);
 
-  // Mock data for charts
-  const weeklyData = [
-    { day: "Mon", mood: 7, intensity: 5 },
-    { day: "Tue", mood: 8, intensity: 6 },
-    { day: "Wed", mood: 6, intensity: 7 },
-    { day: "Thu", mood: 9, intensity: 4 },
-    { day: "Fri", mood: 7, intensity: 5 },
-    { day: "Sat", mood: 8, intensity: 3 },
-    { day: "Sun", mood: 9, intensity: 4 }
-  ];
+      const normalizedJournal: MoodEntry[] = (journalData || []).map((j: any) => {
+        const mood = j.mood_tags?.[0] || "";
+        const info = getMoodInfo(mood);
+        return {
+          id: j.id,
+          created_at: j.created_at,
+          mood: mood,
+          intensity: info?.score || 5,
+          notes: j.content,
+          source: 'journal' as const
+        };
+      }).filter((e: MoodEntry) => e.mood);
 
-  const moodDistribution = [
-    { name: "Happy", value: 35, color: "#fbbf24" },
-    { name: "Calm", value: 30, color: "#3b82f6" },
-    { name: "Anxious", value: 15, color: "#a855f7" },
-    { name: "Sad", value: 10, color: "#6366f1" },
-    { name: "Tired", value: 10, color: "#6b7280" }
-  ];
+      const normalizedMoods: MoodEntry[] = (moodData || []).map((m: any) => ({
+        id: m.id,
+        created_at: m.created_at,
+        mood: m.mood,
+        intensity: m.intensity,
+        activities: m.activities,
+        notes: m.notes,
+        source: 'check-in' as const
+      }));
 
-  const calendarDays = Array.from({ length: 35 }, (_, i) => {
-    const dayNumber = i - 5; // Start from previous month
-    const mood = Math.floor(Math.random() * 4);
-    return {
-      day: dayNumber > 0 && dayNumber <= 30 ? dayNumber : null,
-      mood: dayNumber > 0 && dayNumber <= 30 ? mood : null,
-      emoji: ["😊", "😌", "😰", "😢"][mood] || ""
-    };
-  });
+      const allEntries = [...normalizedJournal, ...normalizedMoods].sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
-  const insights = [
-    {
-      icon: TrendingUp,
-      title: "Mood Trend",
-      value: "+15%",
-      description: "Improvement this week",
-      color: "text-green-500",
-      bgColor: "bg-green-50"
-    },
-    {
-      icon: Heart,
-      title: "Average Mood",
-      value: "7.8/10",
-      description: "This month",
-      color: "text-blue-500",
-      bgColor: "bg-blue-50"
-    },
-    {
-      icon: Calendar,
-      title: "Check-ins",
-      value: "24",
-      description: "Last 30 days",
-      color: "text-purple-500",
-      bgColor: "bg-purple-50"
-    },
-    {
-      icon: BarChart3,
-      title: "Best Day",
-      value: "Friday",
-      description: "Most positive moods",
-      color: "text-amber-500",
-      bgColor: "bg-amber-50"
+      console.log("Loaded entries:", allEntries);
+      setEntries(allEntries);
+    } catch (error) {
+      console.error("Failed to load mood history:", error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Functions to navigate dates based on view
+  const goToPrevious = () => {
+    setCurrentDate(prev => {
+      if (selectedView === "week") return subWeeks(prev, 1);
+      if (selectedView === "month") return subMonths(prev, 1);
+      return subYears(prev, 1);
+    });
+  };
+
+  const goToNext = () => {
+    setCurrentDate(prev => {
+      if (selectedView === "week") return addWeeks(prev, 1);
+      if (selectedView === "month") return addMonths(prev, 1);
+      return addYears(prev, 1);
+    });
+  };
+
+
+
+  // Process data based on selected view and date
+  const { chartData, distributionData, calendarData, insightsData } = useMemo(() => {
+    let start, end;
+    if (selectedView === "week") {
+      start = startOfWeek(currentDate, { weekStartsOn: 1 });
+      end = endOfWeek(currentDate, { weekStartsOn: 1 });
+    } else if (selectedView === "month") {
+      start = startOfMonth(currentDate);
+      end = endOfMonth(currentDate);
+    } else {
+      start = startOfYear(currentDate);
+      end = endOfYear(currentDate);
+    }
+
+    // Filter entries for the current period
+    const periodEntries = entries.filter(entry => {
+      const date = new Date(entry.created_at);
+      return date >= start && date <= end;
+    });
+
+    // 1. Chart Data (Mood Trend)
+    const days = eachDayOfInterval({ start, end });
+    const chartData = days.map(day => {
+      const dayEntries = periodEntries.filter(e => isSameDay(new Date(e.created_at), day));
+      if (dayEntries.length === 0) return { day: format(day, selectedView === "year" ? "MMM" : "EEE"), fullDate: day, mood: null, intensity: null };
+      
+      const totalScore = dayEntries.reduce((acc, entry) => {
+        return acc + entry.intensity;
+      }, 0);
+      
+      return {
+        day: format(day, selectedView === "year" ? "MMM" : "EEE"),
+        fullDate: day,
+        mood: Number((totalScore / dayEntries.length).toFixed(1)),
+        intensity: Math.floor(totalScore / dayEntries.length)
+      };
+    });
+
+    // Aggregating for Year view
+    let finalChartData = chartData;
+    if (selectedView === "year") {
+        const monthlyData: Record<string, { total: number; count: number }> = {};
+        periodEntries.forEach(entry => {
+            const month = format(new Date(entry.created_at), "MMM");
+            if (!monthlyData[month]) monthlyData[month] = { total: 0, count: 0 };
+            monthlyData[month].total += entry.intensity;
+            monthlyData[month].count += 1;
+        });
+        finalChartData = Array.from({ length: 12 }, (_, i) => {
+            const d = new Date(currentDate.getFullYear(), i, 1);
+            const month = format(d, "MMM");
+            const data = monthlyData[month];
+            return {
+                day: month,
+                mood: data ? Number((data.total / data.count).toFixed(1)) : null,
+                intensity: data ? Math.floor(data.total / data.count) : null
+            };
+        });
+    }
+
+    // 2. Mood Distribution
+    const distributionCounts: Record<string, number> = {};
+    periodEntries.forEach(entry => {
+      const info = getMoodInfo(entry.mood);
+      const label = info?.label || "Unknown";
+      distributionCounts[label] = (distributionCounts[label] || 0) + 1;
+    });
+    
+    const distributionData = Object.entries(distributionCounts).map(([name, value]) => {
+        // Find color
+        const mapping = Object.values(MOOD_MAPPING).find(m => m.label === name);
+        return { name, value, color: mapping?.color || "#9ca3af" };
+    });
+
+    // 3. Calendar Data
+    let calendarData: any[] = [];
+    if (selectedView === "month") {
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(currentDate);
+        const startDate = startOfWeek(monthStart);
+        const endDate = endOfWeek(monthEnd);
+        
+        const calendarInterval = eachDayOfInterval({ start: startDate, end: endDate });
+        calendarData = calendarInterval.map(day => {
+            // Find the latest entry for the day
+            const dayEntries = periodEntries.filter(e => isSameDay(new Date(e.created_at), day));
+            // Prefer check-in over journal if multiple? Or just latest.
+            const dayEntry = dayEntries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+            
+            const info = dayEntry ? getMoodInfo(dayEntry.mood) : null;
+            
+            return {
+                day: day.getDate(),
+                isCurrentMonth: day.getMonth() === currentDate.getMonth(),
+                mood: dayEntry?.intensity,
+                emoji: info?.emoji || "",
+                date: day
+            };
+        });
+    }
+
+    // 4. Insights
+    const avgMood = periodEntries.length > 0 
+        ? (periodEntries.reduce((acc, e) => acc + e.intensity, 0) / periodEntries.length).toFixed(1)
+        : "0";
+    
+    const midPoint = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2);
+    const firstHalf = periodEntries.filter(e => new Date(e.created_at) < midPoint);
+    const secondHalf = periodEntries.filter(e => new Date(e.created_at) >= midPoint);
+    const firstAvg = firstHalf.length ? firstHalf.reduce((acc, e) => acc + e.intensity, 0) / firstHalf.length : 0;
+    const secondAvg = secondHalf.length ? secondHalf.reduce((acc, e) => acc + e.intensity, 0) / secondHalf.length : 0;
+    const trend = firstAvg > 0 ? ((secondAvg - firstAvg) / firstAvg) * 100 : 0;
+
+    // Find best day
+    const dayCounts: Record<string, { total: number, count: number }> = {};
+    periodEntries.forEach(e => {
+        const dayName = format(new Date(e.created_at), "EEEE");
+        if (!dayCounts[dayName]) dayCounts[dayName] = { total: 0, count: 0 };
+        dayCounts[dayName].total += e.intensity;
+        dayCounts[dayName].count++;
+    });
+    let bestDay = "N/A";
+    let maxScore = -1;
+    Object.entries(dayCounts).forEach(([day, data]) => {
+        const avg = data.total / data.count;
+        if (avg > maxScore) {
+            maxScore = avg;
+            bestDay = day;
+        }
+    });
+
+    const insightsData = [
+        {
+          icon: TrendingUp,
+          title: "Mood Trend",
+          value: `${trend > 0 ? "+" : ""}${trend.toFixed(0)}%`,
+          description: "Vs previous period",
+          color: trend >= 0 ? "text-green-500" : "text-red-500",
+          bgColor: trend >= 0 ? "bg-green-50" : "bg-red-50"
+        },
+        {
+          icon: Heart,
+          title: "Average Mood",
+          value: `${avgMood}/10`,
+          description: "This period",
+          color: "text-blue-500",
+          bgColor: "bg-blue-50"
+        },
+        {
+          icon: Calendar,
+          title: "Check-ins",
+          value: periodEntries.length.toString(),
+          description: "Total entries",
+          color: "text-purple-500",
+          bgColor: "bg-purple-50"
+        },
+        {
+          icon: BarChart3,
+          title: "Best Day",
+          value: bestDay,
+          description: "Highest average mood",
+          color: "text-amber-500",
+          bgColor: "bg-amber-50"
+        }
+    ];
+
+    return { chartData: finalChartData, distributionData, calendarData, insightsData };
+  }, [selectedView, currentDate, entries]);
+
 
   return (
     <AppLayout>
@@ -139,232 +333,205 @@ export function MoodHistory() {
           </div>
         </motion.div>
 
-        {/* Insights Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {insights.map((insight, index) => {
-            const Icon = insight.icon;
-            return (
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            {/* Insights Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {insightsData.map((insight, index) => {
+                const Icon = insight.icon;
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + index * 0.05 }}
+                  >
+                    <Card className={`p-4 shadow-lg ${insight.bgColor}`}>
+                      <Icon className={`w-6 h-6 mb-2 ${insight.color}`} />
+                      <p className="text-sm text-muted-foreground mb-1">{insight.title}</p>
+                      <p className="text-2xl font-bold mb-1">{insight.value}</p>
+                      <p className="text-xs text-muted-foreground">{insight.description}</p>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* View Toggle */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4"
+            >
+              <div className="flex gap-2 bg-white p-1 rounded-lg inline-flex shadow-md">
+                {(["week", "month", "year"] as const).map((view) => (
+                  <motion.button
+                    key={view}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedView(view)}
+                    className={`px-6 py-2 rounded-md font-medium transition-all ${
+                      selectedView === view
+                        ? "bg-primary text-white shadow-md"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {view.charAt(0).toUpperCase() + view.slice(1)}
+                  </motion.button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-sm">
+                <button onClick={goToPrevious} className="p-1 hover:bg-gray-100 rounded-full">
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="font-medium min-w-[120px] text-center">
+                  {selectedView === "week" && `Week of ${format(startOfWeek(currentDate, { weekStartsOn: 1 }), "MMM d")}`}
+                  {selectedView === "month" && format(currentDate, "MMMM yyyy")}
+                  {selectedView === "year" && format(currentDate, "yyyy")}
+                </span>
+                <button onClick={goToNext} className="p-1 hover:bg-gray-100 rounded-full">
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </motion.div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Mood Trend Chart */}
               <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + index * 0.05 }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
               >
-                <Card className={`p-4 shadow-lg ${insight.bgColor}`}>
-                  <Icon className={`w-6 h-6 mb-2 ${insight.color}`} />
-                  <p className="text-sm text-muted-foreground mb-1">{insight.title}</p>
-                  <p className="text-2xl font-bold mb-1">{insight.value}</p>
-                  <p className="text-xs text-muted-foreground">{insight.description}</p>
+                <Card className="p-6 shadow-xl">
+                  <h2 className="text-xl font-bold mb-4">Mood Trend</h2>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                      <XAxis 
+                        dataKey="day" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: "#6b7280" }} 
+                      />
+                      <YAxis 
+                        hide 
+                        domain={[0, 10]} 
+                      />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+                        formatter={(value: any) => [`${value}/10`, "Mood Score"]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="mood"
+                        stroke="#8b5cf6"
+                        strokeWidth={3}
+                        dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4, stroke: "#fff" }}
+                        activeDot={{ r: 6, strokeWidth: 0 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </Card>
               </motion.div>
-            );
-          })}
-        </div>
 
-        {/* View Toggle */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mb-6"
-        >
-          <div className="flex gap-2 bg-white p-1 rounded-lg inline-flex shadow-md">
-            {(["week", "month", "year"] as const).map((view) => (
-              <motion.button
-                key={view}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSelectedView(view)}
-                className={`px-6 py-2 rounded-md font-medium transition-all ${
-                  selectedView === view
-                    ? "bg-primary text-white shadow-md"
-                    : "text-gray-600 hover:bg-gray-50"
-                }`}
+              {/* Mood Distribution */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 }}
               >
-                {view.charAt(0).toUpperCase() + view.slice(1)}
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Mood Trend Chart */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card className="p-6 shadow-xl">
-              <h2 className="text-xl font-bold mb-4">Mood Trend</h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={weeklyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="day" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "white",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px"
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="mood"
-                    stroke="#6366f1"
-                    strokeWidth={3}
-                    dot={{ fill: "#6366f1", r: 5 }}
-                    activeDot={{ r: 7 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </Card>
-          </motion.div>
-
-          {/* Mood Distribution */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Card className="p-6 shadow-xl">
-              <h2 className="text-xl font-bold mb-4">Mood Distribution</h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={moodDistribution}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {moodDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
-          </motion.div>
-        </div>
-
-        {/* Intensity Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="mb-6"
-        >
-          <Card className="p-6 shadow-xl">
-            <h2 className="text-xl font-bold mb-4">Emotion Intensity</h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="day" stroke="#6b7280" />
-                <YAxis stroke="#6b7280" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "8px"
-                  }}
-                />
-                <Bar dataKey="intensity" fill="#a855f7" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </motion.div>
-
-        {/* Calendar View */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-        >
-          <Card className="p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">Calendar View</h2>
-              <div className="flex items-center gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  className="p-2 rounded-full hover:bg-gray-100"
-                  onClick={goToPreviousMonth}
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </motion.button>
-                <span className="font-medium">
-                  {currentMonth.toLocaleDateString("en-US", {
-                    month: "long",
-                    year: "numeric"
-                  })}
-                </span>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  className="p-2 rounded-full hover:bg-gray-100"
-                  onClick={goToNextMonth}
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </motion.button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-7 gap-2">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="text-center text-sm font-medium text-gray-500 pb-2">
-                  {day}
-                </div>
-              ))}
-              {calendarDays.map((day, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.8 + index * 0.01 }}
-                  whileHover={day.day ? { scale: 1.1 } : {}}
-                  className={`aspect-square flex items-center justify-center rounded-lg text-sm ${
-                    day.day
-                      ? "bg-gray-50 hover:bg-gray-100 cursor-pointer border border-gray-200"
-                      : "bg-transparent"
-                  }`}
-                >
-                  {day.day && (
-                    <div className="text-center">
-                      <div className="text-xs text-gray-600 mb-1">{day.day}</div>
-                      <div className="text-lg">{day.emoji}</div>
+                <Card className="p-6 shadow-xl">
+                  <h2 className="text-xl font-bold mb-4">Mood Distribution</h2>
+                  <div className="flex items-center">
+                    <div className="w-1/2">
+                      <ResponsiveContainer width="100%" height={250}>
+                        <PieChart>
+                          <Pie
+                            data={distributionData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {distributionData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
-                  )}
-                </motion.div>
-              ))}
+                    <div className="w-1/2 space-y-3">
+                      {distributionData.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: item.color }}
+                            />
+                            <span className="text-sm text-gray-600">{item.name}</span>
+                          </div>
+                          <span className="text-sm font-bold">{item.value}</span>
+                        </div>
+                      ))}
+                      {distributionData.length === 0 && (
+                         <div className="text-center text-gray-500 text-sm">No data available</div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
             </div>
 
-            <div className="mt-6 flex items-center justify-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">😊</span>
-                <span className="text-muted-foreground">Happy</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">😌</span>
-                <span className="text-muted-foreground">Calm</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">😰</span>
-                <span className="text-muted-foreground">Anxious</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">😢</span>
-                <span className="text-muted-foreground">Sad</span>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
+            {/* Calendar View */}
+            {selectedView === "month" && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+              >
+                <Card className="p-6 shadow-xl">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold">Monthly Overview</h2>
+                  </div>
+                  
+                  <div className="grid grid-cols-7 gap-2">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                      <div key={day} className="text-center text-sm font-medium text-gray-400 py-2">
+                        {day}
+                      </div>
+                    ))}
+                    {calendarData.map((day, index) => (
+                      <div
+                        key={index}
+                        className={`
+                          aspect-square rounded-xl p-2 transition-all relative group
+                          ${day.isCurrentMonth ? "bg-gray-50 hover:bg-gray-100" : "opacity-30"}
+                          ${day.mood ? "cursor-pointer" : ""}
+                        `}
+                      >
+                        <span className="text-xs text-gray-400 font-medium">{day.day}</span>
+                        {day.mood && (
+                          <div className="absolute inset-0 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                            {day.emoji}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+          </>
+        )}
       </div>
     </AppLayout>
   );

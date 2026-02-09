@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { createWellnessToolSchema, updateWellnessToolSchema, wellnessToolResponseSchema } from './wellness.schema';
-import { createWellnessToolHandler, deleteWellnessToolHandler, getWellnessToolByIdHandler, getWellnessToolsHandler, updateWellnessToolHandler } from './wellness.controller';
+import { createWellnessToolSchema, updateWellnessToolSchema, wellnessToolResponseSchema, trackProgressSchema, progressResponseSchema } from './wellness.schema';
+import { createWellnessToolHandler, deleteWellnessToolHandler, getWellnessToolByIdHandler, getWellnessToolsHandler, updateWellnessToolHandler, trackWellnessProgressHandler } from './wellness.controller';
 import { z } from 'zod';
 
 export async function wellnessRoutes(app: FastifyInstance) {
@@ -82,5 +82,22 @@ export async function wellnessRoutes(app: FastifyInstance) {
       preHandler: [app.authenticate, app.authorize(['super_admin', 'org_admin'])],
     },
     deleteWellnessToolHandler
+  );
+
+  app.post(
+    '/:id/progress',
+    {
+      schema: {
+        params: z.object({
+          id: z.string(),
+        }),
+        body: trackProgressSchema,
+        response: {
+          201: progressResponseSchema,
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    trackWellnessProgressHandler
   );
 }

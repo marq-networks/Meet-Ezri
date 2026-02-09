@@ -58,7 +58,8 @@ export function Journal() {
     { value: "calm", emoji: "😌" },
     { value: "anxious", emoji: "😰" },
     { value: "sad", emoji: "😢" },
-    { value: "excited", emoji: "🤩" }
+    { value: "excited", emoji: "🤩" },
+    { value: "angry", emoji: "😡" }
   ];
 
   const fetchEntries = async () => {
@@ -67,17 +68,30 @@ export function Journal() {
       setIsLoading(true);
       const data = await api.journal.getAll();
       
-      const formattedEntries = data.map((entry: any) => ({
-        ...entry,
-        date: new Date(entry.created_at).toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric'
-        }),
-        preview: entry.content ? entry.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...' : '',
-        mood: entry.mood_tags && entry.mood_tags.length > 0 ? entry.mood_tags[0] : '😐',
-        favorite: false // Default to false as backend doesn't support it yet
-      }));
+      const formattedEntries = data.map((entry: any) => {
+        let moodDisplay = '😐';
+        if (entry.mood_tags && entry.mood_tags.length > 0) {
+          const rawMood = entry.mood_tags[0];
+          // Try to match with our known moods (check emoji or value)
+          const moodObj = moods.find(m => 
+            m.emoji === rawMood || 
+            m.value.toLowerCase() === rawMood.toLowerCase()
+          );
+          moodDisplay = moodObj ? moodObj.emoji : rawMood;
+        }
+
+        return {
+          ...entry,
+          date: new Date(entry.created_at).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          }),
+          preview: entry.content ? entry.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...' : '',
+          mood: moodDisplay,
+          favorite: false // Default to false as backend doesn't support it yet
+        };
+      });
 
       setEntries(formattedEntries);
     } catch (error) {
@@ -126,10 +140,18 @@ export function Journal() {
     if (entry) {
       setNewEntryTitle(entry.title || "");
       setNewEntryContent(entry.content || "");
-      // Map emoji back to mood value if possible, or just use first tag
-      const moodEmoji = entry.mood_tags?.[0];
-      const moodObj = moods.find(m => m.emoji === moodEmoji) || moods.find(m => m.value === moodEmoji);
-      setSelectedMood(moodObj ? moodObj.value : (moodEmoji || ""));
+      
+      // Map back to emoji for the selector
+      let moodToSelect = "";
+      if (entry.mood_tags && entry.mood_tags.length > 0) {
+        const rawMood = entry.mood_tags[0];
+        const moodObj = moods.find(m => 
+          m.emoji === rawMood || 
+          m.value.toLowerCase() === rawMood.toLowerCase()
+        );
+        moodToSelect = moodObj ? moodObj.emoji : rawMood;
+      }
+      setSelectedMood(moodToSelect);
       
       setEditingEntry(entryId);
       setShowNewEntry(true);
@@ -160,11 +182,18 @@ export function Journal() {
 
     // Mood filter
     if (filterMood) {
-      // filterMood is emoji, entry.mood is likely emoji (mapped in fetchEntries) or value
-      // Let's check both
+      // filterMood is emoji
       const moodValue = moods.find(m => m.emoji === filterMood)?.value;
       const entryMood = entry.mood_tags?.[0];
-      if (entryMood !== filterMood && entryMood !== moodValue) return false;
+      
+      if (!entryMood) return false;
+      
+      // Check for exact match (emoji) or case-insensitive value match
+      const isMatch = 
+        entryMood === filterMood || 
+        (moodValue && entryMood.toLowerCase() === moodValue.toLowerCase());
+        
+      if (!isMatch) return false;
     }
 
     // Date range filter
@@ -356,14 +385,14 @@ export function Journal() {
 
                     <div>
                       <label className="block text-sm font-medium mb-2">How are you feeling?</label>
-                      <div className="flex gap-3">
+                      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                         {moods.map((mood) => (
                           <motion.button
                             key={mood.value}
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => setSelectedMood(mood.emoji)}
-                            className={`text-4xl p-2 rounded-lg transition-all ${
+                            className={`text-4xl p-2 rounded-lg transition-all flex-shrink-0 ${
                               selectedMood === mood.emoji
                                 ? "bg-primary/10 ring-2 ring-primary"
                                 : "hover:bg-gray-100"
@@ -381,7 +410,8 @@ export function Journal() {
                         value={newEntryContent}
                         onChange={(e) => setNewEntryContent(e)}
                         placeholder="Start writing... Let your thoughts flow freely."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        className="w-full focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent"
+                        hideMoodSelector={true}
                       />
                     </div>
 

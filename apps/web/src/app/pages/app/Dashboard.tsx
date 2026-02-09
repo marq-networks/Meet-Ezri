@@ -4,30 +4,54 @@ import { Button } from "../../components/ui/button";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-import {
-  Video,
-  Heart,
-  BookOpen,
-  TrendingUp,
-  Calendar,
-  Sparkles,
-  ArrowRight,
-  Award,
-  Target,
-  Flame,
-  Clock,
-  Zap
-} from "lucide-react";
+import { Video, Heart, BookOpen, TrendingUp, Calendar, Sparkles, ArrowRight, Award, Target, Flame, Clock, Zap } from "lucide-react";
+import { useState, useEffect } from "react";
 import { WellnessChallenges } from "../../components/WellnessChallenges";
 import { PWAInstallPrompt } from "../../components/PWAInstallPrompt";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { api } from "../../../lib/api";
 
 export function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
+  const [upcomingSessionsCount, setUpcomingSessionsCount] = useState(0);
+
+  const moodEmojis: Record<string, string> = {
+    "Happy": "😊",
+    "Calm": "😌",
+    "Excited": "🤩",
+    "Anxious": "😰",
+    "Sad": "😢",
+    "Angry": "😡"
+  };
+
+  const getMoodEmoji = (mood: string) => {
+    if (!mood) return "😐";
+    // If it's already an emoji
+    if (Object.values(moodEmojis).includes(mood)) return mood;
+    
+    // Case-insensitive lookup
+    const entry = Object.entries(moodEmojis).find(([label]) => label.toLowerCase() === mood.toLowerCase());
+    return entry ? entry[1] : "😐"; // Default to neutral face if not found
+  };
+
+  useEffect(() => {
+    // Refresh profile data to get latest credits and stats
+    refreshProfile();
+
+    const fetchUpcomingSessions = async () => {
+      try {
+        const sessions = await api.sessions.list({ status: 'scheduled' });
+        setUpcomingSessionsCount(sessions.length);
+      } catch (error) {
+        console.error("Failed to fetch upcoming sessions", error);
+      }
+    };
+    fetchUpcomingSessions();
+  }, []);
+
   const firstName = profile?.full_name?.split(' ')[0] || "Friend";
   const currentMood = profile?.current_mood || "Calm";
   const streakDays = profile?.streak_days || 0;
-  const upcomingSessions = profile?.upcoming_sessions || 0;
   
   // Real data from backend
   const creditsRemaining = profile?.credits_remaining || 0;
@@ -69,7 +93,7 @@ export function Dashboard() {
     type: "mood",
     text: `Logged ${entry.mood} (${entry.intensity}/10)`,
     time: formatDistanceToNow(new Date(entry.created_at), { addSuffix: true }),
-    emoji: "😌"
+    emoji: getMoodEmoji(entry.mood)
   })) || [
     { type: "system", text: "Welcome to MeetEzri!", time: "Just now", emoji: "👋" }
   ];
@@ -132,7 +156,7 @@ export function Dashboard() {
                     transition={{ duration: 2, repeat: Infinity }}
                     className="text-3xl"
                   >
-                    😌
+                    {getMoodEmoji(currentMood)}
                   </motion.span>
                 </div>
                 <h3 className="font-semibold mb-1">Current Mood</h3>
@@ -182,7 +206,7 @@ export function Dashboard() {
                   <Award className="w-8 h-8" />
                 </div>
                 <h3 className="font-semibold mb-1">Upcoming Sessions</h3>
-                <p className="text-2xl font-bold">{upcomingSessions}</p>
+                <p className="text-2xl font-bold">{upcomingSessionsCount}</p>
                 <p className="text-xs text-white/80 mt-2">Click to view schedule</p>
               </Card>
             </motion.div>

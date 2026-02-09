@@ -1,4 +1,4 @@
-import { prisma } from '../../lib/prisma';
+import prisma from '../../lib/prisma';
 import { CreateSleepEntryInput, UpdateSleepEntryInput } from './sleep.schema';
 
 export async function createSleepEntry(userId: string, data: CreateSleepEntryInput) {

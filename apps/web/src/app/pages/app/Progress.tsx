@@ -14,7 +14,8 @@ import {
   Star,
   Trophy,
   Zap,
-  Download
+  Download,
+  Wind
 } from "lucide-react";
 import {
   LineChart,
@@ -39,11 +40,11 @@ export function Progress() {
   const { profile } = useAuth();
 
   const weeklyProgress = [
-    { week: "Week 1", mood: 6, sessions: 2, journals: 3, checkIns: 5 },
-    { week: "Week 2", mood: 7, sessions: 3, journals: 4, checkIns: 6 },
-    { week: "Week 3", mood: 7.5, sessions: 2, journals: 5, checkIns: 7 },
-    { week: "Week 4", mood: 8, sessions: 3, journals: 6, checkIns: 7 }
-  ];
+  { week: "Week 1", mood: 6, sessions: 2, journals: 3, checkIns: 5, exercises: 4 }, // ← added exercises: 4
+  { week: "Week 2", mood: 7, sessions: 3, journals: 4, checkIns: 6, exercises: 6 }, // ← added exercises: 6
+  { week: "Week 3", mood: 7.5, sessions: 2, journals: 5, checkIns: 7, exercises: 7 }, // ← added exercises: 7
+  { week: "Week 4", mood: 8, sessions: 3, journals: 6, checkIns: 7, exercises: 7 }  // ← added exercises: 7
+];
 
   const wellnessScore = [
     { category: "Emotional", score: 85 },
@@ -81,6 +82,14 @@ export function Progress() {
       description: "Written 25 journal entries",
       unlocked: true,
       color: "from-purple-400 to-pink-500"
+    },
+     {
+      icon: Wind,
+      label: "Wellness Exercises",
+      value: "24",
+      change: "+6 this week",
+      color: "text-cyan-500",
+      bgColor: "bg-cyan-50"
     },
     {
       icon: Zap,
@@ -130,6 +139,14 @@ export function Progress() {
       color: "text-purple-500",
       bgColor: "bg-purple-50"
     },
+     {
+    icon: Wind,
+    label: "Wellness Exercises",
+    value: "24",
+    change: "+6 this week",
+    color: "text-cyan-500",
+    bgColor: "bg-cyan-50"
+  },
     {
       icon: Flame,
       label: "Current Streak",
@@ -228,6 +245,13 @@ export function Progress() {
                     strokeWidth={3}
                     name="Sessions"
                   />
+                   <Line
+    type="monotone"
+    dataKey="exercises"
+    stroke="#06b6d4"
+    strokeWidth={3}
+    name="Wellness Exercises"
+  />
                 </LineChart>
               </ResponsiveContainer>
             </Card>

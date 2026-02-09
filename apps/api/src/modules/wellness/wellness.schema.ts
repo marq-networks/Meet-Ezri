@@ -35,9 +35,26 @@ export const wellnessToolResponseSchema = z.object({
   content: z.string().nullable(),
   image_url: z.string().nullable(),
   is_premium: z.boolean().nullable(),
+  difficulty: z.string().nullable(),
+  status: z.string().nullable(),
+  icon: z.string().nullable(),
   created_at: z.date(),
   updated_at: z.date(),
 });
 
+export const trackProgressSchema = z.object({
+  duration_spent: z.number().min(0),
+  feedback_rating: z.number().min(1).max(5).optional(),
+});
+
+export const progressResponseSchema = z.object({
+  id: z.string(),
+  tool_id: z.string(),
+  duration_spent: z.number().nullable(),
+  feedback_rating: z.number().nullable(),
+  completed_at: z.date().nullable(),
+});
+
 export type CreateWellnessToolInput = z.infer<typeof createWellnessToolSchema>;
 export type UpdateWellnessToolInput = z.infer<typeof updateWellnessToolSchema>;
+export type TrackProgressInput = z.infer<typeof trackProgressSchema>;
