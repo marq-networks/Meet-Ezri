@@ -1,6 +1,7 @@
 import Fastify, { FastifyRequest } from 'fastify';
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from 'fastify-type-provider-zod';
 import cors from '@fastify/cors';
+import rawBody from 'fastify-raw-body';
 import jwt from '@fastify/jwt';
 import dotenv from 'dotenv';
 import authPlugin from './plugins/auth';
@@ -31,6 +32,13 @@ app.register(cors, {
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+});
+
+app.register(rawBody, {
+  field: 'rawBody',
+  global: false,
+  encoding: 'utf8',
+  runFirst: true,
 });
 
 // Check if secret is Base64 (common for Supabase) and decode it if necessary

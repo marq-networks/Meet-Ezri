@@ -431,7 +431,7 @@ export const api = {
       return handleResponse(res, 'Failed to fetch subscription');
     },
 
-    async createSubscription(data: { plan_type: 'free' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly'; payment_method?: string }) {
+    async createSubscription(data: { plan_type: 'free' | 'basic' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly'; payment_method?: string }) {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/billing`, {
         method: 'POST',
@@ -441,7 +441,16 @@ export const api = {
       return handleResponse(res, 'Failed to create subscription');
     },
 
-    async updateSubscription(data: { plan_type?: 'free' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly' }) {
+    async createPortalSession() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/portal`, {
+        method: 'POST',
+        headers,
+      });
+      return handleResponse(res, 'Failed to create portal session');
+    },
+
+    async updateSubscription(data: { plan_type?: 'free' | 'basic' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly' }) {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/billing`, {
         method: 'PATCH',

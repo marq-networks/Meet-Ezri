@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { api } from "@/lib/api";
 import { 
@@ -20,7 +20,8 @@ import {
   ShoppingCart,
   Sparkles,
   ChevronRight,
-  History
+  History,
+  ExternalLink
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -30,6 +31,7 @@ import type { PlanTier, UserSubscription, UsageRecord } from "../../utils/subscr
 
 export function Billing() {
   const { session, profile, refreshProfile } = useAuth();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [userSubscription, setUserSubscription] = useState<UserSubscription>({
     userId: "",
@@ -66,16 +68,8 @@ export function Billing() {
         const plan = SUBSCRIPTION_PLANS[planId];
         const now = new Date();
         
-        // Calculate credits from profile (Single Source of Truth)
-        // profile.credits contains the total available credits (Plan + PAYG)
         const totalAvailableCredits = profile?.credits || 0;
-        
-        // Calculate PAYG credits as any excess over the plan limit
-        // This is a simplified logic: if you have more than plan limit, the rest is PAYG
-        // In reality, you might want to track them separately in DB, but for now this works for UI
         const payAsYouGoCredits = Math.max(0, totalAvailableCredits - plan.credits);
-        
-        // Credits remaining in the plan bucket (capped at plan limit)
         const creditsRemaining = Math.min(totalAvailableCredits, plan.credits);
 
         const usageHistory: UsageRecord[] = sessionsData
@@ -87,9 +81,9 @@ export function Billing() {
             minutesUsed: s.duration_minutes || 0,
             sessionType: 'ai-avatar',
             avatarName: s.config?.avatar || 'Ezri',
-            cost: 0 // Included in subscription
+            cost: 0 
           }))
-          .slice(0, 5); // Last 5 sessions
+          .slice(0, 5); 
 
         const subscription: UserSubscription = {
           userId: subData.user_id,
@@ -118,7 +112,7 @@ export function Billing() {
     };
 
     fetchData();
-  }, [session]);
+  }, [session, searchParams]);
 
   const currentPlan = SUBSCRIPTION_PLANS[userSubscription.planId];
   const usagePercentage = userSubscription.creditsTotal > 0 
@@ -128,14 +122,42 @@ export function Billing() {
 
   const [showPAYGModal, setShowPAYGModal] = useState(false);
   const [paygMinutes, setPaygMinutes] = useState(60);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const paygCost = currentPlan.payAsYouGoRate ? (currentPlan.payAsYouGoRate * paygMinutes) : 0;
 
   const handleBuyPAYG = () => {
-    // In real app: process payment and add credits
     alert(`Purchase ${paygMinutes} minutes for $${paygCost.toFixed(2)}`);
     setShowPAYGModal(false);
+  };
+
+  const handleSubscribe = async (planId: PlanTier) => {
+    if (planId === 'free') return; 
+    setIsProcessing(true);
+    try {
+      const response = await api.billing.createSubscription({ plan_type: planId });
+      if (response.checkoutUrl) {
+        window.location.href = response.checkoutUrl;
+      }
+    } catch (error) {
+      console.error('Failed to start subscription:', error);
+      alert('Failed to start subscription. Please try again.');
+      setIsProcessing(false);
+    }
+  };
+
+  const handleManageBilling = async () => {
+     setIsProcessing(true);
+     try {
+       const response = await api.billing.createPortalSession();
+       if (response.portalUrl) {
+         window.location.href = response.portalUrl;
+       }
+     } catch (error) {
+       console.error('Failed to open billing portal:', error);
+       alert('Failed to open billing portal. Please try again.');
+       setIsProcessing(false);
+     }
   };
 
   return (
@@ -147,6 +169,12 @@ export function Billing() {
           <p className="text-muted-foreground">
             Manage your plan, view usage, and purchase additional minutes
           </p>
+          {searchParams.get('success') && (
+            <div className="mt-4 p-4 bg-green-50 text-green-700 rounded-lg border border-green-200 flex items-center gap-2">
+              <Check className="w-5 h-5" />
+              Subscription updated successfully!
+            </div>
+          )}
         </div>
 
         {/* Current Plan Overview */}
@@ -172,11 +200,12 @@ export function Billing() {
                 </div>
               </div>
               <Button 
-                onClick={() => setShowUpgradeModal(true)}
+                onClick={handleManageBilling}
+                disabled={isProcessing}
                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
               >
-                <Crown className="w-4 h-4 mr-2" />
-                Upgrade
+                <CreditCard className="w-4 h-4 mr-2" />
+                Manage Billing
               </Button>
             </div>
 
@@ -386,7 +415,8 @@ export function Billing() {
                     <Button 
                       className="w-full" 
                       variant={planId === 'pro' ? 'default' : 'outline'}
-                      onClick={() => setShowUpgradeModal(true)}
+                      onClick={() => handleSubscribe(planId)}
+                      disabled={isProcessing}
                     >
                       {SUBSCRIPTION_PLANS[planId].price > currentPlan.price ? 'Upgrade' : 'Switch'}
                       <ChevronRight className="w-4 h-4 ml-1" />
@@ -492,44 +522,6 @@ export function Billing() {
                   Purchase
                 </Button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Upgrade Modal */}
-      <AnimatePresence>
-        {showUpgradeModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowUpgradeModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-background rounded-2xl p-8 max-w-md w-full border-2 border-purple-500/30 shadow-2xl"
-            >
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Crown className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">Upgrade Your Plan</h3>
-                <p className="text-muted-foreground">
-                  Feature coming soon! You'll be able to upgrade, downgrade, or cancel your plan anytime.
-                </p>
-              </div>
-
-              <Button
-                onClick={() => setShowUpgradeModal(false)}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-              >
-                Got It
-              </Button>
             </motion.div>
           </motion.div>
         )}

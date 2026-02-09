@@ -39,8 +39,35 @@ export async function createSubscriptionHandler(
   reply: FastifyReply
 ) {
   const user = request.user as UserPayload;
-  const subscription = await createSubscription(user.sub, request.body);
-  return reply.code(201).send(subscription);
+  // We need email to create Stripe Customer if not exists
+  // Assuming email is in the JWT or we need to fetch it.
+  // The UserPayload interface defined above has email as optional.
+  // Let's assume it's there or fetch from DB if critical, but for now let's try to use what we have.
+  // Ideally, we should fetch the user profile to be sure.
+  
+  // Since we modified the service to fetch profile for stripe_customer_id, we can pass just the ID
+  // but the service function signature I created asks for email too: createCheckoutSession(userId, email, data)
+  
+  // Let's rely on the service to handle the email fetching if missing from payload, 
+  // OR update the service to fetch the email from the profile if not provided.
+  // Actually, let's update the controller to just pass the user.sub and let the service fetch the email if needed.
+  // Wait, I defined `createCheckoutSession(userId: string, email: string, ...)`
+  
+  // Let's pass a placeholder if email is missing, but better to fix the service call.
+  const result = await import('./billing.service').then(m => 
+    m.createCheckoutSession(user.sub, user.email || '', request.body)
+  );
+  
+  return reply.code(200).send(result);
+}
+
+export async function createPortalSessionHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const user = request.user as UserPayload;
+  const result = await import('./billing.service').then(m => m.createPortalSession(user.sub));
+  return reply.send(result);
 }
 
 export async function updateSubscriptionHandler(

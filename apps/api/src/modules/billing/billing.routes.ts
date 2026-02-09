@@ -1,9 +1,18 @@
 import { FastifyInstance } from 'fastify';
 import { createSubscriptionSchema, subscriptionResponseSchema, updateSubscriptionSchema } from './billing.schema';
-import { cancelSubscriptionHandler, createSubscriptionHandler, getBillingHistoryHandler, getSubscriptionHandler, updateSubscriptionHandler, getAllSubscriptionsHandler, adminUpdateSubscriptionHandler, getSubscriptionByUserIdHandler } from './billing.controller';
+import { cancelSubscriptionHandler, createSubscriptionHandler, getBillingHistoryHandler, getSubscriptionHandler, updateSubscriptionHandler, getAllSubscriptionsHandler, adminUpdateSubscriptionHandler, getSubscriptionByUserIdHandler, createPortalSessionHandler } from './billing.controller';
+import { stripeWebhookHandler } from './billing.webhook';
 import { z } from 'zod';
 
 export async function billingRoutes(app: FastifyInstance) {
+  app.post(
+    '/webhook',
+    {
+      config: { rawBody: true },
+    },
+    stripeWebhookHandler
+  );
+
   app.get(
     '/',
     {
@@ -28,12 +37,25 @@ export async function billingRoutes(app: FastifyInstance) {
       schema: {
         body: createSubscriptionSchema,
         response: {
-          201: subscriptionResponseSchema,
+          200: z.object({ checkoutUrl: z.string() }),
         },
       },
       preHandler: [app.authenticate],
     },
     createSubscriptionHandler
+  );
+
+  app.post(
+    '/portal',
+    {
+      schema: {
+        response: {
+          200: z.object({ portalUrl: z.string() }),
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    createPortalSessionHandler
   );
 
   app.patch(
