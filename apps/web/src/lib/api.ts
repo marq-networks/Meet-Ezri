@@ -122,6 +122,54 @@ export const api = {
     return handleResponse(res, 'Failed to update setting');
   },
 
+  // Emergency Contacts API
+  emergencyContacts: {
+    async getAll() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/emergency-contacts`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch emergency contacts');
+    },
+
+    async create(data: { name: string; relationship?: string; phone?: string; email?: string; is_trusted?: boolean }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/emergency-contacts`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to create emergency contact');
+    },
+
+    async update(id: string, data: { name?: string; relationship?: string; phone?: string; email?: string; is_trusted?: boolean }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/emergency-contacts/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to update emergency contact');
+    },
+
+    async delete(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/emergency-contacts/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (!res.ok) {
+         // handleResponse typically expects JSON, but 204 No Content has no body
+         if (res.status === 204) return;
+         const errorData = await res.json().catch(() => ({}));
+         throw new Error(errorData.message || 'Failed to delete emergency contact');
+      }
+      return;
+    }
+  },
+
   // Sessions API
   sessions: {
     async create(data: { type: 'instant' | 'scheduled'; duration_minutes: number; scheduled_at?: string; config?: any }) {

@@ -9,6 +9,575 @@ datasource db {
   schemas  = ["auth", "public"]
 }
 
+model activity_events {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  session_id   String   @db.Uuid
+  user_id      String   @db.Uuid
+  app_name     String?
+  window_title String?
+  timestamp    DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  metadata     Json?
+  profiles     profiles @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model emergency_contacts {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id      String   @db.Uuid
+  name         String
+  relationship String?
+  phone        String?
+  email        String?
+  is_trusted   Boolean? @default(false)
+  created_at   DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at   DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles     profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model app_sessions {
+  id               String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id          String             @db.Uuid
+  title            String?            @default("New Session")
+  status           String             @default("scheduled")
+  type             String             @default("instant")
+  scheduled_at     DateTime?          @db.Timestamptz(6)
+  started_at       DateTime?          @db.Timestamptz(6)
+  ended_at         DateTime?          @db.Timestamptz(6)
+  duration_minutes Int?
+  config           Json?
+  created_at       DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at       DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles         profiles           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  session_messages session_messages[]
+
+  @@schema("public")
+}
+
+model appointments {
+  id                                           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                      String    @db.Uuid
+  therapist_id                                 String?   @db.Uuid
+  start_time                                   DateTime  @db.Timestamptz(6)
+  end_time                                     DateTime  @db.Timestamptz(6)
+  status                                       String?   @default("scheduled")
+  type                                         String?   @default("video")
+  meeting_link                                 String?
+  notes                                        String?
+  sentiment                                    String?
+  rating                                       Int?
+  created_at                                   DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles_appointments_therapist_idToprofiles profiles? @relation("appointments_therapist_idToprofiles", fields: [therapist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles_appointments_user_idToprofiles      profiles  @relation("appointments_user_idToprofiles", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model audit_logs {
+  id            String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  org_id        String?        @db.Uuid
+  actor_id      String?        @db.Uuid
+  action        String
+  details       Json?
+  created_at    DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles      profiles?      @relation(fields: [actor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations organizations? @relation(fields: [org_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model community_comments {
+  id              String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  post_id         String          @db.Uuid
+  user_id         String          @db.Uuid
+  content         String
+  created_at      DateTime        @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  community_posts community_posts @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles        profiles        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model community_group_members {
+  group_id         String           @db.Uuid
+  user_id          String           @db.Uuid
+  role             String?          @default("member")
+  joined_at        DateTime         @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  community_groups community_groups @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles         profiles         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([group_id, user_id])
+  @@schema("public")
+}
+
+model community_groups {
+  id                      String                    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                    String
+  description             String?
+  category                String?
+  privacy                 String?                   @default("public")
+  created_at              DateTime                  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  community_group_members community_group_members[]
+  community_posts         community_posts[]
+
+  @@schema("public")
+}
+
+model community_posts {
+  id                 String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  group_id           String?              @db.Uuid
+  user_id            String               @db.Uuid
+  content            String
+  likes_count        Int?                 @default(0)
+  tags               String[]
+  created_at         DateTime             @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  community_comments community_comments[]
+  community_groups   community_groups?    @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles           profiles             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model crisis_events {
+  id                                           String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                      String         @db.Uuid
+  risk_level                                   risk_level
+  event_type                                   String?
+  keywords                                     String[]
+  status                                       crisis_status? @default(pending)
+  ai_confidence                                Int?
+  assigned_to                                  String?        @db.Uuid
+  notes                                        String?
+  created_at                                   DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  resolved_at                                  DateTime?      @db.Timestamptz(6)
+  profiles_crisis_events_assigned_toToprofiles profiles?      @relation("crisis_events_assigned_toToprofiles", fields: [assigned_to], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles_crisis_events_user_idToprofiles     profiles       @relation("crisis_events_user_idToprofiles", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model habits {
+  id          String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id     String       @db.Uuid
+  name        String
+  category    String?
+  frequency   String?      @default("daily")
+  color       String?
+  icon        String?
+  created_at  DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  is_archived Boolean?     @default(false)
+  habit_logs  habit_logs[]
+  profiles    profiles     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model idle_events {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  session_id String    @db.Uuid
+  user_id    String    @db.Uuid
+  start_time DateTime  @db.Timestamptz(6)
+  end_time   DateTime? @db.Timestamptz(6)
+  reason     String?
+  created_at DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles   profiles  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model journal_entries {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String   @db.Uuid
+  title      String?
+  content    String?
+  mood_tags  String[]
+  is_private Boolean? @default(true)
+  location   String?
+  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles   profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model moderation_queue {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  content_type String
+  content_id   String    @db.Uuid
+  reason       String?
+  status       String?   @default("pending")
+  reviewed_by  String?   @db.Uuid
+  reviewed_at  DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles     profiles? @relation(fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model mood_entries {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String   @db.Uuid
+  notes      String?
+  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  activities String[]
+  intensity  Int
+  mood       String
+  profiles   profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id])
+  @@schema("public")
+}
+
+model notifications {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String   @db.Uuid
+  type       String
+  title      String?
+  message    String?
+  is_read    Boolean? @default(false)
+  metadata   Json?
+  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles   profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model nudges {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title           String
+  message         String
+  type            String
+  target_audience Json?
+  schedule_time   DateTime? @db.Timestamptz(6)
+  is_recurring    Boolean?  @default(false)
+  status          String?   @default("draft")
+  created_by      String?   @db.Uuid
+  created_at      DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles        profiles? @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model org_members {
+  org_id        String        @db.Uuid
+  user_id       String        @db.Uuid
+  role          String?       @default("member")
+  created_at    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  organizations organizations @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles      profiles      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([org_id, user_id])
+  @@schema("public")
+}
+
+model organizations {
+  id            String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name          String
+  slug          String          @unique
+  created_at    DateTime        @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  audit_logs    audit_logs[]
+  org_members   org_members[]
+  projects      projects[]
+  subscriptions subscriptions[]
+
+  @@schema("public")
+}
+
+model projects {
+  id            String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  org_id        String        @db.Uuid
+  name          String
+  color         String?
+  created_at    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  organizations organizations @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tasks         tasks[]
+
+  @@schema("public")
+}
+
+model reports_daily {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id      String   @db.Uuid
+  date         DateTime @db.Date
+  total_time   Int?     @default(0)
+  summary_json Json?
+  created_at   DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles     profiles @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model safety_plans {
+  id                   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id              String   @db.Uuid
+  warning_signs        String[]
+  coping_strategies    String[]
+  social_distractions  String[]
+  trusted_contacts     Json?
+  professional_support Json?
+  environment_safety   String[]
+  last_updated         DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles             profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model sleep_entries {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id        String   @db.Uuid
+  bed_time       DateTime @db.Timestamptz(6)
+  wake_time      DateTime @db.Timestamptz(6)
+  quality_rating Int?
+  factors        String[]
+  notes          String?
+  created_at     DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles       profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model support_tickets {
+  id                                             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                        String           @db.Uuid
+  subject                                        String
+  description                                    String
+  priority                                       ticket_priority? @default(medium)
+  status                                         ticket_status?   @default(open)
+  assigned_to                                    String?          @db.Uuid
+  created_at                                     DateTime         @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at                                     DateTime         @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles_support_tickets_assigned_toToprofiles profiles?        @relation("support_tickets_assigned_toToprofiles", fields: [assigned_to], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles_support_tickets_user_idToprofiles     profiles         @relation("support_tickets_user_idToprofiles", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model system_settings {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  key         String    @unique
+  value       Json
+  description String?
+  updated_at  DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_by  String?   @db.Uuid
+  profiles    profiles? @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model tasks {
+  id           String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  project_id   String         @db.Uuid
+  name         String
+  status       String?        @default("todo")
+  created_at   DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  projects     projects       @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  time_entries time_entries[]
+
+  @@schema("public")
+}
+
+model therapist_profiles {
+  id              String    @id @db.Uuid
+  license_number  String?
+  specializations String[]
+  availability    Json?
+  rating          Decimal?  @default(0) @db.Decimal(3, 2)
+  is_verified     Boolean?  @default(false)
+  joined_date     DateTime? @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  languages       String[]
+  created_at      DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at      DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  profiles        profiles  @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model time_entries {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String    @db.Uuid
+  task_id    String?   @db.Uuid
+  start_time DateTime  @db.Timestamptz(6)
+  end_time   DateTime? @db.Timestamptz(6)
+  duration   Int?
+  created_at DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  tasks      tasks?    @relation(fields: [task_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles   profiles  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model user_achievements {
+  user_id        String       @db.Uuid
+  achievement_id String       @db.Uuid
+  earned_at      DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  progress       Int?         @default(0)
+  achievements   achievements @relation(fields: [achievement_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles       profiles     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, achievement_id])
+  @@schema("public")
+}
+
+model user_challenge_participation {
+  user_id             String              @db.Uuid
+  challenge_id        String              @db.Uuid
+  joined_at           DateTime            @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  progress            Int?                @default(0)
+  is_completed        Boolean?            @default(false)
+  wellness_challenges wellness_challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles            profiles            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, challenge_id])
+  @@schema("public")
+}
+
+model user_wellness_progress {
+  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id         String         @db.Uuid
+  tool_id         String         @db.Uuid
+  completed_at    DateTime?      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  duration_spent  Int?
+  feedback_rating Int?
+  wellness_tools  wellness_tools @relation(fields: [tool_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles        profiles       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model wellness_tools {
+  id                     String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title                  String
+  category               String
+  description            String?
+  content_url            String?
+  duration_minutes       Int?
+  difficulty             String?
+  is_premium             Boolean?                 @default(false)
+  status                 String?                  @default("draft")
+  icon                   String?
+  created_by             String?                  @db.Uuid
+  created_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  user_wellness_progress user_wellness_progress[]
+  profiles               profiles?                @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model users {
+  instance_id                 String?                @db.Uuid
+  id                          String                 @id @db.Uuid
+  aud                         String?                @db.VarChar(255)
+  role                        String?                @db.VarChar(255)
+  email                       String?                @db.VarChar(255)
+  encrypted_password          String?                @db.VarChar(255)
+  email_confirmed_at          DateTime?              @db.Timestamptz(6)
+  invited_at                  DateTime?              @db.Timestamptz(6)
+  confirmation_token          String?                @db.VarChar(255)
+  confirmation_sent_at        DateTime?              @db.Timestamptz(6)
+  recovery_token              String?                @db.VarChar(255)
+  recovery_sent_at            DateTime?              @db.Timestamptz(6)
+  email_change_token_new      String?                @db.VarChar(255)
+  email_change                String?                @db.VarChar(255)
+  email_change_sent_at        DateTime?              @db.Timestamptz(6)
+  last_sign_in_at             DateTime?              @db.Timestamptz(6)
+  raw_app_meta_data           Json?
+  raw_user_meta_data          Json?
+  is_super_admin              Boolean?
+  created_at                  DateTime?              @db.Timestamptz(6)
+  updated_at                  DateTime?              @db.Timestamptz(6)
+  phone                       String?                @unique
+  phone_confirmed_at          DateTime?              @db.Timestamptz(6)
+  phone_change                String?                @default("")
+  phone_change_token          String?                @default("") @db.VarChar(255)
+  phone_change_sent_at        DateTime?              @db.Timestamptz(6)
+  confirmed_at                DateTime?              @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
+  email_change_token_current  String?                @default("") @db.VarChar(255)
+  email_change_confirm_status Int?                   @default(0) @db.SmallInt
+  banned_until                DateTime?              @db.Timestamptz(6)
+  reauthentication_token      String?                @default("") @db.VarChar(255)
+  reauthentication_sent_at    DateTime?              @db.Timestamptz(6)
+  is_sso_user                 Boolean                @default(false)
+  deleted_at                  DateTime?              @db.Timestamptz(6)
+  is_anonymous                Boolean                @default(false)
+  identities                  identities[]
+  mfa_factors                 mfa_factors[]
+  oauth_authorizations        oauth_authorizations[]
+  oauth_consents              oauth_consents[]
+  one_time_tokens             one_time_tokens[]
+  sessions                    sessions[]
+  profiles                    profiles?
+
+  @@index([instance_id])
+  @@index([is_anonymous])
+  @@schema("auth")
+}
+
+model profiles {
+  id                             String                         @id @db.Uuid
+  email                          String?
+  full_name                      String?
+  avatar_url                     String?
+  role                           String?                        @default("user")
+  created_at                     DateTime                       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at                     DateTime                       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  age                            String?
+  current_mood                   String?
+  pronouns                       String?
+  selected_goals                 String[]
+  timezone                       String?
+  emergency_contact_name         String?
+  emergency_contact_phone        String?
+  emergency_contact_relationship String?
+  in_therapy                     String?
+  notification_preferences       Json?
+  on_medication                  String?
+  permissions                    Json?
+  selected_avatar                String?
+  selected_environment           String?
+  selected_triggers              String[]
+  phone                          String?
+  selected_voice                 String?
+  credits                        Int?                           @default(0)
+  activity_events                activity_events[]
+  app_sessions                   app_sessions[]
+  appointments_therapist         appointments[]                 @relation("appointments_therapist_idToprofiles")
+  appointments_user              appointments[]                 @relation("appointments_user_idToprofiles")
+  audit_logs                     audit_logs[]
+  community_comments             community_comments[]
+  community_group_members        community_group_members[]
+  community_posts                community_posts[]
+  crisis_events_assigned         crisis_events[]                @relation("crisis_events_assigned_toToprofiles")
+  crisis_events_user             crisis_events[]                @relation("crisis_events_user_idToprofiles")
+  habits                         habits[]
+  idle_events                    idle_events[]
+  journal_entries                journal_entries[]
+  moderation_queue               moderation_queue[]
+  mood_entries                   mood_entries[]
+  notifications                  notifications[]
+  nudges                         nudges[]
+  org_members                    org_members[]
+  users                          users                          @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  emergency_contacts             emergency_contacts[]
+  reports_daily                  reports_daily[]
+  safety_plans                   safety_plans[]
+  sleep_entries                  sleep_entries[]
+  support_tickets_assigned       support_tickets[]              @relation("support_tickets_assigned_toToprofiles")
+  support_tickets_user           support_tickets[]              @relation("support_tickets_user_idToprofiles")
+  system_settings                system_settings[]
+  therapist_profiles             therapist_profiles?
+  time_entries                   time_entries[]
+  user_achievements              user_achievements[]
+  user_challenge_participation   user_challenge_participation[]
+  user_wellness_progress         user_wellness_progress[]
+  wellness_tools                 wellness_tools[]
+
+  @@schema("public")
+}
+
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model audit_log_entries {
@@ -365,60 +934,6 @@ model sso_providers {
   @@schema("auth")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
-model users {
-  instance_id                 String?                @db.Uuid
-  id                          String                 @id @db.Uuid
-  aud                         String?                @db.VarChar(255)
-  role                        String?                @db.VarChar(255)
-  email                       String?                @db.VarChar(255)
-  encrypted_password          String?                @db.VarChar(255)
-  email_confirmed_at          DateTime?              @db.Timestamptz(6)
-  invited_at                  DateTime?              @db.Timestamptz(6)
-  confirmation_token          String?                @db.VarChar(255)
-  confirmation_sent_at        DateTime?              @db.Timestamptz(6)
-  recovery_token              String?                @db.VarChar(255)
-  recovery_sent_at            DateTime?              @db.Timestamptz(6)
-  email_change_token_new      String?                @db.VarChar(255)
-  email_change                String?                @db.VarChar(255)
-  email_change_sent_at        DateTime?              @db.Timestamptz(6)
-  last_sign_in_at             DateTime?              @db.Timestamptz(6)
-  raw_app_meta_data           Json?
-  raw_user_meta_data          Json?
-  is_super_admin              Boolean?
-  created_at                  DateTime?              @db.Timestamptz(6)
-  updated_at                  DateTime?              @db.Timestamptz(6)
-  phone                       String?                @unique
-  phone_confirmed_at          DateTime?              @db.Timestamptz(6)
-  phone_change                String?                @default("")
-  phone_change_token          String?                @default("") @db.VarChar(255)
-  phone_change_sent_at        DateTime?              @db.Timestamptz(6)
-  confirmed_at                DateTime?              @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
-  email_change_token_current  String?                @default("") @db.VarChar(255)
-  email_change_confirm_status Int?                   @default(0) @db.SmallInt
-  banned_until                DateTime?              @db.Timestamptz(6)
-  reauthentication_token      String?                @default("") @db.VarChar(255)
-  reauthentication_sent_at    DateTime?              @db.Timestamptz(6)
-  is_sso_user                 Boolean                @default(false)
-  deleted_at                  DateTime?              @db.Timestamptz(6)
-  is_anonymous                Boolean                @default(false)
-  identities                  identities[]
-  mfa_factors                 mfa_factors[]
-  oauth_authorizations        oauth_authorizations[]
-  oauth_consents              oauth_consents[]
-  one_time_tokens             one_time_tokens[]
-  sessions                    sessions[]
-  profiles                    profiles?
-  subscriptions               subscriptions[]
-
-  @@index([instance_id])
-  @@index([is_anonymous])
-  @@schema("auth")
-}
-
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model ab_tests {
   id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
@@ -430,38 +945,6 @@ model ab_tests {
   status      String?   @default("draft")
   metrics     Json?
   created_at  DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model app_sessions {
-  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id          String    @db.Uuid
-  title            String?   @default("New Session")
-  status           String    @default("scheduled") // scheduled, active, completed, cancelled
-  type             String    @default("instant")   // instant, scheduled
-  scheduled_at     DateTime? @db.Timestamptz(6)
-  started_at       DateTime? @db.Timestamptz(6)
-  ended_at         DateTime? @db.Timestamptz(6)
-  duration_minutes Int?
-  config           Json?
-  created_at       DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  updated_at       DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles         profiles           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  session_messages session_messages[]
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model session_messages {
-  id           String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  session_id   String       @db.Uuid
-  role         String // user, assistant, system
-  content      String
-  created_at   DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  app_sessions app_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("public")
 }
@@ -479,129 +962,6 @@ model achievements {
   max_level         Int?                @default(1)
   created_at        DateTime            @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   user_achievements user_achievements[]
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model activity_events {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  session_id   String   @db.Uuid
-  user_id      String   @db.Uuid
-  app_name     String?
-  window_title String?
-  timestamp    DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  metadata     Json?
-  profiles     profiles @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model appointments {
-  id                                           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                                      String    @db.Uuid
-  therapist_id                                 String?   @db.Uuid
-  start_time                                   DateTime  @db.Timestamptz(6)
-  end_time                                     DateTime  @db.Timestamptz(6)
-  status                                       String?   @default("scheduled")
-  type                                         String?   @default("video")
-  meeting_link                                 String?
-  notes                                        String?
-  sentiment                                    String?
-  rating                                       Int?
-  created_at                                   DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles_appointments_therapist_idToprofiles profiles? @relation("appointments_therapist_idToprofiles", fields: [therapist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  profiles_appointments_user_idToprofiles      profiles  @relation("appointments_user_idToprofiles", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model audit_logs {
-  id            String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  org_id        String?        @db.Uuid
-  actor_id      String?        @db.Uuid
-  action        String
-  details       Json?
-  created_at    DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles      profiles?      @relation(fields: [actor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  organizations organizations? @relation(fields: [org_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model community_comments {
-  id              String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  post_id         String          @db.Uuid
-  user_id         String          @db.Uuid
-  content         String
-  created_at      DateTime        @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  community_posts community_posts @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  profiles        profiles        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model community_group_members {
-  group_id         String           @db.Uuid
-  user_id          String           @db.Uuid
-  role             String?          @default("member")
-  joined_at        DateTime         @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  community_groups community_groups @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  profiles         profiles         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@id([group_id, user_id])
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model community_groups {
-  id                      String                    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name                    String
-  description             String?
-  category                String?
-  privacy                 String?                   @default("public")
-  created_at              DateTime                  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  community_group_members community_group_members[]
-  community_posts         community_posts[]
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model community_posts {
-  id                 String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  group_id           String?              @db.Uuid
-  user_id            String               @db.Uuid
-  content            String
-  likes_count        Int?                 @default(0)
-  tags               String[]
-  created_at         DateTime             @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  community_comments community_comments[]
-  community_groups   community_groups?    @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  profiles           profiles             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model crisis_events {
-  id                                           String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                                      String         @db.Uuid
-  risk_level                                   risk_level
-  event_type                                   String?
-  keywords                                     String[]
-  status                                       crisis_status? @default(pending)
-  ai_confidence                                Int?
-  assigned_to                                  String?        @db.Uuid
-  notes                                        String?
-  created_at                                   DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  resolved_at                                  DateTime?      @db.Timestamptz(6)
-  profiles_crisis_events_assigned_toToprofiles profiles?      @relation("crisis_events_assigned_toToprofiles", fields: [assigned_to], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  profiles_crisis_events_user_idToprofiles     profiles       @relation("crisis_events_user_idToprofiles", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("public")
 }
@@ -628,396 +988,26 @@ model habit_logs {
   @@schema("public")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model habits {
-  id          String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id     String       @db.Uuid
-  name        String
-  category    String?
-  frequency   String?      @default("daily")
-  color       String?
-  icon        String?
-  created_at  DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  is_archived Boolean?     @default(false)
-  habit_logs  habit_logs[]
-  profiles    profiles     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model idle_events {
-  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  session_id String    @db.Uuid
-  user_id    String    @db.Uuid
-  start_time DateTime  @db.Timestamptz(6)
-  end_time   DateTime? @db.Timestamptz(6)
-  reason     String?
-  created_at DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles   profiles  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model journal_entries {
-  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id    String   @db.Uuid
-  title      String?
-  content    String?
-  mood_tags  String[]
-  is_private Boolean? @default(true)
-  location   String?
-  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  updated_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles   profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model moderation_queue {
-  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  content_type String
-  content_id   String    @db.Uuid
-  reason       String?
-  status       String?   @default("pending")
-  reviewed_by  String?   @db.Uuid
-  reviewed_at  DateTime? @db.Timestamptz(6)
-  created_at   DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles     profiles? @relation(fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model mood_entries {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id     String   @db.Uuid
-  mood        String
-  intensity   Int
-  activities  String[]
-  notes       String?
-  created_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles    profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([user_id])
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model notifications {
-  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id    String   @db.Uuid
-  type       String
-  title      String?
-  message    String?
-  is_read    Boolean? @default(false)
-  metadata   Json?
-  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles   profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model nudges {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  title           String
-  message         String
-  type            String
-  target_audience Json?
-  schedule_time   DateTime? @db.Timestamptz(6)
-  is_recurring    Boolean?  @default(false)
-  status          String?   @default("draft")
-  created_by      String?   @db.Uuid
-  created_at      DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles        profiles? @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model org_members {
-  org_id        String        @db.Uuid
-  user_id       String        @db.Uuid
-  role          String?       @default("member")
-  created_at    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  organizations organizations @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  profiles      profiles      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@id([org_id, user_id])
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model organizations {
-  id            String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name          String
-  slug          String          @unique
-  created_at    DateTime        @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  audit_logs    audit_logs[]
-  org_members   org_members[]
-  projects      projects[]
-  subscriptions subscriptions[]
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model profiles {
-  id                                                    String                         @id @db.Uuid
-  email                                                 String?
-  phone                                                 String?
-  full_name                                             String?
-  avatar_url                                            String?
-  role                                                  String?                        @default("user")
-  created_at                                            DateTime                       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  updated_at                                            DateTime                       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  age                                                   String?
-  current_mood                                          String?
-  pronouns                                              String?
-  selected_goals                                        String[]
-  timezone                                              String?
-  emergency_contact_name                                String?
-  emergency_contact_phone                               String?
-  emergency_contact_relationship                        String?
-  in_therapy                                            String?
-  notification_preferences                              Json?
-  on_medication                                         String?
-  permissions                                           Json?
-  credits                                               Int?                           @default(0)
-  selected_avatar                                       String?
-  selected_voice                                        String?
-  selected_environment                                  String?
-  selected_triggers                                     String[]
-  activity_events                                       activity_events[]
-  app_sessions                                          app_sessions[]
-  appointments_appointments_therapist_idToprofiles      appointments[]                 @relation("appointments_therapist_idToprofiles")
-  appointments_appointments_user_idToprofiles           appointments[]                 @relation("appointments_user_idToprofiles")
-  audit_logs                                            audit_logs[]
-  community_comments                                    community_comments[]
-  community_group_members                               community_group_members[]
-  community_posts                                       community_posts[]
-  crisis_events_crisis_events_assigned_toToprofiles     crisis_events[]                @relation("crisis_events_assigned_toToprofiles")
-  crisis_events_crisis_events_user_idToprofiles         crisis_events[]                @relation("crisis_events_user_idToprofiles")
-  habits                                                habits[]
-  idle_events                                           idle_events[]
-  journal_entries                                       journal_entries[]
-  moderation_queue                                      moderation_queue[]
-  mood_entries                                          mood_entries[]
-  notifications                                         notifications[]
-  nudges                                                nudges[]
-  org_members                                           org_members[]
-  users                                                 users                          @relation(fields: [id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  reports_daily                                         reports_daily[]
-  safety_plans                                          safety_plans[]
-  sleep_entries                                         sleep_entries[]
-  support_tickets_support_tickets_assigned_toToprofiles support_tickets[]              @relation("support_tickets_assigned_toToprofiles")
-  support_tickets_support_tickets_user_idToprofiles     support_tickets[]              @relation("support_tickets_user_idToprofiles")
-  system_settings                                       system_settings[]
-  therapist_profiles                                    therapist_profiles?
-  time_entries                                          time_entries[]
-  user_achievements                                     user_achievements[]
-  user_challenge_participation                          user_challenge_participation[]
-  user_wellness_progress                                user_wellness_progress[]
-  wellness_tools                                        wellness_tools[]
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model projects {
-  id            String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  org_id        String        @db.Uuid
-  name          String
-  color         String?
-  created_at    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  organizations organizations @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tasks         tasks[]
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model reports_daily {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id      String   @db.Uuid
-  date         DateTime @db.Date
-  total_time   Int?     @default(0)
-  summary_json Json?
-  created_at   DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles     profiles @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model safety_plans {
-  id                   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id              String   @db.Uuid
-  warning_signs        String[]
-  coping_strategies    String[]
-  social_distractions  String[]
-  trusted_contacts     Json?
-  professional_support Json?
-  environment_safety   String[]
-  last_updated         DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles             profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model sleep_entries {
-  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id        String   @db.Uuid
-  bed_time       DateTime @db.Timestamptz(6)
-  wake_time      DateTime @db.Timestamptz(6)
-  quality_rating Int?
-  factors        String[]
-  notes          String?
-  created_at     DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles       profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model session_messages {
+  id           String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  session_id   String       @db.Uuid
+  role         String
+  content      String
+  created_at   DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  app_sessions app_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@schema("public")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model subscriptions {
-  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  org_id          String?        @db.Uuid
-  user_id         String?        @db.Uuid
-  stripe_sub_id   String?
-  status          String?
-  plan_id         String?
-  plan_type       String?
-  billing_cycle   String?
-  amount          Int?           @default(0)
-  payment_method  String?
-  next_billing_at DateTime?      @db.Timestamptz(6)
-  end_date        DateTime?      @db.Timestamptz(6)
-  updated_at      DateTime?      @db.Timestamptz(6)
-  created_at      DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  organizations   organizations? @relation(fields: [org_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users           users?         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model support_tickets {
-  id                                             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id                                        String           @db.Uuid
-  subject                                        String
-  description                                    String
-  priority                                       ticket_priority? @default(medium)
-  status                                         ticket_status?   @default(open)
-  assigned_to                                    String?          @db.Uuid
-  created_at                                     DateTime         @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  updated_at                                     DateTime         @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles_support_tickets_assigned_toToprofiles profiles?        @relation("support_tickets_assigned_toToprofiles", fields: [assigned_to], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  profiles_support_tickets_user_idToprofiles     profiles         @relation("support_tickets_user_idToprofiles", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model system_settings {
-  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  key         String    @unique
-  value       Json
-  description String?
-  updated_at  DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  updated_by  String?   @db.Uuid
-  profiles    profiles? @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model tasks {
-  id           String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  project_id   String         @db.Uuid
-  name         String
-  status       String?        @default("todo")
-  created_at   DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  projects     projects       @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  time_entries time_entries[]
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model therapist_profiles {
-  id              String    @id @db.Uuid
-  license_number  String?
-  specializations String[]
-  availability    Json?
-  rating          Decimal?  @default(0) @db.Decimal(3, 2)
-  is_verified     Boolean?  @default(false)
-  joined_date     DateTime? @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  languages       String[]
-  created_at      DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  updated_at      DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  profiles        profiles  @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model time_entries {
-  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id    String    @db.Uuid
-  task_id    String?   @db.Uuid
-  start_time DateTime  @db.Timestamptz(6)
-  end_time   DateTime? @db.Timestamptz(6)
-  duration   Int?
-  created_at DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  tasks      tasks?    @relation(fields: [task_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  profiles   profiles  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model user_achievements {
-  user_id        String       @db.Uuid
-  achievement_id String       @db.Uuid
-  earned_at      DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  progress       Int?         @default(0)
-  achievements   achievements @relation(fields: [achievement_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  profiles       profiles     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@id([user_id, achievement_id])
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model user_challenge_participation {
-  user_id             String              @db.Uuid
-  challenge_id        String              @db.Uuid
-  joined_at           DateTime            @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  progress            Int?                @default(0)
-  is_completed        Boolean?            @default(false)
-  wellness_challenges wellness_challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  profiles            profiles            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@id([user_id, challenge_id])
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model user_wellness_progress {
-  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id         String         @db.Uuid
-  tool_id         String         @db.Uuid
-  completed_at    DateTime?      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  duration_spent  Int?
-  feedback_rating Int?
-  wellness_tools  wellness_tools @relation(fields: [tool_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  profiles        profiles       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id            String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  org_id        String        @db.Uuid
+  stripe_sub_id String?
+  status        String?
+  plan_id       String?
+  created_at    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  organizations organizations @relation(fields: [org_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }
@@ -1034,29 +1024,6 @@ model wellness_challenges {
   reward_points                Int?                           @default(0)
   created_at                   DateTime                       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   user_challenge_participation user_challenge_participation[]
-
-  @@schema("public")
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model wellness_tools {
-  id                     String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  title                  String
-  category               String
-  description            String?
-  content_url            String?
-  duration_minutes       Int?
-  difficulty             String?
-  is_premium             Boolean?                 @default(false)
-  status                 String?                  @default("draft")
-  icon                   String?
-  created_by             String?                  @db.Uuid
-  created_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  updated_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  usage_count            Int                      @default(0)
-  rating                 Decimal                  @default(0) @db.Decimal(3, 2)
-  user_wellness_progress user_wellness_progress[]
-  profiles               profiles?                @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@schema("public")
 }

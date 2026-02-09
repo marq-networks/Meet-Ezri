@@ -15,6 +15,7 @@ import { billingRoutes } from './modules/billing/billing.routes';
 import { wellnessRoutes } from './modules/wellness/wellness.routes';
 import { sleepRoutes } from './modules/sleep/sleep.routes';
 import { habitsRoutes } from './modules/habits/habits.routes';
+import { emergencyContactRoutes } from './modules/users/emergency-contacts.routes';
 import jwkToPem from 'jwk-to-pem';
 const jwtLib = require('jsonwebtoken');
 
@@ -142,6 +143,7 @@ app.register(billingRoutes, { prefix: '/api/billing' });
 app.register(wellnessRoutes, { prefix: '/api/wellness' });
 app.register(sleepRoutes, { prefix: '/api/sleep' });
 app.register(habitsRoutes, { prefix: '/api/habits' });
+app.register(emergencyContactRoutes, { prefix: '/api/emergency-contacts' });
 
 const start = async () => {
   try {

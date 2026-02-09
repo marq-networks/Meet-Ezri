@@ -16,54 +16,29 @@ import {
   Bell,
   BellOff,
   Shield,
-  Check,
-  X,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { api } from "../../../lib/api";
+import { toast } from "sonner";
 
 interface EmergencyContact {
-  id: number;
+  id: string;
   name: string;
-  relationship: string;
-  phone: string;
-  email: string;
-  isTrustedContact: boolean; // NEW: Can receive safety notifications
-  notificationPreference: 'sms' | 'email' | 'both'; // NEW: How to notify
-  lastNotified?: string; // NEW: Track when last notified
+  relationship: string | null;
+  phone: string | null;
+  email: string | null;
+  is_trusted: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export function EmergencyContacts() {
   const navigate = useNavigate();
-  const [contacts, setContacts] = useState<EmergencyContact[]>([
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      relationship: "Mother",
-      phone: "(555) 123-4567",
-      email: "sarah.j@email.com",
-      isTrustedContact: true,
-      notificationPreference: 'both'
-    },
-    {
-      id: 2,
-      name: "Mike Chen",
-      relationship: "Best Friend",
-      phone: "(555) 987-6543",
-      email: "mike.chen@email.com",
-      isTrustedContact: true,
-      notificationPreference: 'sms'
-    },
-    {
-      id: 3,
-      name: "Dr. Emily Roberts",
-      relationship: "Therapist",
-      phone: "(555) 246-8135",
-      email: "dr.roberts@therapy.com",
-      isTrustedContact: false,
-      notificationPreference: 'email'
-    }
-  ]);
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
@@ -72,43 +47,62 @@ export function EmergencyContacts() {
     relationship: "",
     phone: "",
     email: "",
-    isTrustedContact: false,
-    notificationPreference: 'both' as 'sms' | 'email' | 'both'
+    is_trusted: false,
   });
 
-  // Load contacts from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem('ezri_emergency_contacts');
-    if (stored) {
-      try {
-        setContacts(JSON.parse(stored));
-      } catch (e) {
-        console.error('Error loading contacts:', e);
-      }
-    }
+    loadContacts();
   }, []);
 
-  // Save contacts to localStorage
-  useEffect(() => {
-    localStorage.setItem('ezri_emergency_contacts', JSON.stringify(contacts));
-  }, [contacts]);
+  const loadContacts = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.emergencyContacts.getAll();
+      setContacts(data);
+    } catch (error) {
+      console.error('Failed to load contacts:', error);
+      toast.error("Failed to load emergency contacts");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const handleAddContact = () => {
-    if (formData.name && formData.phone) {
-      const newContact: EmergencyContact = {
-        id: Date.now(),
-        ...formData
-      };
-      setContacts([...contacts, newContact]);
-      setFormData({ 
-        name: "", 
-        relationship: "", 
-        phone: "", 
-        email: "",
-        isTrustedContact: false,
-        notificationPreference: 'both'
+  const resetForm = () => {
+    setFormData({ 
+      name: "", 
+      relationship: "", 
+      phone: "", 
+      email: "",
+      is_trusted: false,
+    });
+    setEditingContact(null);
+    setShowAddModal(false);
+  };
+
+  const handleAddContact = async () => {
+    if (!formData.name) {
+      toast.error("Name is required");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const newContact = await api.emergencyContacts.create({
+        name: formData.name,
+        relationship: formData.relationship || undefined,
+        phone: formData.phone || undefined,
+        email: formData.email || undefined,
+        is_trusted: formData.is_trusted
       });
-      setShowAddModal(false);
+      
+      setContacts([newContact, ...contacts]);
+      toast.success("Contact added successfully");
+      resetForm();
+    } catch (error) {
+      console.error('Failed to add contact:', error);
+      toast.error("Failed to add contact");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -116,48 +110,79 @@ export function EmergencyContacts() {
     setEditingContact(contact);
     setFormData({
       name: contact.name,
-      relationship: contact.relationship,
-      phone: contact.phone,
-      email: contact.email,
-      isTrustedContact: contact.isTrustedContact,
-      notificationPreference: contact.notificationPreference
+      relationship: contact.relationship || "",
+      phone: contact.phone || "",
+      email: contact.email || "",
+      is_trusted: contact.is_trusted,
     });
     setShowAddModal(true);
   };
 
-  const handleUpdateContact = () => {
-    if (editingContact) {
-      setContacts(contacts.map(c => 
-        c.id === editingContact.id 
-          ? { ...c, ...formData }
-          : c
-      ));
-      setFormData({ 
-        name: "", 
-        relationship: "", 
-        phone: "", 
-        email: "",
-        isTrustedContact: false,
-        notificationPreference: 'both'
+  const handleUpdateContact = async () => {
+    if (!editingContact) return;
+    if (!formData.name) {
+      toast.error("Name is required");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const updatedContact = await api.emergencyContacts.update(editingContact.id, {
+        name: formData.name,
+        relationship: formData.relationship || undefined,
+        phone: formData.phone || undefined,
+        email: formData.email || undefined,
+        is_trusted: formData.is_trusted
       });
-      setEditingContact(null);
-      setShowAddModal(false);
+
+      setContacts(contacts.map(c => c.id === editingContact.id ? updatedContact : c));
+      toast.success("Contact updated successfully");
+      resetForm();
+    } catch (error) {
+      console.error('Failed to update contact:', error);
+      toast.error("Failed to update contact");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDeleteContact = (id: number) => {
+  const handleDeleteContact = async (id: string) => {
     if (confirm("Are you sure you want to delete this emergency contact?")) {
-      setContacts(contacts.filter(c => c.id !== id));
+      try {
+        await api.emergencyContacts.delete(id);
+        setContacts(contacts.filter(c => c.id !== id));
+        toast.success("Contact deleted successfully");
+      } catch (error) {
+        console.error('Failed to delete contact:', error);
+        toast.error("Failed to delete contact");
+      }
     }
   };
 
-  const toggleTrustedContact = (id: number) => {
-    setContacts(contacts.map(c =>
-      c.id === id ? { ...c, isTrustedContact: !c.isTrustedContact } : c
-    ));
+  const toggleTrustedContact = async (contact: EmergencyContact) => {
+    try {
+      const updatedContact = await api.emergencyContacts.update(contact.id, {
+        is_trusted: !contact.is_trusted
+      });
+      setContacts(contacts.map(c => c.id === contact.id ? updatedContact : c));
+      toast.success(updatedContact.is_trusted ? "Added to trusted contacts" : "Removed from trusted contacts");
+    } catch (error) {
+      console.error('Failed to update trusted status:', error);
+      toast.error("Failed to update status");
+    }
   };
 
-  const trustedContactsCount = contacts.filter(c => c.isTrustedContact).length;
+  const trustedContactsCount = contacts.filter(c => c.is_trusted).length;
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -189,8 +214,7 @@ export function EmergencyContacts() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
-                setEditingContact(null);
-                setFormData({ name: "", relationship: "", phone: "", email: "", isTrustedContact: false, notificationPreference: 'both' });
+                resetForm();
                 setShowAddModal(true);
               }}
               className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-lg shadow-lg hover:shadow-xl transition-shadow"
@@ -250,7 +274,7 @@ export function EmergencyContacts() {
               transition={{ delay: 0.2 + index * 0.05 }}
             >
               <Card className={`p-6 shadow-lg hover:shadow-xl transition-all group ${
-                contact.isTrustedContact ? 'border-2 border-purple-200 bg-purple-50/30' : ''
+                contact.is_trusted ? 'border-2 border-purple-200 bg-purple-50/30' : ''
               }`}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -261,7 +285,7 @@ export function EmergencyContacts() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-bold text-lg">{contact.name}</h3>
-                          {contact.isTrustedContact && (
+                          {contact.is_trusted && (
                             <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 border border-purple-300 rounded-full">
                               <Shield className="w-3 h-3 text-purple-700" />
                               <span className="text-xs font-medium text-purple-700">Trusted</span>
@@ -272,36 +296,20 @@ export function EmergencyContacts() {
                       </div>
                     </div>
                     <div className="space-y-2 ml-15">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        <a href={`tel:${contact.phone}`} className="hover:text-primary transition-colors">
-                          {contact.phone}
-                        </a>
-                      </div>
+                      {contact.phone && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="w-4 h-4 text-gray-400" />
+                          <a href={`tel:${contact.phone}`} className="hover:text-primary transition-colors">
+                            {contact.phone}
+                          </a>
+                        </div>
+                      )}
                       {contact.email && (
                         <div className="flex items-center gap-2 text-sm">
                           <Mail className="w-4 h-4 text-gray-400" />
                           <a href={`mailto:${contact.email}`} className="hover:text-primary transition-colors">
                             {contact.email}
                           </a>
-                        </div>
-                      )}
-                      {contact.isTrustedContact && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Bell className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-600">
-                            Notifications: {
-                              contact.notificationPreference === 'both' ? 'SMS & Email' :
-                              contact.notificationPreference === 'sms' ? 'SMS Only' :
-                              'Email Only'
-                            }
-                          </span>
-                        </div>
-                      )}
-                      {contact.lastNotified && (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <MessageSquare className="w-3 h-3" />
-                          <span>Last notified: {new Date(contact.lastNotified).toLocaleDateString()}</span>
                         </div>
                       )}
                     </div>
@@ -311,15 +319,15 @@ export function EmergencyContacts() {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => toggleTrustedContact(contact.id)}
+                      onClick={() => toggleTrustedContact(contact)}
                       className={`p-2 rounded-lg transition-colors ${
-                        contact.isTrustedContact 
+                        contact.is_trusted 
                           ? 'bg-purple-100 hover:bg-purple-200' 
                           : 'bg-gray-100 hover:bg-gray-200'
                       }`}
-                      title={contact.isTrustedContact ? 'Remove from trusted contacts' : 'Add to trusted contacts'}
+                      title={contact.is_trusted ? 'Remove from trusted contacts' : 'Add to trusted contacts'}
                     >
-                      {contact.isTrustedContact ? (
+                      {contact.is_trusted ? (
                         <Bell className="w-4 h-4 text-purple-600" />
                       ) : (
                         <BellOff className="w-4 h-4 text-gray-600" />
@@ -375,11 +383,7 @@ export function EmergencyContacts() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => {
-                setShowAddModal(false);
-                setEditingContact(null);
-                setFormData({ name: "", relationship: "", phone: "", email: "", isTrustedContact: false, notificationPreference: 'both' });
-              }}
+              onClick={resetForm}
               className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
             />
             <motion.div
@@ -423,7 +427,7 @@ export function EmergencyContacts() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Phone Number *</label>
+                    <label className="block text-sm font-medium mb-2">Phone Number</label>
                     <div className="flex items-center gap-2 p-3 border border-gray-300 rounded-lg">
                       <Phone className="w-4 h-4 text-gray-400" />
                       <input
@@ -456,46 +460,28 @@ export function EmergencyContacts() {
                       <Shield className="w-4 h-4 text-gray-400" />
                       <input
                         type="checkbox"
-                        checked={formData.isTrustedContact}
-                        onChange={(e) => setFormData({ ...formData, isTrustedContact: e.target.checked })}
+                        checked={formData.is_trusted}
+                        onChange={(e) => setFormData({ ...formData, is_trusted: e.target.checked })}
                         className="h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <label className="block text-sm font-medium mb-2">Notification Preference</label>
-                    <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-gray-400" />
-                      <select
-                        value={formData.notificationPreference}
-                        onChange={(e) => setFormData({ ...formData, notificationPreference: e.target.value as 'sms' | 'email' | 'both' })}
-                        className="h-8 w-24 text-sm text-gray-500 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                      >
-                        <option value="sms">SMS</option>
-                        <option value="email">Email</option>
-                        <option value="both">Both</option>
-                      </select>
-                    </div>
-                  </div>
-
                   <div className="flex gap-3 pt-4">
                     <Button
-                      onClick={() => {
-                        setShowAddModal(false);
-                        setEditingContact(null);
-                        setFormData({ name: "", relationship: "", phone: "", email: "", isTrustedContact: false, notificationPreference: 'both' });
-                      }}
+                      onClick={resetForm}
                       variant="outline"
                       className="flex-1"
+                      disabled={isSubmitting}
                     >
                       Cancel
                     </Button>
                     <Button
                       onClick={editingContact ? handleUpdateContact : handleAddContact}
                       className="flex-1"
-                      disabled={!formData.name || !formData.phone}
+                      disabled={!formData.name || isSubmitting}
                     >
+                      {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                       {editingContact ? "Update Contact" : "Add Contact"}
                     </Button>
                   </div>

@@ -51,7 +51,7 @@ export async function getAllUsers() {
         orderBy: { created_at: 'desc' },
         take: 1
       },
-      appointments_appointments_user_idToprofiles: {
+      appointments_user: {
         where: { status: 'completed' }
       }
     }
@@ -60,7 +60,7 @@ export async function getAllUsers() {
   return users.map(user => {
     // Calculate basic stats or risk level mock
     const lastActive = user.updated_at || user.created_at;
-    const sessionCount = user.appointments_appointments_user_idToprofiles.length;
+    const sessionCount = user.appointments_user.length;
     
     // Simple risk logic (mock)
     let riskLevel = 'low';
@@ -114,11 +114,15 @@ export async function getProfile(userId: string) {
         orderBy: { created_at: 'desc' },
         take: 30,
       },
-      appointments_appointments_user_idToprofiles: {
+      appointments_user: {
         where: {
           status: 'scheduled',
           start_time: { gt: new Date() }
         }
+      },
+      emergency_contacts: {
+        orderBy: { created_at: 'desc' },
+        take: 1
       }
     },
   });
@@ -145,10 +149,14 @@ export async function getProfile(userId: string) {
   ]);
 
   const streakDays = calculateStreak(profile.mood_entries);
-  const upcomingSessions = profile.appointments_appointments_user_idToprofiles.length;
+  const upcomingSessions = profile.appointments_user.length;
+  const primaryContact = profile.emergency_contacts?.[0];
 
   return {
     ...profile,
+    emergency_contact_name: primaryContact?.name || profile.emergency_contact_name,
+    emergency_contact_phone: primaryContact?.phone || profile.emergency_contact_phone,
+    emergency_contact_relationship: primaryContact?.relationship || profile.emergency_contact_relationship,
     streak_days: streakDays,
     upcoming_sessions: upcomingSessions,
     stats: {
@@ -173,10 +181,47 @@ export async function getCredits(userId: string) {
 
 export async function updateProfile(userId: string, data: UpdateProfileInput) {
   // console.log('Updating profile for user:', userId, 'Data:', data);
+
+  const { 
+    emergency_contact_name, 
+    emergency_contact_phone, 
+    emergency_contact_relationship, 
+    ...profileData 
+  } = data as any;
+
+  // Handle emergency contact update if any of the fields are present
+  if (emergency_contact_name !== undefined || emergency_contact_phone !== undefined || emergency_contact_relationship !== undefined) {
+    const existingContact = await prisma.emergency_contacts.findFirst({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' }
+    });
+
+    if (existingContact) {
+      await prisma.emergency_contacts.update({
+        where: { id: existingContact.id },
+        data: {
+          name: emergency_contact_name ?? existingContact.name,
+          phone: emergency_contact_phone ?? existingContact.phone,
+          relationship: emergency_contact_relationship ?? existingContact.relationship,
+        }
+      });
+    } else if (emergency_contact_name) {
+      // Create new if name is provided
+      await prisma.emergency_contacts.create({
+        data: {
+          user_id: userId,
+          name: emergency_contact_name,
+          phone: emergency_contact_phone,
+          relationship: emergency_contact_relationship,
+          is_trusted: true
+        }
+      });
+    }
+  }
   
   return prisma.profiles.update({
     where: { id: userId },
-    data: data as any,
+    data: data as any, // Keep updating legacy fields for now for safety, or use profileData to exclude them
   });
 }
 
