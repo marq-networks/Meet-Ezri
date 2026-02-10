@@ -31,12 +31,19 @@ import {
   Award
 } from 'lucide-react';
 import { useSafety } from '@/app/contexts/SafetyContext';
+import { getSafetyEvents } from '@/app/utils/safetyLogger';
 import { getMostUsedResources, getInteractionsBySafetyState } from '@/app/utils/resourceTracking';
 
 export function SafetyInsights() {
   const navigate = useNavigate();
-  const { safetyHistory } = useSafety();
+  const { } = useSafety();
   const [insights, setInsights] = useState<any>(null);
+  const [safetyHistory, setSafetyHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    const history = getSafetyEvents();
+    setSafetyHistory(history);
+  }, []);
 
   useEffect(() => {
     calculateInsights();
@@ -159,7 +166,7 @@ export function SafetyInsights() {
 
     // Time-based recommendation
     const mostCommonTime = Object.entries(data.timePatterns)
-      .sort(([, a]: any, [, b]: any) => b - a)[0];
+      .sort(([, a]: any, [, b]: any) => b - a)[0] as [string, number] | undefined;
     
     if (mostCommonTime && mostCommonTime[1] > 2) {
       recs.push({
@@ -175,7 +182,7 @@ export function SafetyInsights() {
     // Trigger-based recommendation
     if (Object.keys(data.triggers).length > 0) {
       const topTrigger = Object.entries(data.triggers)
-        .sort(([, a]: any, [, b]: any) => b - a)[0];
+        .sort(([, a]: any, [, b]: any) => b - a)[0] as [string, number];
       
       recs.push({
         type: 'trigger',

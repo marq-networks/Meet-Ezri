@@ -355,6 +355,16 @@ export const api = {
         cache: 'no-store',
       });
       return handleResponse(res, 'Failed to fetch user audit logs');
+    },
+
+    async getUserSubscription(userId: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/users/${userId}/subscription`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch user subscription');
     }
   },
 

@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
+import { ArrowLeft, ArrowRight, Shield, Key, CheckCircle2, Check, Copy, AlertCircle, Smartphone, QrCode } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 

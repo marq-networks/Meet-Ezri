@@ -111,7 +111,7 @@ export function ActiveSession() {
   useEffect(() => {
     const loadCredits = async () => {
       try {
-        const { credits } = await api.user.getCredits();
+        const { credits } = await api.getCredits();
         if (credits !== undefined) {
           setCreditsRemaining(credits);
         }
@@ -133,7 +133,7 @@ export function ActiveSession() {
   };
 
   // Safety resources
-  const safetyResources = getSafetyResources(currentState);
+  const safetyResources = getSafetyResources();
 
   // Detect safety state changes
   useEffect(() => {
@@ -193,7 +193,7 @@ export function ActiveSession() {
         
         // Deduct 1 credit every 60 seconds (1 minute)
         if (newTime > 0 && newTime % 60 === 0) {
-          setCreditsRemaining((prevCredits) => Math.max(0, prevCredits - 1));
+          setCreditsRemaining((prevCredits: number) => Math.max(0, prevCredits - 1));
         }
         
         return newTime;
@@ -1047,7 +1047,7 @@ export function ActiveSession() {
                 
                 {/* Resource cards */}
                 {safetyResources.map(resource => (
-                  <SafetyResourceCard key={resource.title} resource={resource} />
+                  <SafetyResourceCard key={resource.id} resource={resource} />
                 ))}
               </div>
 
@@ -1064,7 +1064,7 @@ export function ActiveSession() {
       </AnimatePresence>
 
       {/* Safety State Indicator */}
-      <SafetyStateIndicator currentState={currentState} />
+      <SafetyStateIndicator />
 
       {/* Pause Session Button */}
       <motion.button

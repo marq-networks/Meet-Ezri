@@ -22,7 +22,7 @@ export function OnboardingProfileSetup() {
   const [age, setAge] = useState(data.age || "");
   const [timezone, setTimezone] = useState(data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [isUploading, setIsUploading] = useState(false);
-  const [availableTimezones] = useState(Intl.supportedValuesOf('timeZone'));
+  const [availableTimezones] = useState<string[]>((Intl as any).supportedValuesOf('timeZone'));
 
   useEffect(() => {
     if (!data.timezone) {

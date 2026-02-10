@@ -84,7 +84,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writing..
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => handleFormat(button.action)}
+                onClick={() => handleFormat(button.action!)}
                 className="p-2 rounded hover:bg-gray-200 transition-colors"
                 title={button.label}
               >

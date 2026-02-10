@@ -349,7 +349,7 @@ export function SuperAdminDashboard() {
               </div>
 
               <div className="space-y-4">
-                {systemHealth.map((metric, index) => (
+                {systemHealth.map((metric: any, index: number) => (
                   <motion.div
                     key={metric.name}
                     initial={{ opacity: 0, x: -20 }}
@@ -609,7 +609,7 @@ export function SuperAdminDashboard() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {platformDistribution.map((entry, index) => (
+                    {platformDistribution.map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -617,7 +617,7 @@ export function SuperAdminDashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="mt-4 space-y-2">
-                {platformDistribution.map((item, index) => (
+                {platformDistribution.map((item: any, index: number) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div

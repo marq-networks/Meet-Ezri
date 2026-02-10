@@ -71,11 +71,17 @@ export function UserManagement() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<{
+    name: string;
+    email: string;
+    status: "active" | "suspended" | "inactive";
+    subscription: "free" | "premium" | "enterprise";
+    organization: string;
+  }>({
     name: "",
     email: "",
-    status: "active" as const,
-    subscription: "free" as const,
+    status: "active",
+    subscription: "free",
     organization: "",
   });
   const usersPerPage = 10;

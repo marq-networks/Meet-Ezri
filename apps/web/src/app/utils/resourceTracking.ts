@@ -7,7 +7,7 @@ export interface ResourceInteraction {
   id: string;
   resourceId: string;
   resourceName: string;
-  resourceType: 'crisis_line' | 'text_line' | 'emergency' | 'support_group';
+  resourceType: 'crisis_line' | 'text_line' | 'emergency' | 'support_group' | 'trusted_contact';
   interactionType: 'view' | 'call' | 'text' | 'visit' | 'share';
   timestamp: string;
   sessionId?: string;
@@ -33,7 +33,7 @@ export interface ResourceAnalytics {
 export function trackResourceInteraction(
   resourceId: string,
   resourceName: string,
-  resourceType: 'crisis_line' | 'text_line' | 'emergency' | 'support_group',
+  resourceType: 'crisis_line' | 'text_line' | 'emergency' | 'support_group' | 'trusted_contact',
   interactionType: 'view' | 'call' | 'text' | 'visit' | 'share',
   sessionId?: string,
   safetyState?: string

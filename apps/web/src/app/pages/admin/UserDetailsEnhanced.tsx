@@ -36,8 +36,8 @@ export function UserDetailsEnhanced() {
           api.journal.getUserJournals(userId).catch(() => []),
           api.sleep.getUserEntries(userId).catch(() => []),
           api.habits.getUserHabits(userId).catch(() => []),
-          api.getUserAuditLogs(userId).catch(() => []),
-          api.getUserSubscription(userId).catch(() => null)
+          api.admin.getUserAuditLogs(userId).catch(() => []),
+          api.admin.getUserSubscription(userId).catch(() => null)
         ]);
         
         // Calculate stats

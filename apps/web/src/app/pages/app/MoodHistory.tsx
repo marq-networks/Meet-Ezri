@@ -188,10 +188,21 @@ export function MoodHistory() {
             const d = new Date(currentDate.getFullYear(), i, 1);
             const month = format(d, "MMM");
             const data = monthlyData[month];
+            
+            if (data) {
+                return {
+                    day: month,
+                    fullDate: d,
+                    mood: Number((data.total / data.count).toFixed(1)),
+                    intensity: Math.floor(data.total / data.count)
+                };
+            }
+            
             return {
                 day: month,
-                mood: data ? Number((data.total / data.count).toFixed(1)) : null,
-                intensity: data ? Math.floor(data.total / data.count) : null
+                fullDate: d,
+                mood: null,
+                intensity: null
             };
         });
     }

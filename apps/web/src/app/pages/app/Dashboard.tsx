@@ -368,7 +368,7 @@ export function Dashboard() {
                 </Link>
               </div>
               <div className="space-y-3">
-                {recentActivities.map((activity, index) => (
+                {recentActivities.map((activity: any, index: number) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: 20 }}

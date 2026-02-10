@@ -87,7 +87,7 @@ export function AccountSettings() {
 
       // Clean up any existing TOTP factors to prevent conflicts
       const { data: factors } = await supabase.auth.mfa.listFactors();
-      const existingTotp = factors?.all?.filter(f => f.factorType === 'totp') || [];
+      const existingTotp = factors?.all?.filter(f => f.factor_type === 'totp') || [];
       
       if (existingTotp.length > 0) {
         await Promise.all(existingTotp.map(f => supabase.auth.mfa.unenroll({ factorId: f.id })));

@@ -42,7 +42,7 @@ export function Billing() {
     billingCycle: {
       startDate: new Date().toISOString(),
       endDate: new Date().toISOString(),
-      renewsOn: undefined
+      renewsOn: null
     },
     payAsYouGoCredits: 0,
     totalSpent: 0,

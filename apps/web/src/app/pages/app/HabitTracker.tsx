@@ -77,7 +77,7 @@ export function HabitTracker() {
     // Simple daily streak calculation
     // This is a simplified version. Robust streak calculation is complex.
     // We assume one log per day matters.
-    const uniqueDates = Array.from(new Set(sortedLogs.map((d: Date) => format(d, 'yyyy-MM-dd'))))
+    const uniqueDates = Array.from<string>(new Set(sortedLogs.map((d: Date) => format(d, 'yyyy-MM-dd'))))
       .map((d: string) => new Date(d))
       .sort((a: Date, b: Date) => b.getTime() - a.getTime());
 
@@ -183,6 +183,18 @@ export function HabitTracker() {
       color: "from-blue-400 to-cyan-500"
     });
     setEditingHabit(null);
+  };
+
+  const handleEditHabit = (habit: Habit) => {
+    setEditingHabit(habit);
+    setHabitFormData({
+      name: habit.name,
+      icon: habit.icon,
+      category: habit.category,
+      frequency: habit.frequency,
+      color: habit.color
+    });
+    setShowNewHabit(true);
   };
 
   const handleCreateHabit = async () => {
