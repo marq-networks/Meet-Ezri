@@ -19,7 +19,6 @@ export async function moodRoutes(app: FastifyInstance) {
     "/",
     {
       schema: {
-        tags: ["Moods"],
       },
       preHandler: [app.authenticate],
     },
@@ -30,7 +29,6 @@ export async function moodRoutes(app: FastifyInstance) {
     "/admin/users/:userId/moods",
     {
        schema: {
-        tags: ["Moods", "Admin"],
       },
       preHandler: [app.authenticate, app.authorize(['super_admin', 'org_admin', 'team_admin'])],
     },
@@ -41,7 +39,6 @@ export async function moodRoutes(app: FastifyInstance) {
     "/admin",
     {
        schema: {
-        tags: ["Moods", "Admin"],
       },
       preHandler: [app.authenticate, app.authorize(['super_admin', 'org_admin', 'team_admin'])],
     },

@@ -1,9 +1,10 @@
-import Fastify, { FastifyRequest } from 'fastify';
+import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from 'fastify-type-provider-zod';
 import cors from '@fastify/cors';
 import rawBody from 'fastify-raw-body';
 import jwt from '@fastify/jwt';
 import dotenv from 'dotenv';
+import './types/fastify'; // Import type augmentation
 import authPlugin from './plugins/auth';
 import { userRoutes } from './modules/users/user.routes';
 import { emailRoutes } from './modules/email/email.routes';
@@ -99,50 +100,85 @@ const secretProvider = async (reqOrHeader: any, tokenOrPayload: any) => {
       header = reqOrHeader;
   }
 
-  if (!header) {
-    // If we can't determine alg, fallback to secret (likely HS256)
-    return secret;
-  }
-  
-  if (header.alg === 'HS256') {
-    return secret;
+  // Debugging logs (optional, remove in production)
+  // console.log('Decoding header:', header);
+
+  // If alg is HS256, use the Supabase JWT Secret (symmetric)
+  if (header?.alg === 'HS256' || !header?.alg) {
+      return secret;
   }
 
-  if (header.alg === 'ES256' || header.alg === 'RS256') {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    if (!supabaseUrl) throw new Error('SUPABASE_URL not set');
-    
-    const jwks = await getJwks(supabaseUrl);
-    if (!jwks || !jwks.keys) throw new Error('No JWKS available');
-    
-    const key = jwks.keys.find((k: any) => k.kid === header.kid);
-    if (!key) throw new Error('Matching key not found in JWKS');
-    
-    return jwkToPem(key);
+  // If alg is RS256/ES256, use JWKS from Supabase (asymmetric)
+  const projectUrl = process.env.SUPABASE_URL;
+  if (!projectUrl) {
+      console.error('SUPABASE_URL is missing, cannot fetch JWKS');
+      return secret; // Fallback to secret, though it will likely fail for RS256
   }
 
-  return secret;
+  const jwks = await getJwks(projectUrl);
+  if (!jwks || !jwks.keys) {
+      throw new Error('No JWKS keys found');
+  }
+
+  // Find the correct key based on kid (Key ID)
+  const key = jwks.keys.find((k: any) => k.kid === header.kid);
+  if (!key) {
+      throw new Error(`No matching key found for kid: ${header.kid}`);
+  }
+
+  // Convert JWK to PEM format
+  return jwkToPem(key);
 };
 
+// Register JWT with dynamic secret provider
 app.register(jwt, {
-    secret: secretProvider,
-    verify: {
-      allowedAlgorithms: ['HS256', 'RS256', 'ES256', 'PS256'],
-      cache: true
-    }
-  } as any);
+  secret: secretProvider as any,
+  verify: {
+      allowedIss: [process.env.SUPABASE_URL + '/auth/v1'], // Optional: Verify Issuer
+      extractToken: (req) => {
+          // Standard Bearer token extraction
+          if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
+              return req.headers.authorization.split(' ')[1];
+          }
+          return undefined;
+      }
+  }
+});
 
-// Register custom plugins
+app.decorate("authenticate", async function (request: FastifyRequest, reply: FastifyReply) {
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    reply.send(err);
+  }
+});
+
+// Authorization decorator
+app.decorate("authorize", function (allowedRoles: string[]) {
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    // Check if user exists and has a role
+    // This requires that request.user is populated (by authenticate)
+    // and that the token payload contains the role or we fetch it from DB
+    
+    // For Supabase, role might be in app_metadata or user_metadata
+    const user = request.user as any;
+    
+    // Check app_metadata for role (standard Supabase pattern)
+    const userRole = user?.app_metadata?.role || user?.role || 'user';
+    
+    if (!allowedRoles.includes(userRole)) {
+      reply.code(403).send({ message: 'Forbidden: Insufficient permissions' });
+    }
+  };
+});
+
+// Register plugin to add `verifyJWT` decorator
 app.register(authPlugin);
 
 // Register routes
-app.get('/health', async () => {
-  return { status: 'ok', service: 'api' };
-});
-
 app.register(userRoutes, { prefix: '/api/users' });
 app.register(emailRoutes, { prefix: '/api/email' });
-app.register(systemSettingsRoutes, { prefix: '/api/settings' });
+app.register(systemSettingsRoutes, { prefix: '/api/system-settings' });
 app.register(sessionRoutes, { prefix: '/api/sessions' });
 app.register(moodRoutes, { prefix: '/api/moods' });
 app.register(adminRoutes, { prefix: '/api/admin' });
@@ -153,14 +189,18 @@ app.register(sleepRoutes, { prefix: '/api/sleep' });
 app.register(habitsRoutes, { prefix: '/api/habits' });
 app.register(emergencyContactRoutes, { prefix: '/api/emergency-contacts' });
 
-const start = async () => {
-  try {
-    await app.listen({ port: parseInt(process.env.PORT || '3001'), host: '0.0.0.0' });
-    console.log(`Server listening on ${process.env.PORT || 3001}`);
-  } catch (err) {
-    app.log.error(err);
-    process.exit(1);
-  }
-};
+export default app;
 
-start();
+if (require.main === module) {
+  const start = async () => {
+    try {
+      await app.listen({ port: parseInt(process.env.PORT || '3001'), host: '0.0.0.0' });
+      console.log(`Server listening on ${process.env.PORT || 3001}`);
+    } catch (err) {
+      app.log.error(err);
+      process.exit(1);
+    }
+  };
+
+  start();
+}

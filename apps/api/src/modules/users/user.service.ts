@@ -73,14 +73,14 @@ export async function getAllUsers() {
 
     return {
       id: user.id,
-      name: user.full_name || user.email.split('@')[0],
-      email: user.email,
+      name: user.full_name || (user.email ? user.email.split('@')[0] : 'User'),
+      email: user.email || '',
       status: 'active', // In a real app, check auth status or soft delete
       joinDate: user.created_at,
       sessions: sessionCount,
       lastActive: lastActive,
       riskLevel: riskLevel,
-      subscription: user.credits > 100 ? 'premium' : 'free', // Mock logic based on credits
+      subscription: (user.credits || 0) > 100 ? 'premium' : 'free', // Mock logic based on credits
       organization: 'Individual' // Mock
     };
   });

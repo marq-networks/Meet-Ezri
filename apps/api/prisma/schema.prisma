@@ -542,6 +542,7 @@ model profiles {
   phone                          String?
   selected_voice                 String?
   credits                        Int?                           @default(0)
+  stripe_customer_id             String?
   activity_events                activity_events[]
   app_sessions                   app_sessions[]
   appointments_therapist         appointments[]                 @relation("appointments_therapist_idToprofiles")
