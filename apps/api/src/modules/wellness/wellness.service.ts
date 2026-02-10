@@ -2,8 +2,25 @@ import prisma from '../../lib/prisma';
 import { CreateWellnessToolInput, UpdateWellnessToolInput } from './wellness.schema';
 
 export async function createWellnessTool(data: CreateWellnessToolInput & { created_by?: string }) {
+  const { created_by, image_url, content, ...rest } = data;
+
   return prisma.wellness_tools.create({
-    data,
+    data: {
+      title: data.title,
+      category: data.category,
+      description: data.description,
+      duration_minutes: data.duration_minutes,
+      difficulty: data.difficulty,
+      is_premium: data.is_premium,
+      status: data.status,
+      icon: data.icon,
+      content_url: image_url,
+      ...(created_by ? {
+        profiles: {
+          connect: { id: created_by },
+        }
+      } : {}),
+    },
   });
 }
 
