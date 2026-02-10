@@ -4,8 +4,10 @@ import { CreateHabitInput, UpdateHabitInput, LogHabitInput } from "./habits.sche
 export async function createHabit(userId: string, data: CreateHabitInput) {
   return prisma.habits.create({
     data: {
-      user_id: userId,
       ...data,
+      profiles: {
+        connect: { id: userId },
+      },
     },
   });
 }
