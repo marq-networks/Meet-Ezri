@@ -4,7 +4,7 @@ import { CreateHabitInput, UpdateHabitInput, LogHabitInput } from "./habits.sche
 export async function createHabit(userId: string, data: CreateHabitInput) {
   return prisma.habits.create({
     data: {
-      name: data.name,
+      name: data.name!,
       category: data.category,
       frequency: data.frequency,
       color: data.color,
