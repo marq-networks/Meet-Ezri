@@ -4,8 +4,14 @@ import { CreateSleepEntryInput, UpdateSleepEntryInput } from './sleep.schema';
 export async function createSleepEntry(userId: string, data: CreateSleepEntryInput) {
   return prisma.sleep_entries.create({
     data: {
-      user_id: userId,
-      ...data,
+      bed_time: data.bed_time,
+      wake_time: data.wake_time,
+      quality_rating: data.quality_rating,
+      factors: data.factors,
+      notes: data.notes,
+      profiles: {
+        connect: { id: userId },
+      },
     },
   });
 }
