@@ -8,7 +8,6 @@ export async function moodRoutes(app: FastifyInstance) {
     {
       schema: {
         body: createMoodSchema,
-        tags: ["Moods"],
       },
       preHandler: [app.authenticate],
     },
