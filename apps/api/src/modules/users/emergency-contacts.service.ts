@@ -21,11 +21,13 @@ export async function getEmergencyContacts(userId: string) {
     if (profile?.emergency_contact_name) {
       const newContact = await prisma.emergency_contacts.create({
         data: {
-          user_id: userId,
           name: profile.emergency_contact_name,
           phone: profile.emergency_contact_phone,
           relationship: profile.emergency_contact_relationship,
           is_trusted: true, // Assume legacy contact is trusted
+          profiles: {
+            connect: { id: userId },
+          },
         }
       });
       return [newContact];
@@ -42,9 +44,14 @@ export async function createEmergencyContact(userId: string, data: CreateEmergen
   
   return prisma.emergency_contacts.create({
     data: {
-      ...data,
-      user_id: userId,
+      name: data.name,
+      relationship: data.relationship,
+      phone: data.phone,
+      is_trusted: data.is_trusted,
       email: data.email === '' ? null : data.email,
+      profiles: {
+        connect: { id: userId },
+      },
     },
   });
 }
