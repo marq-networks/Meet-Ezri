@@ -120,7 +120,7 @@ export async function removeHabitCompletion(userId: string, habitId: string, dat
     await prisma.habit_logs.deleteMany({
       where: {
         id: {
-          in: logs.map(l => l.id),
+          in: logs.map((l: typeof logs[number]) => l.id),
         },
       },
     });

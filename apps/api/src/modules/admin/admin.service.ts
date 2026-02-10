@@ -103,7 +103,7 @@ export async function getAllUsers() {
     }
   });
 
-  return users.map(user => ({
+  return users.map((user: typeof users[number]) => ({
     ...user,
     email: user.email || '',
     created_at: user.created_at,

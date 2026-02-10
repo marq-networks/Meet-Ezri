@@ -57,7 +57,7 @@ export async function getAllUsers() {
     }
   });
 
-  return users.map(user => {
+  return users.map((user: typeof users[number]) => {
     // Calculate basic stats or risk level mock
     const lastActive = user.updated_at || user.created_at;
     const sessionCount = user.appointments_user.length;
