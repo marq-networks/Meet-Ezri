@@ -13,6 +13,12 @@ export const createSessionSchema = z.object({
 
 export const endSessionSchema = z.object({
   duration_seconds: z.number().int().nonnegative().optional(),
+  recording_url: z.string().url().optional(),
+  transcript: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string(),
+    timestamp: z.number().optional()
+  })).optional()
 });
 
 export const createMessageSchema = z.object({

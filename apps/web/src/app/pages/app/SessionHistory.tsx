@@ -40,6 +40,7 @@ interface SessionData {
   sentiment: number;
   favorite: boolean;
   status?: "completed" | "upcoming";
+  recordingUrl?: string;
 }
 
 interface BackendSession {
@@ -52,6 +53,7 @@ interface BackendSession {
   started_at: string | null;
   ended_at: string | null;
   duration_minutes: number | null;
+  recording_url: string | null;
   created_at: string;
   updated_at: string;
   _count?: {
@@ -70,6 +72,29 @@ export function SessionHistory() {
   const [completedSessions, setCompletedSessions] = useState<SessionData[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<SessionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [transcript, setTranscript] = useState<{ role: string; content: string; created_at: string }[]>([]);
+  const [loadingTranscript, setLoadingTranscript] = useState(false);
+
+  useEffect(() => {
+    if (selectedSession) {
+      const fetchTranscript = async () => {
+        setLoadingTranscript(true);
+        try {
+          const data = await api.sessions.getTranscript(selectedSession.id);
+          setTranscript(data);
+        } catch (error) {
+          console.error("Failed to fetch transcript", error);
+          setTranscript([]);
+        } finally {
+          setLoadingTranscript(false);
+        }
+      };
+      fetchTranscript();
+    } else {
+      setTranscript([]);
+    }
+  }, [selectedSession]);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -98,7 +123,8 @@ export function SessionHistory() {
           summary: s.title || "No summary available",
           sentiment: 0, // Placeholder
           favorite: false, // Placeholder
-          status: s.status === 'completed' ? 'completed' : 'upcoming'
+          status: s.status === 'completed' ? 'completed' : 'upcoming',
+          recordingUrl: s.recording_url || undefined
         });
 
         const completed = data
@@ -124,7 +150,7 @@ export function SessionHistory() {
 
   const handleReplaySession = () => {
     // Navigate to active session page to replay the session
-    navigate("/app/active-session");
+    // navigate("/app/active-session");
   };
 
   const handleExportSession = (session: SessionData) => {
@@ -548,15 +574,38 @@ export function SessionHistory() {
                       </div>
                     </div>
 
+                    {/* Transcript */}
+                    <div>
+                      <h3 className="font-bold mb-2">Transcript</h3>
+                      <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto space-y-3">
+                        {loadingTranscript ? (
+                           <p className="text-sm text-gray-500 text-center">Loading transcript...</p>
+                        ) : transcript.length > 0 ? (
+                          transcript.map((msg, i) => (
+                            <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
+                              }`}>
+                                {msg.role === 'user' ? 'U' : 'E'}
+                              </div>
+                              <div className={`p-3 rounded-lg max-w-[80%] text-sm ${
+                                msg.role === 'user' ? 'bg-primary/10' : 'bg-white border border-gray-200 shadow-sm'
+                              }`}>
+                                <p>{msg.content}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center italic">No transcript available for this session.</p>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Actions */}
                     <div className="flex gap-2 pt-4 border-t border-gray-200">
-                      <Button className="flex-1" onClick={handleReplaySession}>
-                        <Play className="w-4 h-4 mr-2" />
-                        Replay Session
-                      </Button>
-                      <Button variant="outline" onClick={() => handleExportSession(selectedSession)}>
+                      <Button className="flex-1" variant="outline" onClick={() => handleExportSession(selectedSession)}>
                         <Download className="w-4 h-4 mr-2" />
-                        Export
+                        Export Transcript
                       </Button>
                     </div>
                   </div>

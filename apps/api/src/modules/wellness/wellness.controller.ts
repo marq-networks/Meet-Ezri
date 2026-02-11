@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool, trackWellnessProgress } from './wellness.service';
+import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool, trackWellnessProgress, getUserWellnessProgress } from './wellness.service';
 import { CreateWellnessToolInput, UpdateWellnessToolInput, TrackProgressInput } from './wellness.schema';
 
 export async function createWellnessToolHandler(
@@ -41,6 +41,18 @@ export async function updateWellnessToolHandler(
     return reply.send(tool);
   } catch (error) {
     return reply.code(404).send({ message: 'Wellness tool not found' });
+  }
+}
+
+export async function getUserWellnessProgressHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const progress = await getUserWellnessProgress(request.user.id);
+    return reply.send(progress);
+  } catch (error) {
+    return reply.code(500).send({ message: 'Failed to fetch wellness progress' });
   }
 }
 

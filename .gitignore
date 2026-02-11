@@ -67,3 +67,18 @@ pids
 
 # User requested ignores
 *.md
+
+# Python/Pip
+pip-wheel-metadata/
+pip-install-*/
+pip-build-*/
+pip-build-env-*/
+pip-metadata-*/
+pip-unpack-*/
+tmp*
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+env/

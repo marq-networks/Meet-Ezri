@@ -21,6 +21,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { api } from "../../../lib/api";
 
 export function WellnessTools() {
   const [activeExercise, setActiveExercise] = useState<string | null>(null);
@@ -30,6 +31,49 @@ export function WellnessTools() {
   const [phaseTimer, setPhaseTimer] = useState(0);
   const [guidedExercise, setGuidedExercise] = useState<string | null>(null);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [exercises, setExercises] = useState<any[]>([]);
+  const [progress, setProgress] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const iconMap: any = { Wind, Brain, Music, Smile, Sun, Moon, Star, Sparkles, Heart };
+  const colorMap: any = {
+    Breathing: "from-blue-400 to-cyan-500",
+    Meditation: "from-purple-400 to-pink-500",
+    Sounds: "from-green-400 to-emerald-500",
+    Gratitude: "from-amber-400 to-orange-500"
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [toolsRes, progressRes] = await Promise.all([
+          api.wellness.getAll(),
+          api.wellness.getProgress()
+        ]);
+        
+        const mappedTools = toolsRes.map((t: any) => ({
+          id: t.id,
+          category: t.category,
+          title: t.title,
+          description: t.description,
+          duration: t.duration_minutes ? `${t.duration_minutes} min` : "∞",
+          difficulty: t.difficulty || "Beginner",
+          icon: iconMap[t.icon || "Sparkles"] || Sparkles,
+          color: colorMap[t.category] || "from-indigo-400 to-purple-500",
+          favorite: false // TODO: Add favorite logic
+        }));
+        
+        setExercises(mappedTools);
+        setProgress(progressRes);
+      } catch (error) {
+        console.error("Failed to fetch wellness data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   const categories = [
     { icon: Wind, label: "Breathing", color: "from-blue-400 to-cyan-500" },
@@ -38,101 +82,22 @@ export function WellnessTools() {
     { icon: Smile, label: "Gratitude", color: "from-amber-400 to-orange-500" }
   ];
 
-  const exercises = [
-    {
-      id: "box-breathing",
-      category: "Breathing",
-      title: "Box Breathing",
-      description: "4-4-4-4 breathing pattern to reduce stress",
-      duration: "5 min",
-      difficulty: "Beginner",
-      icon: Wind,
-      color: "from-blue-400 to-cyan-500",
-      favorite: true
-    },
-    {
-      id: "body-scan",
-      category: "Meditation",
-      title: "Body Scan Meditation",
-      description: "Progressive relaxation from head to toe",
-      duration: "10 min",
-      difficulty: "Beginner",
-      icon: Brain,
-      color: "from-purple-400 to-pink-500",
-      favorite: false
-    },
-    {
-      id: "478-breathing",
-      category: "Breathing",
-      title: "4-7-8 Breathing",
-      description: "Natural tranquilizer for the nervous system",
-      duration: "3 min",
-      difficulty: "Beginner",
-      icon: Wind,
-      color: "from-blue-400 to-cyan-500",
-      favorite: true
-    },
-    {
-      id: "mindfulness",
-      category: "Meditation",
-      title: "Mindfulness Practice",
-      description: "Present moment awareness meditation",
-      duration: "15 min",
-      difficulty: "Intermediate",
-      icon: Brain,
-      color: "from-purple-400 to-pink-500",
-      favorite: false
-    },
-    {
-      id: "rain-sounds",
-      category: "Sounds",
-      title: "Rain & Thunder",
-      description: "Calming nature sounds for relaxation",
-      duration: "∞",
-      difficulty: "Any",
-      icon: Music,
-      color: "from-green-400 to-emerald-500",
-      favorite: true
-    },
-    {
-      id: "gratitude",
-      category: "Gratitude",
-      title: "Gratitude Reflection",
-      description: "Focus on three things you're grateful for",
-      duration: "5 min",
-      difficulty: "Beginner",
-      icon: Smile,
-      color: "from-amber-400 to-orange-500",
-      favorite: false
-    },
-    {
-      id: "morning-meditation",
-      category: "Meditation",
-      title: "Morning Meditation",
-      description: "Start your day with positive intentions",
-      duration: "10 min",
-      difficulty: "Beginner",
-      icon: Sun,
-      color: "from-purple-400 to-pink-500",
-      favorite: false
-    },
-    {
-      id: "sleep-meditation",
-      category: "Meditation",
-      title: "Sleep Meditation",
-      description: "Wind down and prepare for restful sleep",
-      duration: "20 min",
-      difficulty: "Beginner",
-      icon: Moon,
-      color: "from-indigo-400 to-purple-500",
-      favorite: true
-    }
-  ];
-
   const stats = [
-    { label: "Completed", value: "24", icon: Star },
-    { label: "Minutes", value: "186", icon: Clock },
-    { label: "Streak", value: "5 days", icon: Heart }
+    { 
+      label: "Completed Sessions", 
+      value: progress.reduce((acc, curr) => acc + curr.sessionsCompleted, 0).toString(), 
+      icon: Star 
+    },
+    { 
+      label: "Total Minutes", 
+      value: progress.reduce((acc, curr) => acc + curr.totalMinutes, 0).toString(), 
+      icon: Clock 
+    },
+    { 
+      label: "Exercises Tried", 
+      value: progress.length.toString(), 
+      icon: Heart 
+    }
   ];
 
   const handleStartExercise = (exerciseId: string) => {
@@ -166,6 +131,17 @@ export function WellnessTools() {
           setTimer(0);
           setBreathPhase("inhale");
           setPhaseTimer(0);
+          
+          // Track progress
+          if (activeExercise) {
+            api.wellness.trackProgress(activeExercise, { duration_spent: duration })
+              .then(() => {
+                // Refresh progress
+                return api.wellness.getProgress();
+              })
+              .then(setProgress)
+              .catch(err => console.error("Failed to track progress:", err));
+          }
         }
 
         if (breathPhase === "inhale" && phaseTimer >= 4) {
@@ -225,6 +201,45 @@ export function WellnessTools() {
             );
           })}
         </div>
+
+        {/* Progress Breakdown */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-4">
+             <h2 className="text-xl font-bold">Detailed Progress</h2>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+             {isLoading ? (
+               <p className="text-gray-500 text-center py-4">Loading progress...</p>
+             ) : progress.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">No exercises completed yet. Start one today!</p>
+             ) : (
+                <div className="space-y-4">
+                  {progress.map((p) => (
+                    <div key={p.toolId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                           <Star className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{p.toolTitle}</p>
+                          <p className="text-sm text-gray-500">{p.sessionsCompleted} sessions completed</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">{p.totalMinutes} min</p>
+                        <p className="text-xs text-gray-500">Total Time</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+             )}
+          </div>
+        </motion.div>
 
         {/* Categories */}
         <motion.div

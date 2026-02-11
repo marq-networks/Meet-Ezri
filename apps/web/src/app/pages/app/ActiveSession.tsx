@@ -29,6 +29,7 @@ import { Button } from "@/app/components/ui/button";
 const avatarImage = "https://placehold.co/400";
 import { useSafety } from "@/app/contexts/SafetyContext";
 import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { analyzeTextForSafety } from "@/app/utils/safetyDetection";
 import { SafetyStateIndicator } from "@/app/components/safety/SafetyStateIndicator";
@@ -43,6 +44,7 @@ export function ActiveSession() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { currentState, updateState } = useSafety();
   const [isMuted, setIsMuted] = useState(false);
@@ -54,6 +56,82 @@ export function ActiveSession() {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showPermissionRequest, setShowPermissionRequest] = useState(true);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [transcript, setTranscript] = useState<{role: string, content: string, timestamp: number}[]>([]);
+
+  // Speech Recognition
+  useEffect(() => {
+    if (!permissionsGranted) return;
+
+    // @ts-ignore
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.log("Speech recognition not supported in this browser");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event: any) => {
+      const current = event.resultIndex;
+      const transcriptText = event.results[current][0].transcript;
+      
+      if (transcriptText.trim()) {
+        // Log for debugging
+        console.log("Transcript received:", transcriptText);
+        
+        setTranscript(prev => {
+          // Avoid duplicates if possible (simple check)
+          const lastEntry = prev[prev.length - 1];
+          if (lastEntry && lastEntry.content === transcriptText.trim() && (Date.now() - lastEntry.timestamp < 1000)) {
+            return prev;
+          }
+          
+          return [...prev, {
+            role: 'user',
+            content: transcriptText.trim(),
+            timestamp: Date.now()
+          }];
+        });
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      // Restart on error if needed? usually onend handles it
+    };
+    
+    recognition.onend = () => {
+      // Auto-restart if permissions are still granted
+      if (permissionsGranted) {
+        console.log("Speech recognition ended, restarting...");
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error("Failed to restart speech recognition", e);
+        }
+      }
+    };
+
+    try {
+      console.log("Starting speech recognition...");
+      recognition.start();
+    } catch (e) {
+      console.error("Failed to start speech recognition", e);
+    }
+
+    return () => {
+      // Stop the restart loop
+      recognition.onend = null; 
+      try {
+        recognition.stop();
+      } catch (e) {
+        // Ignore stop errors
+      }
+    };
+  }, [permissionsGranted]);
   
   // Media Stream Initialization
   useEffect(() => {
@@ -68,6 +146,7 @@ export function ActiveSession() {
           if (videoRef.current) {
             videoRef.current.srcObject = userStream;
           }
+
         } catch (err) {
           console.error("Failed to access media devices:", err);
           toast.error("Failed to access camera/microphone");
@@ -231,15 +310,20 @@ export function ActiveSession() {
   };
 
   const handleEndSession = async () => {
+    setIsUploading(true);
     const endTime = Date.now();
     const durationSeconds = Math.floor((endTime - sessionStartTime) / 1000);
     
     try {
-      await api.sessions.end(sessionId, durationSeconds);
+      await api.sessions.end(sessionId, durationSeconds, undefined, transcript);
+      
       toast.success("Session ended successfully");
+      
     } catch (error) {
       console.error("Failed to end session:", error);
       toast.error("Failed to save session data");
+    } finally {
+      setIsUploading(false);
     }
 
     // Check if cooldown is needed based on safety state

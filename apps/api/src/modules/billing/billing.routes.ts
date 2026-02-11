@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { createSubscriptionSchema, subscriptionResponseSchema, updateSubscriptionSchema } from './billing.schema';
-import { cancelSubscriptionHandler, createSubscriptionHandler, getBillingHistoryHandler, getSubscriptionHandler, updateSubscriptionHandler, getAllSubscriptionsHandler, adminUpdateSubscriptionHandler, getSubscriptionByUserIdHandler, createPortalSessionHandler } from './billing.controller';
+import { createSubscriptionSchema, subscriptionResponseSchema, updateSubscriptionSchema, createCreditPurchaseSchema } from './billing.schema';
+import { cancelSubscriptionHandler, createSubscriptionHandler, getBillingHistoryHandler, getSubscriptionHandler, updateSubscriptionHandler, getAllSubscriptionsHandler, adminUpdateSubscriptionHandler, getSubscriptionByUserIdHandler, createPortalSessionHandler, createCreditPurchaseHandler } from './billing.controller';
 import { stripeWebhookHandler } from './billing.webhook';
 import { z } from 'zod';
 
@@ -43,6 +43,20 @@ export async function billingRoutes(app: FastifyInstance) {
       preHandler: [app.authenticate],
     },
     createSubscriptionHandler
+  );
+
+  app.post(
+    '/credits',
+    {
+      schema: {
+        body: createCreditPurchaseSchema,
+        response: {
+          200: z.object({ checkoutUrl: z.string() }),
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    createCreditPurchaseHandler
   );
 
   app.post(

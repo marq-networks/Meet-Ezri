@@ -1,7 +1,7 @@
 import prisma from '../../lib/prisma';
 import { stripe } from '../../config/stripe';
-import { STRIPE_PRICE_IDS } from './billing.constants';
-import { CreateSubscriptionInput, UpdateSubscriptionInput } from './billing.schema';
+import { STRIPE_PRICE_IDS, PLAN_LIMITS } from './billing.constants';
+import { CreateSubscriptionInput, UpdateSubscriptionInput, CreateCreditPurchaseInput } from './billing.schema';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
@@ -63,6 +63,59 @@ export async function createCheckoutSession(userId: string, email: string, data:
       planType: data.plan_type,
     },
     success_url: `${CLIENT_URL}/app/billing?success=true`,
+    cancel_url: `${CLIENT_URL}/app/billing?canceled=true`,
+  });
+
+  return { checkoutUrl: session.url };
+}
+
+export async function createCreditPurchaseSession(userId: string, email: string, data: CreateCreditPurchaseInput) {
+  const customerId = await getOrCreateStripeCustomer(userId, email);
+
+  const subscription = await getSubscription(userId);
+  const planType = (subscription?.plan_type || 'free') as keyof typeof PLAN_LIMITS;
+  
+  // Get rate for plan, fallback to basic if free (or block if free doesn't allow PAYG)
+  // Currently free plan has payAsYouGoRate: null, so we should probably block or use a standard rate
+  // Let's use Basic rate as standard for non-subscribers if we want to allow them to buy credits
+  let rate = PLAN_LIMITS[planType]?.payAsYouGoRate;
+  
+  if (rate === null || rate === undefined) {
+      // If free plan doesn't allow PAYG, maybe we default to a standard rate (e.g. $0.30) 
+      // or we can use the Basic rate $0.25
+      rate = 0.30; 
+  }
+
+  const amountInCents = Math.round(data.credits * rate * 100);
+
+  // Minimum Stripe amount is $0.50
+  if (amountInCents < 50) {
+      throw new Error('Minimum purchase amount is $0.50');
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    customer: customerId,
+    mode: 'payment',
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `${data.credits} Credits`,
+            description: `One-time purchase of ${data.credits} credits at $${rate}/min`,
+          },
+          unit_amount: amountInCents,
+        },
+        quantity: 1,
+      },
+    ],
+    metadata: {
+      userId,
+      type: 'credits',
+      credits: data.credits.toString(),
+    },
+    success_url: `${CLIENT_URL}/app/billing?success=true&credits=${data.credits}`,
     cancel_url: `${CLIENT_URL}/app/billing?canceled=true`,
   });
 

@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createSubscription, cancelSubscription, getBillingHistory, getSubscription, updateSubscription, getAllSubscriptions, updateSubscriptionById } from './billing.service';
-import { CreateSubscriptionInput, UpdateSubscriptionInput } from './billing.schema';
+import { createSubscription, cancelSubscription, getBillingHistory, getSubscription, updateSubscription, getAllSubscriptions, updateSubscriptionById, createCreditPurchaseSession } from './billing.service';
+import { CreateSubscriptionInput, UpdateSubscriptionInput, CreateCreditPurchaseInput } from './billing.schema';
 
 interface UserPayload {
   sub: string;
@@ -58,6 +58,15 @@ export async function createSubscriptionHandler(
     m.createCheckoutSession(user.sub, user.email || '', request.body)
   );
   
+  return reply.code(200).send(result);
+}
+
+export async function createCreditPurchaseHandler(
+  request: FastifyRequest<{ Body: CreateCreditPurchaseInput }>,
+  reply: FastifyReply
+) {
+  const user = request.user as UserPayload;
+  const result = await createCreditPurchaseSession(user.sub, user.email || '', request.body);
   return reply.code(200).send(result);
 }
 

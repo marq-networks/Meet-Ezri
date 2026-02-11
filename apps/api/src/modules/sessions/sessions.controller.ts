@@ -111,7 +111,13 @@ export async function endSessionHandler(
 ) {
   try {
     const user = request.user as UserPayload;
-    const session = await endSession(user.sub, request.params.id, request.body.duration_seconds);
+    const session = await endSession(
+      user.sub, 
+      request.params.id, 
+      request.body.duration_seconds,
+      request.body.recording_url,
+      request.body.transcript
+    );
     return reply.send(session);
   } catch (error: any) {
     if (error.message === 'Session not found') {

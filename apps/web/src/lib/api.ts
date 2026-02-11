@@ -96,7 +96,7 @@ export const api = {
 
   async getSettings() {
     const headers = await getHeaders();
-    const res = await fetch(`${API_URL}/settings`, {
+    const res = await fetch(`${API_URL}/system-settings`, {
       method: 'GET',
       headers,
     });
@@ -105,7 +105,7 @@ export const api = {
 
   async getCredits() {
     const headers = await getHeaders();
-    const res = await fetch(`${API_URL}/user/credits`, {
+    const res = await fetch(`${API_URL}/users/credits`, {
       method: 'GET',
       headers,
     });
@@ -114,7 +114,7 @@ export const api = {
 
   async updateSetting(key: string, value: any, description?: string) {
     const headers = await getHeaders();
-    const res = await fetch(`${API_URL}/settings`, {
+    const res = await fetch(`${API_URL}/system-settings`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ key, value, description }),
@@ -213,12 +213,16 @@ export const api = {
       return handleResponse(res, 'Failed to fetch session details');
     },
 
-    async end(id: string, durationSeconds?: number) {
+    async end(id: string, durationSeconds?: number, recordingUrl?: string, transcript?: any[]) {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/sessions/${id}/end`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ duration_seconds: durationSeconds }),
+        body: JSON.stringify({ 
+          duration_seconds: durationSeconds,
+          recording_url: recordingUrl,
+          transcript
+        }),
       });
       return handleResponse(res, 'Failed to end session');
     },
@@ -451,6 +455,16 @@ export const api = {
       return handleResponse(res, 'Failed to create subscription');
     },
 
+    async buyCredits(data: { credits: number }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/credits`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to create credit purchase session');
+    },
+
     async createPortalSession() {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/billing/portal`, {
@@ -579,6 +593,15 @@ export const api = {
         body: JSON.stringify(data),
       });
       return handleResponse(res, 'Failed to track progress');
+    },
+
+    async getProgress() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness/progress`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch wellness progress');
     }
   },
 

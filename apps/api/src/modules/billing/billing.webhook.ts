@@ -66,10 +66,32 @@ export async function stripeWebhookHandler(request: FastifyRequest, reply: Fasti
 
 async function handleCheckoutSessionCompleted(session: any) {
   const userId = session.metadata?.userId;
+  
+  if (!userId) {
+    console.warn('Missing userId in checkout session', session.id);
+    return;
+  }
+
+  // Handle one-time credit purchase
+  if (session.metadata?.type === 'credits') {
+    const credits = parseInt(session.metadata.credits || '0', 10);
+    if (credits > 0) {
+      await prisma.profiles.update({
+        where: { id: userId },
+        data: {
+          credits: {
+            increment: credits
+          }
+        }
+      });
+    }
+    return;
+  }
+
   const planType = session.metadata?.planType;
 
-  if (!userId || !planType) {
-    console.warn('Missing metadata in checkout session', session.id);
+  if (!planType) {
+    console.warn('Missing planType in checkout session', session.id);
     return;
   }
 

@@ -4,7 +4,7 @@ import cors from '@fastify/cors';
 import rawBody from 'fastify-raw-body';
 import jwt from '@fastify/jwt';
 import dotenv from 'dotenv';
-import './types/fastify'; // Import type augmentation
+// import './types/fastify'; // Import type augmentation
 import authPlugin from './plugins/auth';
 import { userRoutes } from './modules/users/user.routes';
 import { emailRoutes } from './modules/email/email.routes';
@@ -143,33 +143,6 @@ app.register(jwt, {
           return undefined;
       }
   }
-});
-
-app.decorate("authenticate", async function (request: FastifyRequest, reply: FastifyReply) {
-  try {
-    await request.jwtVerify();
-  } catch (err) {
-    reply.send(err);
-  }
-});
-
-// Authorization decorator
-app.decorate("authorize", function (allowedRoles: string[]) {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
-    // Check if user exists and has a role
-    // This requires that request.user is populated (by authenticate)
-    // and that the token payload contains the role or we fetch it from DB
-    
-    // For Supabase, role might be in app_metadata or user_metadata
-    const user = request.user as any;
-    
-    // Check app_metadata for role (standard Supabase pattern)
-    const userRole = user?.app_metadata?.role || user?.role || 'user';
-    
-    if (!allowedRoles.includes(userRole)) {
-      reply.code(403).send({ message: 'Forbidden: Insufficient permissions' });
-    }
-  };
 });
 
 // Register plugin to add `verifyJWT` decorator

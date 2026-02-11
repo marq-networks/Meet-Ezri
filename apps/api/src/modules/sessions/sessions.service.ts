@@ -55,17 +55,24 @@ export async function getSessions(userId: string, status?: string) {
   });
 }
 
-export async function endSession(userId: string, sessionId: string, durationSeconds?: number) {
+export async function endSession(userId: string, sessionId: string, durationSeconds?: number, recordingUrl?: string, transcript?: any[]) {
   const session = await getSessionById(userId, sessionId);
   if (!session) {
     throw new Error('Session not found');
   }
 
-  // Deduct credits if duration is provided
-  if (durationSeconds) {
-    const minutesUsed = Math.ceil(durationSeconds / 60);
-    
-    // Update user credits
+  // Calculate real duration from started_at if available
+  let minutesUsed = 0;
+  if (session.started_at) {
+    const now = new Date();
+    const durationMs = now.getTime() - new Date(session.started_at).getTime();
+    minutesUsed = Math.ceil(durationMs / 1000 / 60);
+  } else if (durationSeconds) {
+    minutesUsed = Math.ceil(durationSeconds / 60);
+  }
+
+  // Deduct credits
+  if (minutesUsed > 0) {
     try {
       await prisma.profiles.update({
         where: { id: userId },
@@ -81,13 +88,29 @@ export async function endSession(userId: string, sessionId: string, durationSeco
     }
   }
 
+  // Save transcript if available
+  if (transcript && transcript.length > 0) {
+    try {
+      await prisma.session_messages.createMany({
+        data: transcript.map(msg => ({
+          session_id: sessionId,
+          role: msg.role,
+          content: msg.content,
+          created_at: msg.timestamp ? new Date(msg.timestamp) : undefined
+        }))
+      });
+    } catch (error) {
+      console.error('Failed to save transcript:', error);
+    }
+  }
+
   return prisma.app_sessions.update({
     where: { id: sessionId },
     data: {
       status: 'completed',
       ended_at: new Date(),
-      // If durationSeconds is provided, update duration_minutes (rounded up)
-      ...(durationSeconds !== undefined ? { duration_minutes: Math.ceil(durationSeconds / 60) } : {}),
+      duration_minutes: minutesUsed,
+      recording_url: recordingUrl,
     },
   });
 }

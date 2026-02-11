@@ -126,9 +126,21 @@ export function Billing() {
 
   const paygCost = currentPlan.payAsYouGoRate ? (currentPlan.payAsYouGoRate * paygMinutes) : 0;
 
-  const handleBuyPAYG = () => {
-    alert(`Purchase ${paygMinutes} minutes for $${paygCost.toFixed(2)}`);
-    setShowPAYGModal(false);
+  const handleBuyPAYG = async () => {
+    if (paygCost <= 0) return;
+    setIsProcessing(true);
+    try {
+      const response = await api.billing.buyCredits({
+        credits: paygMinutes
+      });
+      if (response.checkoutUrl) {
+        window.location.href = response.checkoutUrl;
+      }
+    } catch (error) {
+      console.error('Failed to start credit purchase:', error);
+      alert('Failed to start purchase. Please try again.');
+      setIsProcessing(false);
+    }
   };
 
   const handleSubscribe = async (planId: PlanTier) => {

@@ -72,3 +72,29 @@ export async function trackWellnessProgress(userId: string, toolId: string, dura
     },
   });
 }
+
+export async function getUserWellnessProgress(userId: string) {
+  const progress = await prisma.user_wellness_progress.groupBy({
+    by: ['tool_id'],
+    where: { user_id: userId },
+    _count: { tool_id: true },
+    _sum: { duration_spent: true },
+  });
+
+  // Get tool details
+  const tools = await prisma.wellness_tools.findMany({
+    where: {
+      id: { in: progress.map(p => p.tool_id) }
+    }
+  });
+
+  return progress.map(p => {
+    const tool = tools.find(t => t.id === p.tool_id);
+    return {
+      toolId: p.tool_id,
+      toolTitle: tool?.title || 'Unknown Exercise',
+      sessionsCompleted: p._count.tool_id,
+      totalMinutes: Math.round((p._sum.duration_spent || 0) / 60), // Convert seconds to minutes
+    };
+  });
+}

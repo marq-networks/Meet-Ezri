@@ -6,6 +6,10 @@ export const createSubscriptionSchema = z.object({
   payment_method: z.string().optional(),
 });
 
+export const createCreditPurchaseSchema = z.object({
+  credits: z.number().min(1),
+});
+
 export const updateSubscriptionSchema = z.object({
   plan_type: z.enum(['free', 'basic', 'pro', 'enterprise']).optional(),
   billing_cycle: z.enum(['monthly', 'yearly']).optional(),
@@ -26,4 +30,5 @@ export const subscriptionResponseSchema = z.object({
 });
 
 export type CreateSubscriptionInput = z.infer<typeof createSubscriptionSchema>;
+export type CreateCreditPurchaseInput = z.infer<typeof createCreditPurchaseSchema>;
 export type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>;
