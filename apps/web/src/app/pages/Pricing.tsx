@@ -67,7 +67,7 @@ export function Pricing() {
                     </div>
                   )}
 
-                  <Link to="/signup" className="block">
+                  <Link to="/signup" className="block" onClick={() => localStorage.setItem('selectedPlan', plan.id)}>
                     <Button 
                       className="w-full" 
                       variant={plan.popular ? "default" : "outline"}
