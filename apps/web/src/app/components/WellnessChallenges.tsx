@@ -275,7 +275,7 @@ export function WellnessChallenges() {
         transition={{ delay: 0.6 }}
         className="mt-6"
       >
-        <Button className="w-full" variant="outline" onClick={() => navigate("/app/settings/challenges")}>
+        <Button className="w-full" variant="outline" onClick={() => navigate("/app/challenges")}>
           View All Challenges
         </Button>
       </motion.div>
