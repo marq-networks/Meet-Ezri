@@ -23,10 +23,38 @@ const jwtLib = require('jsonwebtoken');
 
 dotenv.config();
 
+// Debugging for Vercel Environment
+console.log('Starting API...');
+console.log('Environment:', {
+  NODE_ENV: process.env.NODE_ENV,
+  PORT: process.env.PORT,
+  SUPABASE_URL: process.env.SUPABASE_URL ? 'Set' : 'Missing',
+  SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET ? 'Set' : 'Missing',
+  DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Missing',
+  DIRECT_URL: process.env.DIRECT_URL ? 'Set' : 'Missing',
+});
+
 const app = Fastify({ logger: true }).withTypeProvider<ZodTypeProvider>();
 
 app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
+
+// Fix for Vercel Serverless: Handle pre-parsed body
+app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+  // If the body is already parsed by the environment (e.g. Vercel), use it
+  if (req.raw && (req.raw as any).body) {
+    done(null, (req.raw as any).body);
+  } else {
+    // Otherwise, parse the string body
+    try {
+      const json = JSON.parse(body as string);
+      done(null, json);
+    } catch (err: any) {
+      err.statusCode = 400;
+      done(err, undefined);
+    }
+  }
+});
 
 // Register core plugins
 app.register(cors, {
