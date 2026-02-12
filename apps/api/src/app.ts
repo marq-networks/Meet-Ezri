@@ -25,13 +25,13 @@ dotenv.config();
 
 // Debugging for Vercel Environment
 console.log('Starting API...');
-console.log('Environment:', {
+const dbUrl = process.env.DATABASE_URL || '';
+const dbHost = dbUrl.includes('@') ? dbUrl.split('@')[1] : 'Unknown';
+console.log('Environment Debug:', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
-  SUPABASE_URL: process.env.SUPABASE_URL ? 'Set' : 'Missing',
-  SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET ? 'Set' : 'Missing',
-  DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Missing',
-  DIRECT_URL: process.env.DIRECT_URL ? 'Set' : 'Missing',
+  DATABASE_URL_HOST: dbHost, // Log the host to verify if it's pooler (6543) or direct (5432)
+  DIRECT_URL_SET: !!process.env.DIRECT_URL,
 });
 
 const app = Fastify({ logger: true }).withTypeProvider<ZodTypeProvider>();
