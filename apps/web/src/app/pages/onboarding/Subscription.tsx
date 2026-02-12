@@ -24,18 +24,23 @@ export function OnboardingSubscription() {
   const handleContinue = async () => {
     setIsProcessing(true);
     try {
+      console.log("Processing subscription for plan:", selectedPlan);
+      
       if (selectedPlan === "trial") {
+        toast.info("Activating your free trial...");
         // For trial, just create subscription and move on
-        await api.billing.createSubscription({
+        const result = await api.billing.createSubscription({
           plan_type: "trial",
           billing_cycle: "monthly"
         });
+        console.log("Trial subscription result:", result);
         
         // Update local profile/context if needed? 
         // The next page will likely fetch fresh data or we rely on backend.
         // Navigate to wellness baseline
         navigate("/onboarding/wellness-baseline");
       } else {
+        toast.info("Redirecting to checkout...");
         // For paid plans, redirect to Stripe
         // We need to provide full URL for success/cancel
         const origin = window.location.origin;
@@ -48,11 +53,13 @@ export function OnboardingSubscription() {
           successUrl,
           cancelUrl
         });
+        console.log("Paid subscription result:", result);
 
         if (result.checkoutUrl) {
           window.location.href = result.checkoutUrl;
         } else if (result.subscription) {
           // Fallback if backend handled it without checkout (e.g. 100% coupon or error in logic)
+          console.warn("Received subscription object for paid plan instead of checkout URL");
           navigate("/onboarding/wellness-baseline");
         }
       }
