@@ -372,7 +372,7 @@ export function Landing() {
           </motion.div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
           {(Object.keys(SUBSCRIPTION_PLANS) as PlanTier[]).map((planId, index) => {
             const plan = SUBSCRIPTION_PLANS[planId];
             const isPopular = plan.popular;
