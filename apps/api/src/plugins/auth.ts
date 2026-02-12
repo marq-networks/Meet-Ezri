@@ -2,6 +2,11 @@ import fp from 'fastify-plugin';
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import prisma from '../lib/prisma';
 
+// Simple in-memory cache for user roles/permissions to reduce DB calls
+// Map<userId, { role, permissions, timestamp }>
+const userRoleCache = new Map<string, { role: string, permissions: any, timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export default fp(async (fastify: FastifyInstance) => {
   fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -14,14 +19,31 @@ export default fp(async (fastify: FastifyInstance) => {
       // Fetch user role from database and attach to request.user
       const user = request.user as any;
       if (user && user.sub) {
-        const profile = await prisma.profiles.findUnique({
-          where: { id: user.sub },
-          select: { role: true, permissions: true }
-        });
-        
-        if (profile) {
-          user.appRole = profile.role; // Use appRole to avoid conflict with Supabase role
-          user.permissions = profile.permissions;
+        // Check cache first
+        const cached = userRoleCache.get(user.sub);
+        const now = Date.now();
+
+        if (cached && (now - cached.timestamp < CACHE_TTL)) {
+          user.appRole = cached.role;
+          user.permissions = cached.permissions;
+        } else {
+          // Fetch from DB if not in cache or expired
+          const profile = await prisma.profiles.findUnique({
+            where: { id: user.sub },
+            select: { role: true, permissions: true }
+          });
+          
+          if (profile) {
+            user.appRole = profile.role; // Use appRole to avoid conflict with Supabase role
+            user.permissions = profile.permissions;
+            
+            // Update cache
+            userRoleCache.set(user.sub, {
+              role: profile.role,
+              permissions: profile.permissions,
+              timestamp: now
+            });
+          }
         }
       }
     } catch (err) {

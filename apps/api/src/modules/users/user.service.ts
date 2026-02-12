@@ -122,52 +122,53 @@ export async function createProfile(userId: string, email: string, fullName?: st
 }
 
 export async function getProfile(userId: string) {
-  const profile = await prisma.profiles.findUnique({
-    where: { id: userId },
-    include: {
-      therapist_profiles: true,
-      subscriptions: {
-        where: { status: 'active' },
-        orderBy: { created_at: 'desc' },
-        take: 1
-      },
-      mood_entries: {
-        orderBy: { created_at: 'desc' },
-        take: 30,
-      },
-      appointments_user: {
-        where: {
-          status: 'scheduled',
-          start_time: { gt: new Date() }
+  const [profile, [completedSessions, totalCheckins, totalJournals]] = await Promise.all([
+    prisma.profiles.findUnique({
+      where: { id: userId },
+      include: {
+        therapist_profiles: true,
+        subscriptions: {
+          where: { status: 'active' },
+          orderBy: { created_at: 'desc' },
+          take: 1
+        },
+        mood_entries: {
+          orderBy: { created_at: 'desc' },
+          take: 30,
+        },
+        appointments_user: {
+          where: {
+            status: 'scheduled',
+            start_time: { gt: new Date() }
+          }
+        },
+        emergency_contacts: {
+          orderBy: { created_at: 'desc' },
+          take: 1
         }
       },
-      emergency_contacts: {
-        orderBy: { created_at: 'desc' },
-        take: 1
-      }
-    },
-  });
+    }),
+    Promise.all([
+      prisma.app_sessions.count({
+        where: {
+          user_id: userId,
+          ended_at: { not: null }
+        }
+      }),
+      prisma.mood_entries.count({
+        where: {
+          user_id: userId
+        }
+      }),
+      prisma.journal_entries.count({
+        where: {
+          user_id: userId
+        }
+      })
+    ])
+  ]);
 
   if (!profile) return null;
-
-  const [completedSessions, totalCheckins, totalJournals] = await Promise.all([
-    prisma.app_sessions.count({
-      where: {
-        user_id: userId,
-        ended_at: { not: null }
-      }
-    }),
-    prisma.mood_entries.count({
-      where: {
-        user_id: userId
-      }
-    }),
-    prisma.journal_entries.count({
-      where: {
-        user_id: userId
-      }
-    })
-  ]);
 
   const streakDays = calculateStreak(profile.mood_entries);
   const upcomingSessions = profile.appointments_user.length;
