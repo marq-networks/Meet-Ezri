@@ -103,9 +103,18 @@ async function handleCheckoutSessionCompleted(session: any) {
 
   // Update or create subscription in DB
   // We should find by user_id or create.
-  const existingSub = await prisma.subscriptions.findFirst({
-      where: { user_id: userId }
+  // First, check if we already have this subscription tracked (idempotency)
+  let existingSub = await prisma.subscriptions.findFirst({
+      where: { stripe_sub_id: subscription.id }
   });
+
+  if (!existingSub) {
+      // If not, look for a user's subscription to upgrade (e.g. trial)
+      existingSub = await prisma.subscriptions.findFirst({
+          where: { user_id: userId },
+          orderBy: { created_at: 'desc' }
+      });
+  }
 
   if (existingSub) {
       await prisma.subscriptions.update({

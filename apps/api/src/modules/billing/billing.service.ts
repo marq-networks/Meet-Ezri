@@ -28,15 +28,34 @@ async function getOrCreateStripeCustomer(userId: string, email: string) {
 }
 
 export async function getSubscription(userId: string) {
-  return prisma.subscriptions.findFirst({
+  const sub = await prisma.subscriptions.findFirst({
     where: {
       user_id: userId,
-      status: 'active',
     },
     orderBy: {
       created_at: 'desc',
     },
   });
+
+  if (!sub) return null;
+
+  const status = sub.status || '';
+  const now = new Date();
+  
+  // If canceled and past end date, treat as no subscription (fall back to trial/free)
+  if (['canceled', 'cancelled'].includes(status) && sub.end_date && sub.end_date < now) {
+    return null;
+  }
+  
+  // If incomplete_expired, treat as no subscription
+  if (status === 'incomplete_expired') {
+    return null;
+  }
+
+  // Check if the subscription is in a valid state to be considered "current"
+  // We accept active, trialing, past_due. 
+  // We also might want to return canceled if it's the most recent, so the UI can show "Canceled" instead of falling back to a default trial.
+  return sub;
 }
 
 export async function createCheckoutSession(userId: string, email: string, data: CreateSubscriptionInput) {
@@ -233,7 +252,7 @@ export async function cancelSubscription(userId: string) {
   return prisma.subscriptions.update({
     where: { id: sub.id },
     data: {
-      status: 'cancelled',
+      status: 'canceled',
       end_date: new Date(),
       updated_at: new Date(),
     },
