@@ -35,7 +35,7 @@ export function Billing() {
   const [isLoading, setIsLoading] = useState(true);
   const [userSubscription, setUserSubscription] = useState<UserSubscription>({
     userId: "",
-    planId: "free",
+    planId: "trial",
     status: "active",
     creditsRemaining: 0,
     creditsTotal: 0,
@@ -64,7 +64,9 @@ export function Billing() {
           api.sessions.list()
         ]);
 
-        const planId = (subData.plan_type as PlanTier) || 'free';
+        const rawPlanId = subData.plan_type;
+        // Fallback to trial if plan type is not recognized (e.g. legacy plans)
+        const planId = (SUBSCRIPTION_PLANS[rawPlanId as PlanTier] ? rawPlanId : 'trial') as PlanTier;
         const plan = SUBSCRIPTION_PLANS[planId];
         const now = new Date();
         
@@ -144,7 +146,7 @@ export function Billing() {
   };
 
   const handleSubscribe = async (planId: PlanTier) => {
-    if (planId === 'free') return; 
+    if (planId === 'trial') return; 
     setIsProcessing(true);
     try {
       const response = await api.billing.createSubscription({ plan_type: planId });
@@ -211,22 +213,30 @@ export function Billing() {
                   <span className="text-muted-foreground">/month</span>
                 </div>
               </div>
-              <Button 
-                onClick={handleManageBilling}
-                disabled={isProcessing}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-              >
-                <CreditCard className="w-4 h-4 mr-2" />
-                Manage Billing
-              </Button>
+              {userSubscription.planId !== 'trial' && (
+                <Button 
+                  onClick={handleManageBilling}
+                  disabled={isProcessing}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Manage Billing
+                </Button>
+              )}
             </div>
 
             {/* Renewal Info */}
             <div className="flex items-center gap-2 p-3 bg-white/60 backdrop-blur-sm rounded-lg border border-purple-200">
               <Calendar className="w-4 h-4 text-purple-600" />
               <span className="text-sm">
-                <span className="font-medium">Renews in {daysUntilRenewal} days</span> 
-                <span className="text-muted-foreground"> • Next billing: {new Date(userSubscription.billingCycle.renewsOn!).toLocaleDateString()}</span>
+                <span className="font-medium">
+                  {userSubscription.planId === 'trial' ? 'Expires in ' : 'Renews in '} 
+                  {daysUntilRenewal} days
+                </span> 
+                <span className="text-muted-foreground"> • 
+                  {userSubscription.planId === 'trial' ? ' Expiry: ' : ' Next billing: '}
+                  {userSubscription.billingCycle.endDate ? new Date(userSubscription.billingCycle.endDate).toLocaleDateString() : 'N/A'}
+                </span>
               </span>
             </div>
           </Card>
@@ -290,25 +300,25 @@ export function Billing() {
                 </div>
                 <p className="text-green-700 mb-4">
                   Need more minutes this month? Purchase additional time at your discounted rate of 
-                  <span className="font-bold"> ${currentPlan.payAsYouGoRate}/minute</span>.
+                  <span className="font-bold"> $5 per 25 minutes</span> (${currentPlan.payAsYouGoRate}/min).
                 </p>
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div className="p-3 bg-white/60 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-700">30 minutes</p>
+                    <p className="text-sm text-green-700">25 minutes</p>
                     <p className="text-lg font-bold text-green-800">
-                      ${(currentPlan.payAsYouGoRate * 30).toFixed(2)}
+                      ${(currentPlan.payAsYouGoRate * 25).toFixed(2)}
                     </p>
                   </div>
                   <div className="p-3 bg-white/60 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-700">60 minutes</p>
+                    <p className="text-sm text-green-700">50 minutes</p>
                     <p className="text-lg font-bold text-green-800">
-                      ${(currentPlan.payAsYouGoRate * 60).toFixed(2)}
+                      ${(currentPlan.payAsYouGoRate * 50).toFixed(2)}
                     </p>
                   </div>
                   <div className="p-3 bg-white/60 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-700">120 minutes</p>
+                    <p className="text-sm text-green-700">100 minutes</p>
                     <p className="text-lg font-bold text-green-800">
-                      ${(currentPlan.payAsYouGoRate * 120).toFixed(2)}
+                      ${(currentPlan.payAsYouGoRate * 100).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -383,8 +393,8 @@ export function Billing() {
         <Card className="p-6">
           <h3 className="text-xl font-bold mb-6">Compare All Plans</h3>
           
-          <div className="grid md:grid-cols-4 gap-6">
-            {(Object.keys(SUBSCRIPTION_PLANS) as PlanTier[]).filter(id => id !== 'free').map((planId) => {
+          <div className="grid md:grid-cols-3 gap-6">
+            {(Object.keys(SUBSCRIPTION_PLANS) as PlanTier[]).map((planId) => {
               const plan = SUBSCRIPTION_PLANS[planId];
               const isCurrent = planId === userSubscription.planId;
               
@@ -398,9 +408,8 @@ export function Billing() {
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-3`}>
-                    {planId === 'basic' && <Package className="w-5 h-5 text-white" />}
+                    {planId === 'core' && <Package className="w-5 h-5 text-white" />}
                     {planId === 'pro' && <Zap className="w-5 h-5 text-white" />}
-                    {planId === 'enterprise' && <Crown className="w-5 h-5 text-white" />}
                   </div>
                   
                   <h4 className="font-bold mb-1">{plan.displayName}</h4>
@@ -417,6 +426,12 @@ export function Billing() {
                       </p>
                     )}
                   </div>
+
+                  {plan.allowanceDescription && (
+                    <p className="text-xs text-muted-foreground mb-4 italic">
+                      {plan.allowanceDescription}
+                    </p>
+                  )}
 
                   {isCurrent ? (
                     <div className="flex items-center justify-center gap-2 py-2 bg-purple-100 text-purple-700 rounded-lg font-medium">
@@ -472,7 +487,7 @@ export function Billing() {
               <div className="mb-6">
                 <label className="block text-sm font-medium mb-3">How many minutes?</label>
                 <div className="grid grid-cols-3 gap-3 mb-4">
-                  {[30, 60, 120].map((mins) => (
+                  {[25, 50, 100].map((mins) => (
                     <button
                       key={mins}
                       onClick={() => setPaygMinutes(mins)}
@@ -491,9 +506,9 @@ export function Billing() {
                 <div className="flex items-center gap-3">
                   <input
                     type="range"
-                    min="15"
-                    max="300"
-                    step="15"
+                    min="25"
+                    max="250"
+                    step="25"
                     value={paygMinutes}
                     onChange={(e) => setPaygMinutes(Number(e.target.value))}
                     className="flex-1"

@@ -31,7 +31,7 @@ import {
 interface Subscription {
   id: string;
   organization: string;
-  plan: "free" | "basic" | "pro" | "enterprise";
+  plan: "trial" | "core" | "pro";
   status: "active" | "trial" | "cancelled" | "past_due";
   users: number;
   mrr: number;
@@ -61,7 +61,7 @@ export function BillingSubscriptions() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Edit states
-  const [editPlan, setEditPlan] = useState<string>("free");
+  const [editPlan, setEditPlan] = useState<"trial" | "core" | "pro">("trial");
   const [editStatus, setEditStatus] = useState<string>("active");
   const [editBillingCycle, setEditBillingCycle] = useState<string>("monthly");
 
@@ -78,15 +78,15 @@ export function BillingSubscriptions() {
         // Calculate MRR based on plan and cycle
         let mrr = 0;
         if (sub.plan_type === 'pro') {
-          mrr = sub.billing_cycle === 'yearly' ? 25 : 29.99;
-        } else if (sub.plan_type === 'enterprise') {
-          mrr = sub.billing_cycle === 'yearly' ? 80 : 99.99;
+          mrr = sub.billing_cycle === 'yearly' ? 40 : 49;
+        } else if (sub.plan_type === 'core') {
+          mrr = sub.billing_cycle === 'yearly' ? 20 : 25;
         }
 
         return {
           id: sub.id,
           organization: sub.users?.profiles?.full_name || sub.users?.email || "Unknown User",
-          plan: (sub.plan_type || "free") as any,
+          plan: (sub.plan_type || "trial") as any,
           status: (sub.status === 'canceled' ? 'cancelled' : sub.status) as any,
           users: 1, // Default to 1 as current model is individual subscriptions
           mrr: mrr,
@@ -215,14 +215,12 @@ export function BillingSubscriptions() {
 
   const getPlanColor = (plan: string) => {
     switch (plan) {
-      case "free":
+      case "trial":
         return "from-gray-500 to-gray-600";
-      case "basic":
+      case "core":
         return "from-blue-500 to-blue-600";
       case "pro":
         return "from-purple-500 to-purple-600";
-      case "enterprise":
-        return "from-orange-500 to-red-600";
       default:
         return "from-gray-500 to-gray-600";
     }
@@ -230,14 +228,12 @@ export function BillingSubscriptions() {
 
   const getPlanIcon = (plan: string) => {
     switch (plan) {
-      case "free":
+      case "trial":
         return Package;
-      case "basic":
+      case "core":
         return Star;
       case "pro":
         return Crown;
-      case "enterprise":
-        return Zap;
       default:
         return Package;
     }
@@ -426,8 +422,8 @@ export function BillingSubscriptions() {
         {activeTab === "overview" && (
           <div className="space-y-6">
             {/* Plans Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {["free", "basic", "pro", "enterprise"].map((plan, index) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {["trial", "core", "pro"].map((plan, index) => {
                 const Icon = getPlanIcon(plan);
                 const count = subscriptions.filter((s) => s.plan === plan).length;
                 const revenue = subscriptions
@@ -503,10 +499,9 @@ export function BillingSubscriptions() {
                       onChange={(e) => setFilterPlan(e.target.value)}
                     >
                       <option value="all">All Plans</option>
-                      <option value="free">Free</option>
-                      <option value="basic">Basic</option>
-                      <option value="pro">Pro</option>
-                      <option value="enterprise">Enterprise</option>
+                      <option value="trial">Trial Plan</option>
+                      <option value="core">Core Habit</option>
+                      <option value="pro">Pro Clarity</option>
                     </select>
                     <select
                       className="px-3 py-2 border rounded-lg"
@@ -818,12 +813,11 @@ export function BillingSubscriptions() {
                 <select 
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
                   value={editPlan}
-                  onChange={(e) => setEditPlan(e.target.value)}
+                  onChange={(e) => setEditPlan(e.target.value as "trial" | "core" | "pro")}
                 >
-                  <option value="free">Free</option>
-                  <option value="basic">Basic</option>
-                  <option value="pro">Pro</option>
-                  <option value="enterprise">Enterprise</option>
+                  <option value="trial">Trial Plan</option>
+                  <option value="core">Core Habit</option>
+                  <option value="pro">Pro Clarity</option>
                 </select>
               </div>
 

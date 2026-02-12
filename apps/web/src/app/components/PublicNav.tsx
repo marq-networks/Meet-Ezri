@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { Button } from "./ui/button";
-import { Heart, Menu, Shield } from "lucide-react";
+import { Heart, Menu } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 
@@ -31,12 +31,11 @@ export function PublicNav() {
             <Link to="/how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
               How It Works
             </Link>
+            <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+              Pricing
+            </Link>
             <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
               Privacy & Safety
-            </Link>
-            <Link to="/admin/login" className="text-primary hover:text-primary/80 transition-colors flex items-center gap-1 font-medium">
-              <Shield className="w-4 h-4" />
-              Admin
             </Link>
           </div>
           
@@ -77,19 +76,18 @@ export function PublicNav() {
               How It Works
             </Link>
             <Link
+              to="/pricing"
+              className="block py-2 text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Pricing
+            </Link>
+            <Link
               to="/privacy"
               className="block py-2 text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Privacy & Safety
-            </Link>
-            <Link
-              to="/admin/login"
-              className="block py-2 text-primary hover:text-primary/80 transition-colors font-medium flex items-center gap-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Shield className="w-4 h-4" />
-              Admin Portal
             </Link>
             <div className="pt-2 space-y-2">
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>

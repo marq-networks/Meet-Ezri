@@ -11,6 +11,7 @@ import { useOnboarding } from "@/app/contexts/OnboardingContext";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 export function OnboardingProfileSetup() {
   const navigate = useNavigate();
@@ -124,10 +125,40 @@ export function OnboardingProfileSetup() {
     }
   };
 
-  const handleContinue = (e: React.FormEvent) => {
+  const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateData({ firstName, lastName, pronouns: selectedPronoun, age, timezone });
-    navigate("/onboarding/wellness-baseline");
+    
+    // Validate required fields
+    if (!firstName || !lastName || !age || !selectedPronoun) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      // First update the profile
+      await api.updateProfile({
+        first_name: firstName,
+        last_name: lastName,
+        full_name: `${firstName} ${lastName}`,
+        pronouns: selectedPronoun,
+        age: age, // Send as string to match schema
+        timezone
+      });
+      
+      // Update local context
+      updateData({ 
+        firstName, 
+        lastName, 
+        pronouns: selectedPronoun, 
+        age, 
+        timezone 
+      });
+      
+      navigate("/onboarding/subscription");
+    } catch (error) {
+      console.error("Profile update error:", error);
+      toast.error("Failed to update profile");
+    }
   };
 
   const pronounOptions = [

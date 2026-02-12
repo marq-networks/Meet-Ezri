@@ -16,11 +16,11 @@ export async function getSubscriptionHandler(
   const subscription = await getSubscription(user.sub);
   
   if (!subscription) {
-    // Return a default free plan structure if no subscription exists
+    // Return a default trial plan structure if no subscription exists
     return reply.send({
       id: 'default',
       user_id: user.sub,
-      plan_type: 'free',
+      plan_type: 'trial',
       status: 'active',
       start_date: new Date(),
       end_date: null,
@@ -143,11 +143,11 @@ export async function getSubscriptionByUserIdHandler(
   const subscription = await getSubscription(userId);
   
   if (!subscription) {
-    // Return a default free plan structure if no subscription exists
+    // Return a default trial plan structure if no subscription exists
     return reply.send({
       id: 'default',
       user_id: userId,
-      plan_type: 'free',
+      plan_type: 'trial',
       status: 'active',
       start_date: new Date(),
       end_date: null,

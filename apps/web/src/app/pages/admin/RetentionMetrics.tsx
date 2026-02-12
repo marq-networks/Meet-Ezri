@@ -101,9 +101,9 @@ export function RetentionMetrics() {
 
   // Retention by User Type
   const retentionByTypeData = [
-    { type: "Free", day7: 68, day30: 45, day90: 32 },
-    { type: "Trial", day7: 82, day30: 64, day90: 48 },
-    { type: "Premium", day7: 94, day30: 85, day90: 76 },
+    { type: "Trial", day7: 68, day30: 45, day90: 32 },
+    { type: "Core", day7: 82, day30: 64, day90: 48 },
+    { type: "Pro", day7: 94, day30: 85, day90: 76 },
   ];
 
   const stats = [

@@ -39,13 +39,13 @@ interface User {
   sessions: number;
   lastActive: string;
   riskLevel: "low" | "medium" | "high";
-  subscription: "free" | "premium" | "enterprise";
+  subscription: "trial" | "core" | "pro";
   organization?: string;
 }
 
 type FilterType = "all" | "active" | "suspended" | "inactive";
 type RiskFilter = "all" | "low" | "medium" | "high";
-type SubscriptionFilter = "all" | "free" | "premium" | "enterprise";
+type SubscriptionFilter = "all" | "trial" | "core" | "pro";
 type SortField = "name" | "joinDate" | "lastActive" | "sessions";
 type SortDirection = "asc" | "desc";
 
@@ -75,13 +75,13 @@ export function UserManagement() {
     name: string;
     email: string;
     status: "active" | "suspended" | "inactive";
-    subscription: "free" | "premium" | "enterprise";
+    subscription: "trial" | "core" | "pro";
     organization: string;
   }>({
     name: "",
     email: "",
     status: "active",
-    subscription: "free",
+    subscription: "trial",
     organization: "",
   });
   const usersPerPage = 10;
@@ -100,7 +100,7 @@ export function UserManagement() {
         sessions: 0, // TODO: Fetch from backend
         lastActive: u.updated_at,
         riskLevel: 'low', // TODO: Fetch from backend
-        subscription: 'free', // TODO: Fetch from backend
+        subscription: u.subscription || 'trial',
         organization: ''
       }));
       setUsers(mappedUsers);
@@ -209,11 +209,11 @@ export function UserManagement() {
 
   const getSubscriptionColor = (sub: string) => {
     switch (sub) {
-      case "free":
+      case "trial":
         return "bg-gray-100 text-gray-700";
-      case "premium":
+      case "core":
         return "bg-blue-100 text-blue-700";
-      case "enterprise":
+      case "pro":
         return "bg-purple-100 text-purple-700";
       default:
         return "bg-gray-100 text-gray-700";
@@ -478,9 +478,9 @@ export function UserManagement() {
                         onChange={(e) => setSubscriptionFilter(e.target.value as SubscriptionFilter)}
                       >
                         <option value="all">All Subscriptions</option>
-                        <option value="free">Free</option>
-                        <option value="premium">Premium</option>
-                        <option value="enterprise">Enterprise</option>
+                        <option value="trial">Trial</option>
+                        <option value="core">Core</option>
+                        <option value="pro">Pro</option>
                       </select>
                     </div>
 
@@ -914,11 +914,11 @@ export function UserManagement() {
                       <select
                         className="w-full px-3 py-2 border rounded-lg bg-white"
                         value={newUser.subscription}
-                        onChange={(e) => setNewUser({ ...newUser, subscription: e.target.value as "free" | "premium" | "enterprise" })}
+                        onChange={(e) => setNewUser({ ...newUser, subscription: e.target.value as "trial" | "core" | "pro" })}
                       >
-                        <option value="free">Free</option>
-                        <option value="premium">Premium</option>
-                        <option value="enterprise">Enterprise</option>
+                        <option value="trial">Trial Plan</option>
+                        <option value="core">Core Habit Plan</option>
+                        <option value="pro">Pro / Clarity</option>
                       </select>
                     </div>
                   </div>
@@ -942,7 +942,7 @@ export function UserManagement() {
                         name: "",
                         email: "",
                         status: "active",
-                        subscription: "free",
+                        subscription: "trial",
                         organization: "",
                       });
                     }}
@@ -961,7 +961,7 @@ export function UserManagement() {
                         name: "",
                         email: "",
                         status: "active",
-                        subscription: "free",
+                        subscription: "trial",
                         organization: "",
                       });
                     }}

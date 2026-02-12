@@ -100,15 +100,21 @@ export async function getAllUsers() {
       created_at: true,
       updated_at: true,
       role: true,
+      subscriptions: {
+        where: { status: 'active' },
+        select: { plan_type: true },
+        take: 1
+      }
     }
   });
 
-  return users.map((user: typeof users[number]) => ({
+  return users.map((user: any) => ({
     ...user,
     email: user.email || '',
     created_at: user.created_at,
     updated_at: user.updated_at,
-    status: 'active' // Defaulting to active as we don't have a status field in profiles yet
+    status: 'active', // Defaulting to active as we don't have a status field in profiles yet
+    subscription: user.subscriptions?.[0]?.plan_type || 'trial'
   }));
 }
 

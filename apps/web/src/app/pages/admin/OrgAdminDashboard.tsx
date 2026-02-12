@@ -58,7 +58,7 @@ export function OrgAdminDashboard() {
 
   const orgInfo = {
     name: "HealthCare Corp",
-    plan: "Enterprise",
+    plan: "Pro",
     users: 2847,
     activeUsers: 2156,
     teams: 12,

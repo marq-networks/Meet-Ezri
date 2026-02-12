@@ -18,12 +18,38 @@ import {
   X,
   Clock,
   Star,
-  Sparkles
+  Sparkles,
+  Lock
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api } from "../../../lib/api";
 
 export function WellnessTools() {
+  const { profile } = useAuth();
+  const navigate = useNavigate();
+
+  // Feature Gate for Trial Users
+  if (profile?.subscription_plan === 'trial') {
+    return (
+      <AppLayout>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-slate-200">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Wellness Tools are a Core Feature</h2>
+            <p className="text-slate-600 max-w-md mx-auto mb-8">
+              Upgrade to Core or Pro to unlock the full library of wellness exercises and tools.
+            </p>
+            <Button onClick={() => navigate('/app/billing')}>
+              View Plans
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const [activeExercise, setActiveExercise] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [timer, setTimer] = useState(0);
@@ -34,6 +60,7 @@ export function WellnessTools() {
   const [exercises, setExercises] = useState<any[]>([]);
   const [progress, setProgress] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   const iconMap: any = { Wind, Brain, Music, Smile, Sun, Moon, Star, Sparkles, Heart };
   const colorMap: any = {
@@ -100,20 +127,50 @@ export function WellnessTools() {
     }
   ];
 
-  const handleStartExercise = (exerciseId: string) => {
+  const handleStartExercise = async (exerciseId: string) => {
     setActiveExercise(exerciseId);
     setIsPlaying(true);
     setTimer(0);
     setBreathPhase("inhale");
     setPhaseTimer(0);
+    
+    // Start session in backend
+    try {
+      const session = await api.wellness.startSession(exerciseId);
+      if (session && session.id) {
+        setCurrentSessionId(session.id);
+      }
+    } catch (error) {
+      console.error("Failed to start wellness session:", error);
+    }
   };
 
   const handleCloseExercise = () => {
+    // Capture current state before clearing
+    const exerciseId = activeExercise;
+    const timeSpent = timer;
+    const sessionId = currentSessionId;
+
     setActiveExercise(null);
     setIsPlaying(false);
     setTimer(0);
     setBreathPhase("inhale");
     setPhaseTimer(0);
+    setCurrentSessionId(null);
+
+    // Track progress if meaningful time spent (e.g. > 10 seconds)
+    if (exerciseId && timeSpent > 10) {
+      const promise = sessionId 
+        ? api.wellness.completeSession(sessionId, { duration_spent: timeSpent })
+        : api.wellness.trackProgress(exerciseId, { duration_spent: timeSpent });
+
+      promise
+        .then(() => {
+          return api.wellness.getProgress();
+        })
+        .then(setProgress)
+        .catch(err => console.error("Failed to track progress on close:", err));
+    }
   };
 
   const activeExerciseData = exercises.find((ex) => ex.id === activeExercise);
@@ -134,9 +191,14 @@ export function WellnessTools() {
           
           // Track progress
           if (activeExercise) {
-            api.wellness.trackProgress(activeExercise, { duration_spent: duration })
+            const promise = currentSessionId
+              ? api.wellness.completeSession(currentSessionId, { duration_spent: duration })
+              : api.wellness.trackProgress(activeExercise, { duration_spent: duration });
+
+            promise
               .then(() => {
                 // Refresh progress
+                setCurrentSessionId(null);
                 return api.wellness.getProgress();
               })
               .then(setProgress)

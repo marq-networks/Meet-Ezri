@@ -14,9 +14,8 @@ async function setupStripe() {
   }
 
   const plans = [
-    { name: 'Basic Plan', key: 'basic', amount: 2500 }, // $25.00
+    { name: 'Core Plan', key: 'core', amount: 2500 }, // $25.00
     { name: 'Pro Plan', key: 'pro', amount: 5900 },     // $59.00
-    { name: 'Enterprise Plan', key: 'enterprise', amount: 14900 } // $149.00
   ];
 
   const priceIds: Record<string, string> = {};

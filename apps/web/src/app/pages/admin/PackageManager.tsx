@@ -36,10 +36,9 @@ export function PackageManager() {
   };
 
   const planStats: Record<PlanTier, { users: number; revenue: number }> = {
-    free: { users: 4523, revenue: 0 },
-    basic: { users: 5234, revenue: 130850 },
+    trial: { users: 4523, revenue: 0 },
+    core: { users: 5234, revenue: 130850 },
     pro: { users: 2486, revenue: 146694 },
-    enterprise: { users: 300, revenue: 44700 }
   };
 
   const handleEdit = (planId: PlanTier) => {
@@ -153,10 +152,9 @@ export function PackageManager() {
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center`}>
-                      {planId === 'free' && <Sparkles className="w-6 h-6 text-white" />}
-                      {planId === 'basic' && <Package className="w-6 h-6 text-white" />}
+                      {planId === 'trial' && <Sparkles className="w-6 h-6 text-white" />}
+                      {planId === 'core' && <Package className="w-6 h-6 text-white" />}
                       {planId === 'pro' && <Zap className="w-6 h-6 text-white" />}
-                      {planId === 'enterprise' && <Crown className="w-6 h-6 text-white" />}
                     </div>
                     <div>
                       <h3 className="text-xl font-bold">{plan.displayName}</h3>
@@ -193,7 +191,7 @@ export function PackageManager() {
                         value={editForm.price ?? plan.price}
                         onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
                         className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        disabled={planId === 'free'}
+                        disabled={planId === 'trial'}
                       />
                     </div>
 
@@ -211,7 +209,7 @@ export function PackageManager() {
                     </div>
 
                     {/* PAYG Rate */}
-                    {planId !== 'free' && (
+                    {planId !== 'trial' && (
                       <div>
                         <label className="block text-sm font-medium mb-2">
                           Pay-As-You-Go Rate ($ per minute)
@@ -318,9 +316,8 @@ export function PackageManager() {
               <h4 className="font-semibold text-blue-900 mb-2">Package Configuration Tips</h4>
               <ul className="text-sm text-blue-700 space-y-1">
                 <li>• Higher-tier plans should have better PAYG rates to incentivize upgrades</li>
-                <li>• Consider setting Pro plan PAYG rate 30-40% lower than Basic</li>
-                <li>• Enterprise PAYG rate should be 50-60% lower than Basic for maximum value</li>
-                <li>• Free trial users cannot purchase PAYG minutes - this encourages paid conversions</li>
+                <li>• Consider setting Pro plan PAYG rate 30-40% lower than Core</li>
+                <li>• Trial users cannot purchase PAYG minutes - this encourages paid conversions</li>
                 <li>• Changes take effect immediately but don't affect existing subscriptions mid-cycle</li>
               </ul>
             </div>

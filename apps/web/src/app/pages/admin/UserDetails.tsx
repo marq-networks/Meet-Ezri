@@ -156,7 +156,7 @@ export function UserDetails() {
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Subscription</p>
                 <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                  {user.credits > 0 ? 'Active (Credits)' : 'Free'}
+                  {user.credits > 0 ? 'Active (Credits)' : 'Trial'}
                 </span>
               </div>
               <div>

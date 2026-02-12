@@ -40,6 +40,55 @@ export async function getSubscription(userId: string) {
 }
 
 export async function createCheckoutSession(userId: string, email: string, data: CreateSubscriptionInput) {
+  // Handle Trial Plan - Create subscription directly without Stripe
+  if (data.plan_type === 'trial') {
+    const existing = await prisma.subscriptions.findFirst({
+      where: { user_id: userId }
+    });
+
+    const trialCredits = PLAN_LIMITS.trial.credits;
+
+    if (existing) {
+      const updated = await prisma.subscriptions.update({
+        where: { id: existing.id },
+        data: {
+          plan_type: 'trial',
+          status: 'active',
+          billing_cycle: 'monthly',
+          amount: 0,
+          end_date: null, // Ongoing until upgraded or limits hit
+        }
+      });
+      
+      // Reset/Set credits for trial
+      await prisma.profiles.update({
+        where: { id: userId },
+        data: { credits: trialCredits }
+      });
+
+      return { subscription: updated };
+    }
+
+    const subscription = await prisma.subscriptions.create({
+      data: {
+        user_id: userId,
+        plan_type: 'trial',
+        status: 'active',
+        billing_cycle: 'monthly',
+        amount: 0,
+        start_date: new Date(),
+      }
+    });
+
+    // Set credits for trial
+    await prisma.profiles.update({
+      where: { id: userId },
+      data: { credits: trialCredits }
+    });
+
+    return { subscription };
+  }
+
   const customerId = await getOrCreateStripeCustomer(userId, email);
   
   const priceId = STRIPE_PRICE_IDS[data.plan_type as keyof typeof STRIPE_PRICE_IDS];
@@ -62,8 +111,8 @@ export async function createCheckoutSession(userId: string, email: string, data:
       userId,
       planType: data.plan_type,
     },
-    success_url: `${CLIENT_URL}/app/billing?success=true`,
-    cancel_url: `${CLIENT_URL}/app/billing?canceled=true`,
+    success_url: data.successUrl || `${CLIENT_URL}/app/billing?success=true`,
+    cancel_url: data.cancelUrl || `${CLIENT_URL}/app/billing?canceled=true`,
   });
 
   return { checkoutUrl: session.url };
@@ -73,17 +122,16 @@ export async function createCreditPurchaseSession(userId: string, email: string,
   const customerId = await getOrCreateStripeCustomer(userId, email);
 
   const subscription = await getSubscription(userId);
-  const planType = (subscription?.plan_type || 'free') as keyof typeof PLAN_LIMITS;
+  const planType = (subscription?.plan_type || 'trial') as keyof typeof PLAN_LIMITS;
   
-  // Get rate for plan, fallback to basic if free (or block if free doesn't allow PAYG)
-  // Currently free plan has payAsYouGoRate: null, so we should probably block or use a standard rate
-  // Let's use Basic rate as standard for non-subscribers if we want to allow them to buy credits
+  // Get rate for plan, fallback to core if trial (or block if trial doesn't allow PAYG)
+  // Currently trial plan has payAsYouGoRate: null, so we should probably block or use a standard rate
+  // Let's use Core rate as standard for non-subscribers if we want to allow them to buy credits
   let rate = PLAN_LIMITS[planType]?.payAsYouGoRate;
   
   if (rate === null || rate === undefined) {
-      // If free plan doesn't allow PAYG, maybe we default to a standard rate (e.g. $0.30) 
-      // or we can use the Basic rate $0.25
-      rate = 0.30; 
+      // Trial plan does not include Pay-As-You-Go
+      throw new Error('Pay-As-You-Go is only available for Core and Pro plans.');
   }
 
   const amountInCents = Math.round(data.credits * rate * 100);

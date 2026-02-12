@@ -48,7 +48,7 @@ export function Terms() {
             
             <h2>5. Subscription & Payment</h2>
             <p className="text-muted-foreground">
-              Ezri offers a 7-day free trial period. After the trial, your subscription will 
+              Ezri offers a 7-day trial period. After the trial, your subscription will 
               automatically renew unless cancelled. You may cancel at any time through your 
               account settings.
             </p>

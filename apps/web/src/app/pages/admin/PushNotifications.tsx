@@ -20,7 +20,7 @@ interface Notification {
   id: string;
   title: string;
   message: string;
-  target: "all" | "premium" | "free" | "segment";
+  target: "all" | "core" | "pro" | "trial" | "segment";
   segmentName?: string;
   scheduledFor?: Date;
   sentAt?: Date;
@@ -37,7 +37,7 @@ export function PushNotifications() {
   // Form states
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [target, setTarget] = useState<"all" | "premium" | "free" | "segment">("all");
+  const [target, setTarget] = useState<"all" | "core" | "pro" | "trial" | "segment">("all");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [scheduleDateTime, setScheduleDateTime] = useState("");
   
@@ -81,7 +81,7 @@ export function PushNotifications() {
       id: "n4",
       title: "Premium Feature Announcement",
       message: "New premium features are here! Check out voice sessions and more.",
-      target: "premium",
+      target: "pro",
       sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
       status: "sent",
       deliveredCount: 345,
@@ -138,8 +138,9 @@ export function PushNotifications() {
   const getTargetColor = (target: string) => {
     switch(target) {
       case "all": return "bg-purple-100 text-purple-700";
-      case "premium": return "bg-indigo-100 text-indigo-700";
-      case "free": return "bg-blue-100 text-blue-700";
+      case "core": return "bg-blue-100 text-blue-700";
+      case "pro": return "bg-indigo-100 text-indigo-700";
+      case "trial": return "bg-green-100 text-green-700";
       case "segment": return "bg-pink-100 text-pink-700";
       default: return "bg-gray-100 text-gray-700";
     }
@@ -422,12 +423,13 @@ export function PushNotifications() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
                   <select 
                     value={target}
-                    onChange={(e) => setTarget(e.target.value as "all" | "premium" | "free" | "segment")}
+                    onChange={(e) => setTarget(e.target.value as "all" | "core" | "pro" | "trial" | "segment")}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                   >
                     <option value="all">All Users</option>
-                    <option value="premium">Premium Users</option>
-                    <option value="free">Free Users</option>
+                    <option value="core">Core Plan Users</option>
+                    <option value="pro">Pro Plan Users</option>
+                    <option value="trial">Trial Users</option>
                     <option value="segment">Custom Segment</option>
                   </select>
                 </div>
@@ -679,12 +681,13 @@ export function PushNotifications() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
                         <select 
                           value={target}
-                          onChange={(e) => setTarget(e.target.value as "all" | "premium" | "free" | "segment")}
+                          onChange={(e) => setTarget(e.target.value as "all" | "core" | "pro" | "trial" | "segment")}
                           className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                         >
                           <option value="all">All Users</option>
-                          <option value="premium">Premium Users</option>
-                          <option value="free">Free Users</option>
+                          <option value="trial">Trial Users</option>
+                          <option value="core">Core Users</option>
+                          <option value="pro">Pro Users</option>
                           <option value="segment">Custom Segment</option>
                         </select>
                       </div>
@@ -798,12 +801,13 @@ export function PushNotifications() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
                         <select 
                           value={target}
-                          onChange={(e) => setTarget(e.target.value as "all" | "premium" | "free" | "segment")}
+                          onChange={(e) => setTarget(e.target.value as "all" | "core" | "pro" | "trial" | "segment")}
                           className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                         >
                           <option value="all">All Users</option>
-                          <option value="premium">Premium Users</option>
-                          <option value="free">Free Users</option>
+                          <option value="trial">Trial Users</option>
+                          <option value="core">Core Users</option>
+                          <option value="pro">Pro Users</option>
                           <option value="segment">Custom Segment</option>
                         </select>
                       </div>

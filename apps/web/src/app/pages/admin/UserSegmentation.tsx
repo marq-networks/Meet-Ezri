@@ -88,7 +88,7 @@ export function UserSegmentation() {
       criteria: [
         { type: "Last Active", operator: ">", value: "14 days" },
         { type: "Total Sessions", operator: ">=", value: "5" },
-        { type: "Subscription Status", operator: "=", value: "Free" }
+        { type: "Subscription Status", operator: "=", value: "Trial" }
       ],
       engagement: 12,
       conversionRate: 5,

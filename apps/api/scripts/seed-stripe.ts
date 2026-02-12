@@ -21,8 +21,8 @@ const stripe = new Stripe(stripeKey, {
 
 const PLANS = [
   {
-    key: 'basic',
-    name: 'MeetEzri Basic Plan',
+    key: 'core',
+    name: 'MeetEzri Core Plan',
     amount: 2500, // $25.00
     currency: 'usd',
     interval: 'month' as Stripe.Price.Recurring.Interval,
@@ -31,13 +31,6 @@ const PLANS = [
     key: 'pro',
     name: 'MeetEzri Pro Plan',
     amount: 5900, // $59.00
-    currency: 'usd',
-    interval: 'month' as Stripe.Price.Recurring.Interval,
-  },
-  {
-    key: 'enterprise',
-    name: 'MeetEzri Enterprise Plan',
-    amount: 14900, // $149.00
     currency: 'usd',
     interval: 'month' as Stripe.Price.Recurring.Interval,
   }
@@ -106,9 +99,8 @@ async function seed() {
   // We can just replace the whole STRIPE_PRICE_IDS object
   
   const newObject = `export const STRIPE_PRICE_IDS = {
-  basic: '${priceIds.basic}',
+  core: '${priceIds.core}',
   pro: '${priceIds.pro}',
-  enterprise: '${priceIds.enterprise}',
 } as const;`;
 
   // Basic regex replacement for the block

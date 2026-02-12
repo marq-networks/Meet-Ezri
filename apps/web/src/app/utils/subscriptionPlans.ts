@@ -1,6 +1,6 @@
 // Subscription Plan Types and Configuration
 
-export type PlanTier = 'free' | 'basic' | 'pro' | 'enterprise';
+export type PlanTier = 'trial' | 'core' | 'pro';
 
 export interface SubscriptionPlan {
   id: PlanTier;
@@ -10,90 +10,99 @@ export interface SubscriptionPlan {
   credits: number; // Minutes per month
   payAsYouGoRate: number | null; // Price per minute for PAYG (null if not available)
   features: string[];
+  notIncluded?: string[];
   popular?: boolean;
   trialDays?: number;
   color: string; // Brand color for UI
   gradient: string; // Gradient class
+  allowanceDescription?: string;
+  hardCap?: boolean;
 }
 
 export const SUBSCRIPTION_PLANS: Record<PlanTier, SubscriptionPlan> = {
-  free: {
-    id: 'free',
-    name: 'Free Trial',
-    displayName: 'Free Trial',
+  trial: {
+    id: 'trial',
+    name: 'Trial',
+    displayName: 'Trial',
     price: 0,
     credits: 30, // 30 minutes trial
-    payAsYouGoRate: null, // No PAYG on free trial
+    payAsYouGoRate: null, // No PAYG on trial
     trialDays: 7,
+    hardCap: true,
     color: 'gray',
     gradient: 'from-gray-500 to-gray-600',
+    allowanceDescription: '30 Minutes (0.5 Hour) Total Hard Cap',
     features: [
-      '30 minutes with AI Avatar',
-      '7-day trial period',
-      'Basic mood tracking',
-      'Limited journal entries',
-      'Mobile app access'
+      'Landing + How Ezri Works',
+      'Signup / Login / Verification',
+      'FaceTime Basic',
+      'Session Start/End Protocol',
+      'Minutes Deduction Tracking',
+      'Crisis Detection & De-escalation',
+      'Crisis Resources Surfaced'
+    ],
+    notIncluded: [
+      'Mood history or trends',
+      'Journaling',
+      'Wellness tools',
+      'Usage history',
+      'Pay-As-You-Go',
+      'Plan management',
+      'Analytics / exports'
     ]
   },
-  basic: {
-    id: 'basic',
-    name: 'Basic',
-    displayName: 'Basic Plan',
+  core: {
+    id: 'core',
+    name: 'Core',
+    displayName: 'Core (Habit Plan)',
     price: 25,
     credits: 200, // 200 minutes per month
-    payAsYouGoRate: 0.25, // $0.25 per minute
+    payAsYouGoRate: 0.20, // $5 per 25 mins = $0.20/min
     color: 'blue',
     gradient: 'from-blue-500 to-blue-600',
+    allowanceDescription: '200 Minutes (3.33 Hours) Resets Monthly',
     features: [
-      '200 minutes/month with AI Avatar',
-      'Pay-as-you-go at $0.25/min',
-      'Unlimited mood tracking',
-      'Unlimited journal entries',
-      'Basic wellness tools',
-      'Email support',
-      'Mobile app access'
+      'Full FaceTime with Ezri',
+      'Daily mood check-in & history',
+      '7-day & 30-day visual trends',
+      'Unlimited journals & Rich editor',
+      'Curated wellness tools',
+      'Avatar customization',
+      'Usage dashboard',
+      'Real-time crisis detection'
+    ],
+    notIncluded: [
+      '90-day mood trends',
+      'Journal export',
+      'Advanced usage analytics',
+      'Priority system handling'
     ]
   },
   pro: {
     id: 'pro',
     name: 'Pro',
-    displayName: 'Pro Plan',
-    price: 59,
-    credits: 500, // 500 minutes per month
-    payAsYouGoRate: 0.15, // $0.15 per minute (better rate)
+    displayName: 'Pro / Clarity',
+    price: 49,
+    credits: 400, // 400 minutes per month
+    payAsYouGoRate: 0.20, // $5 per 25 mins = $0.20/min
     popular: true,
     color: 'purple',
     gradient: 'from-purple-500 to-pink-500',
+    allowanceDescription: '400 Minutes (6.66 Hours) Resets Monthly',
     features: [
-      '500 minutes/month with AI Avatar',
-      'Pay-as-you-go at $0.15/min (40% savings)',
-      'Priority AI response',
-      'Advanced wellness insights',
-      'Personalized recommendations',
-      'Weekly progress reports',
-      'Priority support',
-      'Mobile app access'
-    ]
-  },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    displayName: 'Enterprise Plan',
-    price: 149,
-    credits: 1500, // 1500 minutes per month
-    payAsYouGoRate: 0.10, // $0.10 per minute (best rate)
-    color: 'amber',
-    gradient: 'from-amber-500 to-orange-500',
-    features: [
-      '1,500 minutes/month with AI Avatar',
-      'Pay-as-you-go at $0.10/min (60% savings)',
-      'Premium AI avatars',
-      'Dedicated account manager',
-      'Custom wellness programs',
-      'Team/family plan options',
-      'Advanced analytics dashboard',
-      '24/7 priority support',
-      'API access'
+      'Everything in Core',
+      'Longer uninterrupted sessions',
+      'Priority system handling',
+      '90-day mood trends',
+      'Export-ready journaling',
+      'Full wellness tool library',
+      'Detailed session logs',
+      'Usage transparency dashboard'
+    ],
+    notIncluded: [
+      'Unlimited usage',
+      'Human intervention',
+      'Emergency service calling'
     ]
   }
 };
@@ -144,7 +153,7 @@ export function getAvailablePAYGRate(planId: PlanTier): number | null {
 }
 
 export function canUsePAYG(planId: PlanTier): boolean {
-  return planId !== 'free' && SUBSCRIPTION_PLANS[planId].payAsYouGoRate !== null;
+  return planId !== 'trial' && SUBSCRIPTION_PLANS[planId].payAsYouGoRate !== null;
 }
 
 export function calculatePAYGCost(planId: PlanTier, minutes: number): number {
@@ -162,12 +171,11 @@ export function getRemainingTrialDays(startDate: string): number {
 }
 
 export function formatMinutes(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours > 0) {
-    return `${hours}h ${mins}m`;
-  }
-  return `${mins} mins`;
+  const hours = (minutes / 60).toFixed(2);
+  // Remove trailing zeros if integer
+  const formattedHours = parseFloat(hours).toString();
+  const unit = formattedHours === '1' || parseFloat(formattedHours) < 1 ? 'Hour' : 'Hours';
+  return `${minutes} Minutes (${formattedHours} ${unit})`;
 }
 
 export function isSubscriptionActive(subscription: UserSubscription): boolean {

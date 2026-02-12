@@ -180,7 +180,6 @@ const NAVIGATION: NavSection[] = [
       { name: "Integration Settings", href: "/admin/integration-settings", icon: Settings, roles: ["super_admin", "org_admin"] },
       { name: "Branding & Customization", href: "/admin/branding-customization", icon: Settings, roles: ["super_admin", "org_admin"] },
       { name: "A/B Testing", href: "/admin/ab-testing", icon: BarChart3, roles: ["super_admin", "org_admin"] },
-      { name: "Enterprise Features", href: "/admin/enterprise-features", icon: Crown, roles: ["super_admin"] },
     ],
   },
   {

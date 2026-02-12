@@ -51,6 +51,8 @@ export function OnboardingWellnessBaseline() {
       totalSteps={8}
       title="How Are You Feeling Today?"
       subtitle="This helps us understand where to focus our support"
+      showBack={true}
+      onBack={() => navigate("/onboarding/subscription")}
     >
       <div className="space-y-8">
         {/* Current Mood */}

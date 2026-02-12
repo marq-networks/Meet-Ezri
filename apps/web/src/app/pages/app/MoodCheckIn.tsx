@@ -9,7 +9,8 @@ import {
   ArrowRight,
   CheckCircle,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Lock
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../../lib/api";

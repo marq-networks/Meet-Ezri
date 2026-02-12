@@ -138,7 +138,7 @@ export function SupportTickets() {
       category: "Billing",
       created: "2024-12-29 07:15",
       lastUpdate: "5 hours ago",
-      description: "How do I upgrade my free account to premium? What are the payment options?",
+      description: "How do I upgrade my trial account to premium? What are the payment options?",
     },
     {
       id: 2840,

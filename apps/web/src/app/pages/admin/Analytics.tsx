@@ -42,8 +42,8 @@ export function Analytics() {
   ];
 
   const userTypeData = [
-    { name: "Free", value: 658, color: "#3b82f6" },
-    { name: "Premium", value: 345, color: "#8b5cf6" },
+    { name: "Core", value: 658, color: "#3b82f6" },
+    { name: "Pro", value: 345, color: "#8b5cf6" },
     { name: "Trial", value: 123, color: "#10b981" },
     { name: "Inactive", value: 79, color: "#6b7280" }
   ];

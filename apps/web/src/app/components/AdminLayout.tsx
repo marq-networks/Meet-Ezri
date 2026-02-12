@@ -213,7 +213,6 @@ const navigationItems: NavItem[] = [
       { name: "Integration Settings", href: "/admin/integration-settings", icon: Zap, roles: ["super", "org"] },
       { name: "Branding & Customization", href: "/admin/branding-customization", icon: Palette, roles: ["super", "org"] },
       { name: "A/B Testing", href: "/admin/ab-testing", icon: Brain, roles: ["super", "org"] },
-      { name: "Enterprise Features", href: "/admin/enterprise-features", icon: Crown, roles: ["super"] },
     ],
   },
 

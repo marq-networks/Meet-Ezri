@@ -78,9 +78,9 @@ export function Billing() {
   ];
 
   const planDistribution = [
-    { name: "Premium Monthly", value: 145, color: "#3b82f6" },
-    { name: "Premium Yearly", value: 189, color: "#8b5cf6" },
-    { name: "Free", value: 658, color: "#10b981" },
+    { name: "Pro Monthly", value: 145, color: "#3b82f6" },
+    { name: "Pro Yearly", value: 189, color: "#8b5cf6" },
+    { name: "Core", value: 658, color: "#10b981" },
     { name: "Trial", value: 123, color: "#f59e0b" }
   ];
 

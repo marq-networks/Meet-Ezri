@@ -72,26 +72,28 @@ export function Landing() {
             transition={{ delay: 0.6 }}
             className="flex flex-col sm:flex-row gap-4 justify-center px-4"
           >
-            <Link to="/signup" className="w-full sm:w-auto">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-full"
-              >
-                <Button size="lg" className="w-full sm:w-auto group relative overflow-hidden">
-                  <span className="relative z-10 flex items-center gap-2">
-                    Start Your Free Trial
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-accent to-secondary"
-                    initial={{ x: "-100%" }}
-                    whileHover={{ x: 0 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </Button>
-              </motion.div>
-            </Link>
+            <div onClick={() => localStorage.setItem('selectedPlan', 'trial')}>
+              <Link to="/signup" className="w-full sm:w-auto">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-full"
+                >
+                  <Button size="lg" className="w-full sm:w-auto group relative overflow-hidden">
+                    <span className="relative z-10 flex items-center gap-2">
+                      Start Your Trial
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-accent to-secondary"
+                      initial={{ x: "-100%" }}
+                      whileHover={{ x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </Button>
+                </motion.div>
+              </Link>
+            </div>
             <Link to="/how-it-works" className="w-full sm:w-auto">
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -118,7 +120,7 @@ export function Landing() {
             <span>•</span>
             <span className="flex items-center gap-1">
               <CheckCircle2 className="w-4 h-4 text-secondary" />
-              7-day free trial
+              7-day trial
             </span>
             <span>•</span>
             <span className="flex items-center gap-1">
@@ -328,18 +330,20 @@ export function Landing() {
               <p className="text-muted-foreground mb-8 text-lg max-w-2xl mx-auto">
                 Join thousands who trust Ezri for their mental health and wellbeing
               </p>
-              <Link to="/signup">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button size="lg" className="mb-4">
-                    Get Started Free
-                  </Button>
-                </motion.div>
-              </Link>
+              <div onClick={() => localStorage.setItem('selectedPlan', 'trial')}>
+                <Link to="/signup">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button size="lg" className="mb-4">
+                      Start Trial
+                    </Button>
+                  </motion.div>
+                </Link>
+              </div>
               <p className="text-sm text-muted-foreground">
-                7-day free trial • No credit card required
+                7-day trial • No credit card required
               </p>
             </div>
           </Card>
@@ -363,7 +367,7 @@ export function Landing() {
               Choose Your <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Wellness Journey</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Start with a 7-day free trial. Upgrade anytime for more AI companion time and better pay-as-you-go rates.
+              Start with a 7-day trial. Upgrade anytime for more AI companion time and better pay-as-you-go rates.
             </p>
           </motion.div>
         </div>
@@ -402,10 +406,9 @@ export function Landing() {
                     {/* Plan Header */}
                     <div className="mb-6">
                       <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} mb-4`}>
-                        {planId === 'free' && <Sparkles className="w-6 h-6 text-white" />}
-                        {planId === 'basic' && <Heart className="w-6 h-6 text-white" />}
-                        {planId === 'pro' && <Zap className="w-6 h-6 text-white" />}
-                        {planId === 'enterprise' && <Crown className="w-6 h-6 text-white" />}
+                        {planId === 'trial' && <Sparkles className="w-6 h-6 text-white" />}
+                  {planId === 'core' && <Zap className="w-6 h-6 text-white" />}
+                  {planId === 'pro' && <Crown className="w-6 h-6 text-white" />}
                       </div>
                       <h3 className="text-xl font-bold mb-2">{plan.displayName}</h3>
                       <div className="flex items-baseline gap-1">
@@ -416,9 +419,9 @@ export function Landing() {
                           <span className="text-muted-foreground">/month</span>
                         )}
                       </div>
-                      {planId === 'free' && (
+                      {planId === 'trial' && (
                         <p className="text-sm text-muted-foreground mt-1">
-                          {plan.trialDays} days free
+                          {plan.trialDays}-day trial
                         </p>
                       )}
                     </div>
@@ -433,7 +436,7 @@ export function Landing() {
                         {plan.credits} minutes
                       </p>
                       <p className="text-xs text-purple-600 mt-1">
-                        {planId === 'free' 
+                        {planId === 'trial' 
                           ? 'One-time trial credits' 
                           : 'Refreshes monthly'}
                       </p>
@@ -452,10 +455,7 @@ export function Landing() {
                           ${plan.payAsYouGoRate}/min
                         </p>
                         {planId === 'pro' && (
-                          <p className="text-xs text-green-600 mt-1">40% savings vs Basic</p>
-                        )}
-                        {planId === 'enterprise' && (
-                          <p className="text-xs text-green-600 mt-1">60% savings vs Basic</p>
+                          <p className="text-xs text-green-600 mt-1">40% savings vs Core</p>
                         )}
                       </div>
                     ) : (
@@ -482,23 +482,27 @@ export function Landing() {
                     </ul>
 
                     {/* CTA Button */}
-                    <Link to="/signup" className="block">
-                      <Button 
-                        className={`w-full ${
-                          isPopular 
-                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30' 
-                            : planId === 'free'
-                            ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white'
-                            : ''
-                        }`}
-                        size="lg"
-                      >
-                        {planId === 'free' ? 'Start Free Trial' : 'Get Started'}
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
+                    <div onClick={() => {
+                      localStorage.setItem('selectedPlan', planId);
+                    }}>
+                      <Link to="/signup" className="block">
+                        <Button 
+                          className={`w-full ${
+                            isPopular 
+                              ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30' 
+                              : planId === 'trial'
+                              ? 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white'
+                              : ''
+                          }`}
+                          size="lg"
+                        >
+                          {planId === 'trial' ? 'Start Your Trial' : 'Get Started'}
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </Link>
+                    </div>
 
-                    {planId === 'free' && (
+                    {planId === 'trial' && (
                       <p className="text-xs text-center text-muted-foreground mt-3">
                         No credit card required
                       </p>
@@ -526,7 +530,7 @@ export function Landing() {
                   Flexible Plans, No Long-Term Commitments
                 </h4>
                 <p className="text-sm text-blue-700">
-                  Start with a free trial, upgrade or downgrade anytime. Cancel whenever you want. 
+                  Start with a trial, upgrade or downgrade anytime. Cancel whenever you want. 
                   Higher-tier plans get better pay-as-you-go rates when you need extra minutes. 
                   All plans include access to our AI companions, mood tracking, and wellness tools.
                 </p>

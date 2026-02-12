@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool, trackWellnessProgress, getUserWellnessProgress } from './wellness.service';
+import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool, trackWellnessProgress, getUserWellnessProgress, startWellnessSession, completeWellnessSession, getWellnessStats } from './wellness.service';
 import { CreateWellnessToolInput, UpdateWellnessToolInput, TrackProgressInput } from './wellness.schema';
 
 export async function createWellnessToolHandler(
@@ -8,7 +8,7 @@ export async function createWellnessToolHandler(
 ) {
   const tool = await createWellnessTool({
     ...request.body,
-    created_by: request.user.id
+    created_by: request.user.sub
   });
   return reply.code(201).send(tool);
 }
@@ -49,7 +49,7 @@ export async function getUserWellnessProgressHandler(
   reply: FastifyReply
 ) {
   try {
-    const progress = await getUserWellnessProgress(request.user.id);
+    const progress = await getUserWellnessProgress(request.user.sub);
     return reply.send(progress);
   } catch (error) {
     return reply.code(500).send({ message: 'Failed to fetch wellness progress' });
@@ -74,7 +74,7 @@ export async function trackWellnessProgressHandler(
 ) {
   try {
     const progress = await trackWellnessProgress(
-      request.user.id,
+      request.user.sub,
       request.params.id,
       request.body.duration_spent,
       request.body.feedback_rating
@@ -82,5 +82,55 @@ export async function trackWellnessProgressHandler(
     return reply.code(201).send(progress);
   } catch (error) {
     return reply.code(404).send({ message: 'Wellness tool not found' });
+  }
+}
+
+export async function startWellnessSessionHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const session = await startWellnessSession(
+      request.user.sub,
+      request.params.id
+    );
+    return reply.code(201).send(session);
+  } catch (error: any) {
+    request.log.error(error);
+    if (error.message === 'User profile not found. Please complete onboarding.') {
+      return reply.code(400).send({ message: error.message });
+    }
+    if (error.message === 'Wellness tool not found') {
+      return reply.code(404).send({ message: error.message });
+    }
+    return reply.code(500).send({ message: 'Internal Server Error', error: error.message });
+  }
+}
+
+export async function completeWellnessSessionHandler(
+  request: FastifyRequest<{ Params: { progressId: string }; Body: TrackProgressInput }>,
+  reply: FastifyReply
+) {
+  try {
+    const progress = await completeWellnessSession(
+      request.params.progressId,
+      request.body.duration_spent,
+      request.body.feedback_rating
+    );
+    return reply.code(200).send(progress);
+  } catch (error) {
+    return reply.code(404).send({ message: 'Session not found' });
+  }
+}
+
+export async function getWellnessStatsHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const stats = await getWellnessStats(request.user.sub);
+    return reply.send(stats);
+  } catch (error) {
+    return reply.code(500).send({ message: 'Failed to fetch wellness stats' });
   }
 }

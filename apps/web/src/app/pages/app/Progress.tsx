@@ -15,7 +15,8 @@ import {
   Trophy,
   Zap,
   Download,
-  Wind
+  Wind,
+  Lock
 } from "lucide-react";
 import {
   LineChart,
@@ -35,30 +36,81 @@ import {
   Cell
 } from "recharts";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+
+import { useNavigate } from "react-router-dom";
 
 export function Progress() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
 
-  const weeklyProgress = [
-  { week: "Week 1", mood: 6, sessions: 2, journals: 3, checkIns: 5, exercises: 4 }, // ← added exercises: 4
-  { week: "Week 2", mood: 7, sessions: 3, journals: 4, checkIns: 6, exercises: 6 }, // ← added exercises: 6
-  { week: "Week 3", mood: 7.5, sessions: 2, journals: 5, checkIns: 7, exercises: 7 }, // ← added exercises: 7
-  { week: "Week 4", mood: 8, sessions: 3, journals: 6, checkIns: 7, exercises: 7 }  // ← added exercises: 7
-];
+  // Feature Gate for Trial Users
+  if (profile?.subscription_plan === 'trial') {
+    return (
+      <AppLayout>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-slate-200">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Usage History is a Core Feature</h2>
+            <p className="text-slate-600 max-w-md mx-auto mb-8">
+              Upgrade to Core or Pro to unlock usage history, analytics, and exports.
+            </p>
+            <Button onClick={() => navigate('/app/billing')}>
+              View Plans
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
-  const wellnessScore = [
-    { category: "Emotional", score: 85 },
-    { category: "Mental", score: 78 },
-    { category: "Physical", score: 72 },
-    { category: "Social", score: 80 },
-    { category: "Sleep", score: 70 }
+  const [wellnessProgress, setWellnessProgress] = useState<any[]>([]);
+  const [isLoadingWellness, setIsLoadingWellness] = useState(true);
+  const [statsData, setStatsData] = useState<{ 
+    weeklyProgress: any[], 
+    wellnessScore: any[],
+    monthlyActivity: any[] 
+  } | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      api.wellness.getProgress(),
+      api.wellness.getStats()
+    ])
+      .then(([progress, stats]) => {
+        setWellnessProgress(progress);
+        setStatsData(stats);
+      })
+      .catch(err => console.error("Failed to load wellness data:", err))
+      .finally(() => setIsLoadingWellness(false));
+  }, []);
+
+  // Use fetched data or fallbacks
+  const weeklyProgress = statsData?.weeklyProgress || [
+    { name: "Week 1", sessions: 0, mood: 0, wellness: 0 },
+    { name: "Week 2", sessions: 0, mood: 0, wellness: 0 },
+    { name: "Week 3", sessions: 0, mood: 0, wellness: 0 },
+    { name: "Week 4", sessions: 0, mood: 0, wellness: 0 },
   ];
 
-  const monthlyActivity = [
-    { month: "Sep", value: 45 },
-    { month: "Oct", value: 52 },
-    { month: "Nov", value: 68 },
-    { month: "Dec", value: 78 }
+  const wellnessScore = statsData?.wellnessScore || [
+    { subject: 'Emotional', A: 0, fullMark: 100 },
+    { subject: 'Mental', A: 0, fullMark: 100 },
+    { subject: 'Physical', A: 0, fullMark: 100 },
+    { subject: 'Social', A: 0, fullMark: 100 },
+    { subject: 'Sleep', A: 0, fullMark: 100 },
+  ];
+
+  const monthlyActivity = statsData?.monthlyActivity || [
+    { month: "Jan", value: 0 },
+    { month: "Feb", value: 0 },
+    { month: "Mar", value: 0 },
+    { month: "Apr", value: 0 },
+    { month: "May", value: 0 },
+    { month: "Jun", value: 0 }
   ];
 
   const achievements = [
@@ -114,6 +166,8 @@ export function Progress() {
     }
   ];
 
+  const totalWellnessSessions = wellnessProgress.reduce((acc, curr) => acc + curr.sessionsCompleted, 0);
+
   const stats = [
     {
       icon: Video,
@@ -142,7 +196,7 @@ export function Progress() {
      {
     icon: Wind,
     label: "Wellness Exercises",
-    value: "24",
+    value: totalWellnessSessions.toString(),
     change: "+6 this week",
     color: "text-cyan-500",
     bgColor: "bg-cyan-50"
@@ -246,12 +300,12 @@ export function Progress() {
                     name="Sessions"
                   />
                    <Line
-    type="monotone"
-    dataKey="exercises"
-    stroke="#06b6d4"
-    strokeWidth={3}
-    name="Wellness Exercises"
-  />
+                    type="monotone"
+                    dataKey="wellness"
+                    stroke="#06b6d4"
+                    strokeWidth={3}
+                    name="Wellness Exercises"
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </Card>
@@ -268,11 +322,11 @@ export function Progress() {
               <ResponsiveContainer width="100%" height={280}>
                 <RadarChart data={wellnessScore}>
                   <PolarGrid stroke="#e5e7eb" />
-                  <PolarAngleAxis dataKey="category" stroke="#6b7280" />
+                  <PolarAngleAxis dataKey="subject" stroke="#6b7280" />
                   <PolarRadiusAxis stroke="#6b7280" />
                   <Radar
                     name="Score"
-                    dataKey="score"
+                    dataKey="A"
                     stroke="#6366f1"
                     fill="#6366f1"
                     fillOpacity={0.6}
@@ -283,6 +337,47 @@ export function Progress() {
             </Card>
           </motion.div>
         </div>
+
+        {/* Wellness Tools Report */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="mb-8"
+        >
+          <Card className="p-6 shadow-xl">
+            <div className="flex items-center gap-2 mb-6">
+              <Wind className="w-6 h-6 text-cyan-500" />
+              <h2 className="text-xl font-bold">Wellness Tools Report</h2>
+            </div>
+            
+            {isLoadingWellness ? (
+              <p className="text-gray-500 text-center py-4">Loading report...</p>
+            ) : wellnessProgress.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No wellness exercises completed yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {wellnessProgress.map((p) => (
+                  <div key={p.toolId} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-cyan-100 text-cyan-600 rounded-full">
+                        <Wind className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{p.toolTitle}</p>
+                        <p className="text-sm text-gray-500">{p.sessionsCompleted} sessions</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-cyan-600">{p.totalMinutes}m</p>
+                      <p className="text-xs text-gray-500">Total Time</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </motion.div>
 
         {/* Monthly Activity */}
         <motion.div
@@ -309,7 +404,7 @@ export function Progress() {
                   {monthlyActivity.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b"][index]}
+                      fill={["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#06b6d4", "#10b981"][index % 6]}
                     />
                   ))}
                 </Bar>

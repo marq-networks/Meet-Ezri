@@ -1,28 +1,46 @@
 export const STRIPE_PRICE_IDS = {
-  basic: 'price_1SzbZVBt6JG9FijPPF89RTfX',
+  core: 'price_1SzbZVBt6JG9FijPPF89RTfX',
   pro: 'price_1SzbZWBt6JG9FijPLyyUMEjh',
-  enterprise: 'price_1SzbZYBt6JG9FijPjy6kfPCm',
 } as const;
 
 export const PLAN_LIMITS = {
-  free: {
-    credits: 100, // 100 minutes
-    features: ['Basic Access', 'Limited AI Models'],
+  trial: {
+    credits: 30, // 30 minutes hard cap
+    features: [
+      'Landing + How Ezri Works',
+      'Signup / Login / Verification',
+      'FaceTime Basic',
+      'Session Start/End Protocol',
+      'Minutes Deduction Tracking'
+    ],
     payAsYouGoRate: null, // No PAYG
   },
-  basic: {
-    credits: 300, // 300 minutes
-    features: ['Standard Access', 'All AI Models', 'Priority Support'],
-    payAsYouGoRate: 0.25, // $0.25/min
+  core: {
+    credits: 200, // 200 minutes
+    features: [
+      'Full FaceTime',
+      'Daily mood check-in & history',
+      'Unlimited journals',
+      'Curated wellness tools',
+      'Avatar customization',
+      'Usage dashboard'
+    ],
+    payAsYouGoRate: 0.20, // $5 per 25 mins
   },
   pro: {
-    credits: 1000, // 1000 minutes
-    features: ['Premium Access', 'All AI Models', '24/7 Support', 'Advanced Analytics'],
-    payAsYouGoRate: 0.15, // $0.15/min
-  },
-  enterprise: {
-    credits: -1, // Unlimited
-    features: ['Custom Solutions', 'Dedicated Account Manager', 'SLA'],
-    payAsYouGoRate: 0.10, // $0.10/min
+    credits: 400, // 400 minutes
+    features: [
+      'Everything in Core',
+      'Priority system handling',
+      '90-day mood trend',
+      'Export-ready journaling',
+      'Full wellness library',
+      'Detailed session logs'
+    ],
+    payAsYouGoRate: 0.20, // $5 per 25 mins
   },
 };
+
+export const PAYG_PACKAGES = [
+  { minutes: 25, price: 5 },
+];

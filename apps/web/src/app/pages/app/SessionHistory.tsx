@@ -18,7 +18,8 @@ import {
   Smile,
   Meh,
   Frown,
-  Star
+  Star,
+  Lock
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -63,7 +64,30 @@ interface BackendSession {
 
 export function SessionHistory() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
+
+  // Feature Gate for Trial Users
+  if (profile?.subscription_plan === 'trial') {
+    return (
+      <AppLayout>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-slate-200">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Session History is a Core Feature</h2>
+            <p className="text-slate-600 max-w-md mx-auto mb-8">
+              Upgrade to Core or Pro to unlock detailed session logs and history.
+            </p>
+            <Button onClick={() => navigate('/app/billing')}>
+              View Plans
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
   const [filterMood, setFilterMood] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");

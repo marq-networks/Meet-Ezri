@@ -16,6 +16,7 @@ import { HowItWorks } from '@/app/pages/HowItWorks';
 import { Privacy } from '@/app/pages/Privacy';
 import { Terms } from '@/app/pages/Terms';
 import { Accessibility } from '@/app/pages/Accessibility';
+import { Pricing } from '@/app/pages/Pricing';
 
 // Auth Pages
 import { Login } from '@/app/pages/Login';
@@ -28,6 +29,7 @@ import { ResetPassword } from '@/app/pages/ResetPassword';
 // Onboarding Pages
 import { OnboardingWelcome } from '@/app/pages/onboarding/Welcome';
 import { OnboardingProfileSetup } from '@/app/pages/onboarding/ProfileSetup';
+import { OnboardingSubscription } from '@/app/pages/onboarding/Subscription';
 import { OnboardingWellnessBaseline } from '@/app/pages/onboarding/WellnessBaseline';
 import { OnboardingHealthBackground } from '@/app/pages/onboarding/HealthBackground';
 import { OnboardingAvatarPreferences } from '@/app/pages/onboarding/AvatarPreferences';
@@ -137,7 +139,6 @@ import { SafetyEventDashboard } from '@/app/pages/admin/SafetyEventDashboard';
 import { SafetyEventDetails } from '@/app/pages/admin/SafetyEventDetails';
 import { CrisisEventDetails } from '@/app/pages/admin/CrisisEventDetails';
 import { TherapistManagement } from '@/app/pages/admin/TherapistManagement';
-import { EnterpriseFeatures } from '@/app/pages/admin/EnterpriseFeatures';
 import { IntegrationSettings } from '@/app/pages/admin/IntegrationSettings';
 import { APIManagement } from '@/app/pages/admin/APIManagement';
 import { DataExport } from '@/app/pages/admin/DataExport';
@@ -178,6 +179,7 @@ export default function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/accessibility" element={<Accessibility />} />
+          <Route path="/pricing" element={<Pricing />} />
           
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
@@ -192,6 +194,7 @@ export default function App() {
               {/* Onboarding Routes */}
               <Route path="/onboarding/welcome" element={<OnboardingWelcome />} />
               <Route path="/onboarding/profile" element={<OnboardingProfileSetup />} />
+              <Route path="/onboarding/subscription" element={<OnboardingSubscription />} />
               <Route path="/onboarding/wellness-baseline" element={<OnboardingWellnessBaseline />} />
               <Route path="/onboarding/health-background" element={<OnboardingHealthBackground />} />
               <Route path="/onboarding/avatar-preferences" element={<OnboardingAvatarPreferences />} />
@@ -348,7 +351,6 @@ export default function App() {
             <Route path="/admin/system-logs" element={<SystemLogs />} />
             <Route path="/admin/team-role-management" element={<TeamRoleManagement />} />
             <Route path="/admin/system-settings-enhanced" element={<SystemSettingsEnhanced />} />
-            <Route path="/admin/enterprise-features" element={<EnterpriseFeatures />} />
             <Route path="/admin/data-retention-privacy" element={<DataRetentionPrivacy />} />
             <Route path="/admin/ai-avatar-manager" element={<AIAvatarManager />} />
             <Route path="/admin/conversation-transcripts" element={<ConversationTranscripts />} />

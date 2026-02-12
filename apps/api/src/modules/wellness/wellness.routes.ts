@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { createWellnessToolSchema, updateWellnessToolSchema, wellnessToolResponseSchema, trackProgressSchema, progressResponseSchema } from './wellness.schema';
-import { createWellnessToolHandler, deleteWellnessToolHandler, getWellnessToolByIdHandler, getWellnessToolsHandler, updateWellnessToolHandler, trackWellnessProgressHandler, getUserWellnessProgressHandler } from './wellness.controller';
+import { createWellnessToolHandler, deleteWellnessToolHandler, getWellnessToolByIdHandler, getWellnessToolsHandler, updateWellnessToolHandler, trackWellnessProgressHandler, getUserWellnessProgressHandler, startWellnessSessionHandler, completeWellnessSessionHandler, getWellnessStatsHandler } from './wellness.controller';
 import { z } from 'zod';
 
 export async function wellnessRoutes(app: FastifyInstance) {
@@ -101,11 +101,52 @@ export async function wellnessRoutes(app: FastifyInstance) {
     trackWellnessProgressHandler
   );
 
+  app.post(
+    '/:id/start',
+    {
+      schema: {
+        params: z.object({
+          id: z.string(),
+        }),
+        response: {
+          201: progressResponseSchema,
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    startWellnessSessionHandler
+  );
+
+  app.patch(
+    '/progress/:progressId',
+    {
+      schema: {
+        params: z.object({
+          progressId: z.string(),
+        }),
+        body: trackProgressSchema,
+        response: {
+          200: progressResponseSchema,
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    completeWellnessSessionHandler
+  );
+
   app.get(
     '/progress',
     {
       preHandler: [app.authenticate],
     },
     getUserWellnessProgressHandler
+  );
+
+  app.get(
+    '/stats',
+    {
+      preHandler: [app.authenticate],
+    },
+    getWellnessStatsHandler
   );
 }

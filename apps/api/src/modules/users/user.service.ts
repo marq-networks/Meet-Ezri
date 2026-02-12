@@ -1,6 +1,7 @@
 import prisma from '../../lib/prisma';
 import { supabaseAdmin } from '../../config/supabase';
 import { OnboardingInput, UpdateProfileInput } from './user.schema';
+import { PLAN_LIMITS } from '../billing/billing.constants';
 
 function calculateStreak(moodEntries: any[]) {
   if (!moodEntries || moodEntries.length === 0) return 0;
@@ -80,7 +81,7 @@ export async function getAllUsers() {
       sessions: sessionCount,
       lastActive: lastActive,
       riskLevel: riskLevel,
-      subscription: (user.credits || 0) > 100 ? 'premium' : 'free', // Mock logic based on credits
+      subscription: (user.credits || 0) > 100 ? 'core' : 'trial', // Mock logic based on credits
       organization: 'Individual' // Mock
     };
   });
@@ -95,15 +96,29 @@ export async function getUserEmail(userId: string): Promise<string | null> {
 }
 
 export async function createProfile(userId: string, email: string, fullName?: string) {
-  return prisma.profiles.create({
+  const profile = await prisma.profiles.create({
     data: {
       id: userId,
       email,
       full_name: fullName || email.split('@')[0],
       role: 'user',
-      credits: 200, // Initialize with 200 minutes
+      credits: 30, // Initialize with 30 minutes for Trial
     },
   });
+
+  // Create Trial Subscription (7 days)
+  await prisma.subscriptions.create({
+    data: {
+      user_id: userId,
+      plan_type: 'trial',
+      status: 'active',
+      start_date: new Date(),
+      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      billing_cycle: 'monthly', // Not really relevant for trial but required by schema default
+    }
+  });
+
+  return profile;
 }
 
 export async function getProfile(userId: string) {
@@ -111,6 +126,11 @@ export async function getProfile(userId: string) {
     where: { id: userId },
     include: {
       therapist_profiles: true,
+      subscriptions: {
+        where: { status: 'active' },
+        orderBy: { created_at: 'desc' },
+        take: 1
+      },
       mood_entries: {
         orderBy: { created_at: 'desc' },
         take: 30,
@@ -131,10 +151,10 @@ export async function getProfile(userId: string) {
   if (!profile) return null;
 
   const [completedSessions, totalCheckins, totalJournals] = await Promise.all([
-    prisma.appointments.count({
+    prisma.app_sessions.count({
       where: {
         user_id: userId,
-        status: 'completed'
+        ended_at: { not: null }
       }
     }),
     prisma.mood_entries.count({
@@ -153,6 +173,10 @@ export async function getProfile(userId: string) {
   const upcomingSessions = profile.appointments_user.length;
   const primaryContact = profile.emergency_contacts?.[0];
 
+  const subscription = profile.subscriptions?.[0];
+  const planType = (subscription?.plan_type || 'trial') as keyof typeof PLAN_LIMITS;
+  const planDetails = PLAN_LIMITS[planType];
+
   return {
     ...profile,
     emergency_contact_name: primaryContact?.name || profile.emergency_contact_name,
@@ -167,8 +191,8 @@ export async function getProfile(userId: string) {
       streak_days: streakDays
     },
     credits_remaining: profile.credits || 0,
-    credits_total: 200,    // Mock value
-    subscription_plan: 'Basic Plan', // Mock value
+    credits_total: planDetails?.credits || 30,
+    subscription_plan: planType,
   };
 }
 

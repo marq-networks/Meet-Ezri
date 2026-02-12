@@ -79,7 +79,7 @@ async function handleCheckoutSessionCompleted(session: any) {
       await prisma.profiles.update({
         where: { id: userId },
         data: {
-          credits: {
+          purchased_credits: {
             increment: credits
           }
         }
@@ -102,40 +102,7 @@ async function handleCheckoutSessionCompleted(session: any) {
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
   // Update or create subscription in DB
-  await prisma.subscriptions.upsert({
-    where: {
-        // We don't have a unique constraint on stripe_sub_id easily accessible unless we query first
-        // But schema says id is PK.
-        // We should find by user_id or create.
-        // Actually, user can have only one active subscription usually.
-        // Let's find existing active one or create new.
-        // Since we don't have a unique key on user_id in prisma schema for upsert (it's 1-many relation but logically 1-1 active),
-        // we'll use findFirst/update or create.
-        id: undefined, // Hack to force lookups below
-    },
-    create: {
-      user_id: userId,
-      stripe_sub_id: subscription.id,
-      status: subscription.status,
-      plan_type: planType,
-      billing_cycle: 'monthly', // Default or derive from price
-      start_date: new Date(subscription.current_period_start * 1000),
-      end_date: new Date(subscription.current_period_end * 1000),
-      next_billing_at: new Date(subscription.current_period_end * 1000),
-    },
-    update: {
-      stripe_sub_id: subscription.id,
-      status: subscription.status,
-      plan_type: planType,
-      start_date: new Date(subscription.current_period_start * 1000),
-      end_date: new Date(subscription.current_period_end * 1000),
-      next_billing_at: new Date(subscription.current_period_end * 1000),
-    }, 
-  } as any); 
-  
-  // Correction: upsert requires a unique where clause. 
-  // We should do findFirst then update/create manually.
-  
+  // We should find by user_id or create.
   const existingSub = await prisma.subscriptions.findFirst({
       where: { user_id: userId }
   });
@@ -168,14 +135,17 @@ async function handleCheckoutSessionCompleted(session: any) {
 
   // Update credits based on plan
   let credits = 0;
-  if (planType === 'basic') credits = 100;
-  else if (planType === 'pro') credits = 500;
-  else if (planType === 'enterprise') credits = 1000;
+  // @ts-ignore
+  const limits = await import('./billing.constants').then(m => m.PLAN_LIMITS);
+  
+  if (planType === 'core') credits = limits.core.credits;
+  else if (planType === 'pro') credits = limits.pro.credits;
+  else if (planType === 'trial') credits = limits.trial.credits;
 
   if (credits > 0) {
     await prisma.profiles.update({
       where: { id: userId },
-      data: { credits }, // Or increment? usually reset/set for subscription
+      data: { credits }, 
     });
   }
 }
@@ -208,7 +178,7 @@ async function handleSubscriptionDeleted(subscription: any) {
     where: { id: existingSub.id },
     data: {
       status: 'canceled',
-      plan_type: 'free', // Revert to free?
+      plan_type: 'trial', // Revert to trial?
     },
   });
 }
@@ -243,9 +213,9 @@ async function handleInvoicePaymentSucceeded(invoice: any) {
     // Here we reset them based on the plan again
     let credits = 0;
     const planType = existingSub.plan_type;
-    if (planType === 'basic') credits = 100;
-    else if (planType === 'pro') credits = 500;
-    else if (planType === 'enterprise') credits = 1000;
+    if (planType === 'core') credits = 200;
+    else if (planType === 'pro') credits = 400;
+    else if (planType === 'trial') credits = 30;
 
     if (credits > 0) {
       await prisma.profiles.update({

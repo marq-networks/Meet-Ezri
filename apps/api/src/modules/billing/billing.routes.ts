@@ -37,7 +37,10 @@ export async function billingRoutes(app: FastifyInstance) {
       schema: {
         body: createSubscriptionSchema,
         response: {
-          200: z.object({ checkoutUrl: z.string() }),
+          200: z.union([
+            z.object({ checkoutUrl: z.string() }),
+            z.object({ subscription: subscriptionResponseSchema })
+          ]),
         },
       },
       preHandler: [app.authenticate],

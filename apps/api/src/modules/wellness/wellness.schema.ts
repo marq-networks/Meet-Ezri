@@ -32,14 +32,16 @@ export const wellnessToolResponseSchema = z.object({
   description: z.string().nullable(),
   category: z.string(),
   duration_minutes: z.number().nullable(),
-  content: z.string().nullable(),
-  image_url: z.string().nullable(),
+  content_url: z.string().nullable(),
   is_premium: z.boolean().nullable(),
   difficulty: z.string().nullable(),
   status: z.string().nullable(),
   icon: z.string().nullable(),
   created_at: z.date(),
   updated_at: z.date(),
+  profiles: z.object({
+    full_name: z.string().nullable(),
+  }).optional().nullable(),
 });
 
 export const trackProgressSchema = z.object({

@@ -445,7 +445,7 @@ export const api = {
       return handleResponse(res, 'Failed to fetch subscription');
     },
 
-    async createSubscription(data: { plan_type: 'free' | 'basic' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly'; payment_method?: string }) {
+    async createSubscription(data: { plan_type: 'trial' | 'core' | 'pro'; billing_cycle?: 'monthly' | 'yearly'; payment_method?: string; successUrl?: string; cancelUrl?: string }) {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/billing`, {
         method: 'POST',
@@ -474,7 +474,7 @@ export const api = {
       return handleResponse(res, 'Failed to create portal session');
     },
 
-    async updateSubscription(data: { plan_type?: 'free' | 'basic' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly' }) {
+    async updateSubscription(data: { plan_type?: 'trial' | 'core' | 'pro'; billing_cycle?: 'monthly' | 'yearly' }) {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/billing`, {
         method: 'PATCH',
@@ -513,7 +513,7 @@ export const api = {
       return handleResponse(res, 'Failed to fetch all subscriptions');
     },
 
-    async updateSubscriptionById(id: string, data: { plan_type?: 'free' | 'pro' | 'enterprise'; billing_cycle?: 'monthly' | 'yearly'; status?: string }) { // Admin only
+    async updateSubscriptionById(id: string, data: { plan_type?: 'trial' | 'core' | 'pro'; billing_cycle?: 'monthly' | 'yearly'; status?: string }) { // Admin only
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/billing/admin/subscriptions/${id}`, {
         method: 'PATCH',
@@ -595,6 +595,26 @@ export const api = {
       return handleResponse(res, 'Failed to track progress');
     },
 
+    async startSession(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness/${id}/start`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({}),
+      });
+      return handleResponse(res, 'Failed to start wellness session');
+    },
+
+    async completeSession(progressId: string, data: { duration_spent: number; feedback_rating?: number }) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness/progress/${progressId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to complete wellness session');
+    },
+
     async getProgress() {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/wellness/progress`, {
@@ -602,6 +622,15 @@ export const api = {
         headers,
       });
       return handleResponse(res, 'Failed to fetch wellness progress');
+    },
+
+    async getStats() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness/stats`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch wellness stats');
     }
   },
 

@@ -56,11 +56,10 @@ Total Revenue (This Month): $286,450
 Monthly Recurring Revenue (MRR): $274,280
 Year-over-Year Growth: +34.5%
 
-SUBSCRIPTION BREAKDOWN:
-- Free Trial: 2,340 users (18.8%)
-- Basic ($25/mo): 5,680 users (45.6%)
-- Pro ($59/mo): 3,240 users (26.0%)
-- Enterprise ($149/mo): 1,199 users (9.6%)
+59→SUBSCRIPTION BREAKDOWN:
+60→- Trial: 2,340 users (18.8%)
+61→- Core ($25/mo): 5,680 users (45.6%)
+62→- Pro ($59/mo): 4,439 users (35.6%)
 
 KEY METRICS:
 - Average Revenue Per User (ARPU): $23.50

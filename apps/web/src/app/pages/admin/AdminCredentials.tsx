@@ -341,7 +341,7 @@ export function AdminCredentials() {
         >
           <p className="text-xs text-gray-400">
             <Shield className="w-3 h-3 inline mr-1" />
-            Protected by enterprise-grade security
+            Protected by industry-standard security
           </p>
         </motion.div>
       </div>

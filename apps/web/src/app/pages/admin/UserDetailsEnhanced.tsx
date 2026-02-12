@@ -56,7 +56,7 @@ export function UserDetailsEnhanced() {
           avatar: userProfile.full_name?.[0] || userProfile.email?.[0] || "U",
           status: userProfile.status || "active",
           riskLevel: userProfile.riskLevel || "low", // Assuming backend might return this or we default
-          subscription: subscription?.plan_type || "free",
+          subscription: subscription?.plan_type || "trial",
           organization: userProfile.organization || "Individual",
           joinDate: new Date(userProfile.created_at).toLocaleDateString(),
           lastActive: new Date(userProfile.updated_at).toLocaleDateString(), // Proxy for last active

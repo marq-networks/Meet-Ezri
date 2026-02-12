@@ -138,7 +138,7 @@ export function Accessibility() {
                   whileTap={{ scale: 0.95 }}
                   className="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg text-sm font-medium shadow-lg"
                 >
-                  Get Started Free
+                  Get Started
                 </motion.button>
               </Link>
             </div>
@@ -388,11 +388,11 @@ export function Accessibility() {
                   whileTap={{ scale: 0.95 }}
                   className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-lg font-medium shadow-xl hover:shadow-2xl transition-shadow"
                 >
-                  Get Started Free
+                  Get Started
                 </motion.button>
               </Link>
               <p className="text-sm text-muted-foreground mt-4">
-                7-day free trial • No credit card required
+                7-day trial • No credit card required
               </p>
             </Card>
           </motion.div>

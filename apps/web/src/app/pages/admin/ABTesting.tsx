@@ -117,7 +117,7 @@ export function ABTesting() {
         },
         {
           id: "variant_a",
-          name: "Green 'Start Free Trial'",
+          name: "Green 'Start Trial'",
           traffic: 33,
           conversions: 203,
           visitors: 2098,

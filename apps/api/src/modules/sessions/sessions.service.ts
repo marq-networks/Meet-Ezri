@@ -6,16 +6,29 @@ export async function createSession(userId: string, input: CreateSessionInput) {
     // Ensure user profile exists to satisfy foreign key constraint
     const profile = await prisma.profiles.findUnique({
       where: { id: userId },
-      select: { id: true, credits: true }
+      select: { id: true, credits: true, purchased_credits: true }
     });
 
     if (!profile) {
       throw new Error('User profile not found. Please complete onboarding first.');
     }
 
-    // Check if user has sufficient credits (minimum 5 minutes for new session)
-    if ((profile.credits || 0) < 5) {
-      throw new Error('Insufficient credits. Please upgrade your plan or purchase more minutes.');
+    // Check for active subscription and trial expiry
+    const subscription = await prisma.subscriptions.findFirst({
+      where: { user_id: userId, status: 'active' }
+    });
+
+    if (subscription?.plan_type === 'trial' && subscription.end_date && new Date() > subscription.end_date) {
+      throw new Error('Your trial has expired. Please upgrade to continue.');
+    }
+
+    // Check if user has sufficient credits
+    // For trial users (hard cap), ensure they have enough credits for the entire planned duration
+    const requiredCredits = input.duration_minutes || 5;
+    const totalCredits = (profile.credits || 0) + (profile.purchased_credits || 0);
+    
+    if (totalCredits < requiredCredits) {
+      throw new Error(`Insufficient credits. You need ${requiredCredits} minutes but have ${totalCredits}. Please upgrade your plan.`);
     }
 
     const result = await prisma.app_sessions.create({
@@ -74,14 +87,36 @@ export async function endSession(userId: string, sessionId: string, durationSeco
   // Deduct credits
   if (minutesUsed > 0) {
     try {
-      await prisma.profiles.update({
+      const profile = await prisma.profiles.findUnique({
         where: { id: userId },
-        data: {
-          credits: {
-            decrement: minutesUsed
-          }
-        }
+        select: { credits: true, purchased_credits: true }
       });
+
+      if (profile) {
+        const subCredits = profile.credits || 0;
+        const purCredits = profile.purchased_credits || 0;
+        
+        let newSubCredits = subCredits;
+        let newPurCredits = purCredits;
+
+        if (subCredits >= minutesUsed) {
+          // All from subscription credits
+          newSubCredits = subCredits - minutesUsed;
+        } else {
+          // Exhaust subscription credits, take rest from purchased
+          const remainder = minutesUsed - Math.max(0, subCredits);
+          newSubCredits = Math.max(0, subCredits - minutesUsed); // Should be 0 if subCredits < minutesUsed
+          newPurCredits = purCredits - remainder;
+        }
+
+        await prisma.profiles.update({
+          where: { id: userId },
+          data: {
+            credits: newSubCredits,
+            purchased_credits: newPurCredits
+          }
+        });
+      }
     } catch (error) {
       console.error('Failed to deduct credits:', error);
       // Continue to end session even if credit deduction fails

@@ -92,8 +92,8 @@ export function Signup() {
   const benefits = [
     {
       icon: CheckCircle2,
-      title: "7-Day Free Trial",
-      description: "Try all features risk-free"
+      title: "7-Day Trial",
+      description: "Try all features with no commitment"
     },
     {
       icon: CheckCircle2,

@@ -543,6 +543,7 @@ model profiles {
   phone                          String?
   selected_voice                 String?
   credits                        Int?                           @default(0)
+  purchased_credits              Int?                           @default(0)
   stripe_customer_id             String?
   activity_events                activity_events[]
   app_sessions                   app_sessions[]
@@ -1009,7 +1010,7 @@ model subscriptions {
   org_id          String?        @db.Uuid
   stripe_sub_id   String?
   status          String?        @default("active")
-  plan_type       String?        @default("free")
+  plan_type       String?        @default("trial")
   billing_cycle   String?        @default("monthly")
   amount          Decimal?       @db.Decimal(10, 2)
   payment_method  String?
@@ -1142,8 +1143,8 @@ enum safety_state {
 
 enum subscription_tier {
   free
-  premium
-  enterprise
+  core
+  pro
 
   @@schema("public")
 }

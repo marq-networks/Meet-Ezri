@@ -10,7 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Loader2
+  Loader2,
+  Lock
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -64,6 +65,31 @@ const getMoodInfo = (mood: string) => {
 };
 
 export function MoodHistory() {
+  const { profile } = useAuth();
+  const navigate = useNavigate();
+
+  // Feature Gate for Trial Users
+  if (profile?.subscription_plan === 'trial') {
+    return (
+      <AppLayout>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-slate-200">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Mood History is a Core Feature</h2>
+            <p className="text-slate-600 max-w-md mx-auto mb-8">
+              Upgrade to Core or Pro to unlock detailed mood history, trends, and analytics.
+            </p>
+            <Button onClick={() => navigate('/app/billing')}>
+              View Plans
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const [selectedView, setSelectedView] = useState<"week" | "month" | "year">("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [entries, setEntries] = useState<MoodEntry[]>([]);

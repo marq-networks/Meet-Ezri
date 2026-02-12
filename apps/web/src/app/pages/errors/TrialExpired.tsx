@@ -8,26 +8,27 @@ export function TrialExpired() {
 
   const plans = [
     {
-      id: "basic" as const,
-      name: "Basic",
-      price: "$9.99",
+      id: "core" as const,
+      name: "Core Habit Plan",
+      price: "$25",
       period: "month",
       features: [
-        "30 minutes of AI sessions per month",
+        "200 minutes of AI sessions per month",
         "Mood tracking & journaling",
-        "Basic wellness tools",
-        "Email support"
+        "Wellness tools",
+        "Email support",
+        "Pay-As-You-Go enabled"
       ],
       gradient: "from-blue-500 to-cyan-500",
       popular: false
     },
     {
-      id: "premium" as const,
-      name: "Premium",
-      price: "$19.99",
+      id: "pro" as const,
+      name: "Pro / Clarity",
+      price: "$49",
       period: "month",
       features: [
-        "Unlimited AI sessions",
+        "400 minutes of AI sessions per month",
         "Advanced mood analytics",
         "Full wellness tool library",
         "Priority support",
@@ -35,21 +36,6 @@ export function TrialExpired() {
       ],
       gradient: "from-purple-500 to-pink-500",
       popular: true
-    },
-    {
-      id: "elite" as const,
-      name: "Elite",
-      price: "$39.99",
-      period: "month",
-      features: [
-        "Everything in Premium",
-        "Personalized wellness plans",
-        "Dedicated support specialist",
-        "Advanced AI capabilities",
-        "Family sharing (up to 4)"
-      ],
-      gradient: "from-amber-500 to-orange-600",
-      popular: false
     }
   ];
 
@@ -82,7 +68,7 @@ export function TrialExpired() {
           </motion.div>
 
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Your Free Trial Has Ended
+            Your Trial Has Ended
           </h1>
           <p className="text-xl text-gray-600 mb-2">
             Continue your mental wellness journey with Ezri
@@ -296,8 +282,8 @@ export function TrialExpired() {
             </div>
             
             <div>
-              <p className="font-medium text-gray-900 mb-1">Is there a free tier?</p>
-              <p className="text-gray-600">You can access limited features including journaling and mood tracking without a subscription.</p>
+              <p className="font-medium text-gray-900 mb-1">Do you offer a trial?</p>
+              <p className="text-gray-600">Yes! We offer a trial plan to help you get started with your wellness journey.</p>
             </div>
           </div>
         </motion.div>

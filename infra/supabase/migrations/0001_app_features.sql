@@ -24,7 +24,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE subscription_tier AS ENUM ('free', 'premium', 'enterprise');
+    CREATE TYPE subscription_tier AS ENUM ('trial', 'core', 'pro');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
