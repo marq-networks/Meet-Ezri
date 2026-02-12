@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 
 export function TrialExpired() {
-  const [selectedPlan, setSelectedPlan] = useState<"basic" | "premium" | "elite">("premium");
+  const [selectedPlan, setSelectedPlan] = useState<"core" | "pro">("pro");
 
   const plans = [
     {

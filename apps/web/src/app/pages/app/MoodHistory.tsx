@@ -27,6 +27,8 @@ import {
   Cell
 } from "recharts";
 import { api } from "../../../lib/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, isSameDay, subMonths, addMonths, subWeeks, addWeeks, subYears, addYears } from "date-fns";
 
 interface MoodEntry {

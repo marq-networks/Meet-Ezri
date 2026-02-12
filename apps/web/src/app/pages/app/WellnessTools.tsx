@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api } from "../../../lib/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export function WellnessTools() {
   const { profile } = useAuth();

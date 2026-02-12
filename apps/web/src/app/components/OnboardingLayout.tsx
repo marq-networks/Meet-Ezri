@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { motion } from "motion/react";
-import { Heart, Check } from "lucide-react";
+import { Heart, Check, ArrowLeft } from "lucide-react";
 import { FloatingElement } from "./FloatingElement";
 
 interface OnboardingLayoutProps {
@@ -9,6 +9,8 @@ interface OnboardingLayoutProps {
   totalSteps: number;
   title: string;
   subtitle?: string;
+  showBack?: boolean;
+  onBack?: () => void;
 }
 
 export function OnboardingLayout({ 
@@ -16,7 +18,9 @@ export function OnboardingLayout({
   currentStep, 
   totalSteps, 
   title,
-  subtitle 
+  subtitle,
+  showBack,
+  onBack
 }: OnboardingLayoutProps) {
   const progress = (currentStep / totalSteps) * 100;
 
@@ -36,17 +40,28 @@ export function OnboardingLayout({
       <div className="relative z-10 border-b border-border bg-white/80 backdrop-blur-md">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between mb-3">
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              className="flex items-center gap-2"
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg">
-                <Heart className="w-5 h-5 text-white" fill="white" />
-              </div>
-              <span className="font-semibold">Ezri</span>
-            </motion.div>
+            <div className="flex items-center gap-3">
+              {showBack && onBack && (
+                <button 
+                  onClick={onBack}
+                  className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="Go back"
+                >
+                  <ArrowLeft className="w-5 h-5 text-gray-600" />
+                </button>
+              )}
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                className="flex items-center gap-2"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg">
+                  <Heart className="w-5 h-5 text-white" fill="white" />
+                </div>
+                <span className="font-semibold">Ezri</span>
+              </motion.div>
+            </div>
             
             <motion.div
               initial={{ opacity: 0, x: 20 }}
