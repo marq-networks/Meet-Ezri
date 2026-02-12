@@ -190,6 +190,11 @@ app.register(sleepRoutes, { prefix: '/api/sleep' });
 app.register(habitsRoutes, { prefix: '/api/habits' });
 app.register(emergencyContactRoutes, { prefix: '/api/emergency-contacts' });
 
+// Health check routes
+app.get('/health', async () => ({ ok: true }));
+app.get('/api/health', async () => ({ ok: true }));
+app.get('/', async () => ({ message: 'MeetEzri API' }));
+
 export default app;
 
 if (require.main === module) {
