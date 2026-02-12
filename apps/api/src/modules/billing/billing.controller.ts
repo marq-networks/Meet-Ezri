@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createSubscription, cancelSubscription, getBillingHistory, getSubscription, updateSubscription, getAllSubscriptions, updateSubscriptionById, createCreditPurchaseSession } from './billing.service';
+import { createSubscription, cancelSubscription, getBillingHistory, getSubscription, updateSubscription, getAllSubscriptions, updateSubscriptionById, createCreditPurchaseSession, syncSubscriptionWithStripe } from './billing.service';
 import { CreateSubscriptionInput, UpdateSubscriptionInput, CreateCreditPurchaseInput } from './billing.schema';
 
 interface UserPayload {
@@ -159,4 +159,18 @@ export async function getSubscriptionByUserIdHandler(
   }
   
   return reply.send(subscription);
+}
+
+export async function syncSubscriptionHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const user = request.user as UserPayload;
+  try {
+    const subscription = await syncSubscriptionWithStripe(user.sub);
+    return reply.send(subscription);
+  } catch (error: any) {
+    request.log.error({ error }, 'Failed to sync subscription');
+    return reply.code(500).send({ message: 'Failed to sync subscription', error: error.message });
+  }
 }

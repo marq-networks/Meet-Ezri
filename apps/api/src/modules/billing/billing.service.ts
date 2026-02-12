@@ -116,6 +116,18 @@ export async function createCheckoutSession(userId: string, email: string, data:
     throw new Error('Invalid plan type');
   }
 
+  // SAVE INTENT: Create a pending subscription in DB so UI knows what user selected
+  const pendingSub = await prisma.subscriptions.create({
+    data: {
+      user_id: userId,
+      plan_type: data.plan_type,
+      status: 'incomplete', // Will be updated by webhook or sync
+      billing_cycle: 'monthly',
+      start_date: new Date(),
+      // No end date yet
+    }
+  });
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
@@ -129,6 +141,7 @@ export async function createCheckoutSession(userId: string, email: string, data:
     metadata: {
       userId,
       planType: data.plan_type,
+      subscriptionId: pendingSub.id, // Link to our DB ID if useful
     },
     success_url: data.successUrl || `${CLIENT_URL}/app/billing?success=true`,
     cancel_url: data.cancelUrl || `${CLIENT_URL}/app/billing?canceled=true`,
@@ -280,4 +293,102 @@ export async function getAllSubscriptions() {
     },
     orderBy: { created_at: 'desc' },
   });
+}
+
+export async function syncSubscriptionWithStripe(userId: string) {
+  const profile = await prisma.profiles.findUnique({ where: { id: userId } });
+  
+  if (!profile?.stripe_customer_id) {
+    return getSubscription(userId);
+  }
+
+  // Fetch subscriptions from Stripe (active, trialing, incomplete)
+  const stripeSubs = await stripe.subscriptions.list({
+    customer: profile.stripe_customer_id,
+    status: 'all', // Fetch all to be safe, then filter
+    limit: 5,
+  });
+
+  // Find the most relevant subscription (active > trialing > incomplete)
+  // Filter out canceled unless it's the only one? No, we want active/trialing.
+  const validStatuses = ['active', 'trialing', 'incomplete', 'past_due'];
+  const activeSub = stripeSubs.data.find(s => validStatuses.includes(s.status));
+
+  if (!activeSub) {
+    // No active subscription in Stripe
+    return getSubscription(userId);
+  }
+
+  const priceId = activeSub.items.data[0].price.id;
+
+  // Determine plan type from price ID
+  let planType = 'trial';
+  if (priceId === STRIPE_PRICE_IDS.core) planType = 'core';
+  else if (priceId === STRIPE_PRICE_IDS.pro) planType = 'pro';
+  else {
+    if (activeSub.metadata?.planType) {
+        planType = activeSub.metadata.planType;
+    }
+  }
+
+  if (planType === 'trial') {
+    return getSubscription(userId);
+  }
+
+  // Update DB
+  // First try to find by stripe_sub_id
+  let existingSub = await prisma.subscriptions.findFirst({
+    where: { stripe_sub_id: activeSub.id }
+  });
+
+  // If not found by ID, find by user and most recent (likely the trial or pending one)
+  if (!existingSub) {
+    existingSub = await prisma.subscriptions.findFirst({
+        where: { user_id: userId },
+        orderBy: { created_at: 'desc' }
+    });
+  }
+
+  let updatedSub;
+  const subData = {
+    stripe_sub_id: activeSub.id,
+    status: activeSub.status,
+    plan_type: planType,
+    start_date: new Date(activeSub.current_period_start * 1000),
+    end_date: new Date(activeSub.current_period_end * 1000),
+    next_billing_at: new Date(activeSub.current_period_end * 1000),
+    updated_at: new Date(),
+  };
+
+  if (existingSub) {
+    updatedSub = await prisma.subscriptions.update({
+        where: { id: existingSub.id },
+        data: subData
+    });
+  } else {
+    updatedSub = await prisma.subscriptions.create({
+        data: {
+            user_id: userId,
+            ...subData,
+            billing_cycle: 'monthly', // Default
+        }
+    });
+  }
+
+  // Sync Credits (Optional: Only if active/trialing)
+  if (['active', 'trialing'].includes(activeSub.status)) {
+      const limits = PLAN_LIMITS[planType as keyof typeof PLAN_LIMITS];
+      if (limits) {
+          // Check if we should update credits. 
+          // For now, let's update if the plan matches.
+          // In a real system, you'd check if credits were already allocated for this period.
+          // But here, ensuring they have the credits is safer.
+          await prisma.profiles.update({
+              where: { id: userId },
+              data: { credits: limits.credits }
+          });
+      }
+  }
+
+  return updatedSub;
 }

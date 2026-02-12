@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { createSubscriptionSchema, subscriptionResponseSchema, updateSubscriptionSchema, createCreditPurchaseSchema } from './billing.schema';
-import { cancelSubscriptionHandler, createSubscriptionHandler, getBillingHistoryHandler, getSubscriptionHandler, updateSubscriptionHandler, getAllSubscriptionsHandler, adminUpdateSubscriptionHandler, getSubscriptionByUserIdHandler, createPortalSessionHandler, createCreditPurchaseHandler } from './billing.controller';
+import * as billingController from './billing.controller';
 import { stripeWebhookHandler } from './billing.webhook';
 import { z } from 'zod';
 
@@ -28,7 +28,7 @@ export async function billingRoutes(app: FastifyInstance) {
       },
       preHandler: [app.authenticate],
     },
-    getSubscriptionHandler
+    billingController.getSubscriptionHandler
   );
 
   app.post(
@@ -45,7 +45,7 @@ export async function billingRoutes(app: FastifyInstance) {
       },
       preHandler: [app.authenticate],
     },
-    createSubscriptionHandler
+    billingController.createSubscriptionHandler
   );
 
   app.post(
@@ -59,7 +59,7 @@ export async function billingRoutes(app: FastifyInstance) {
       },
       preHandler: [app.authenticate],
     },
-    createCreditPurchaseHandler
+    billingController.createCreditPurchaseHandler
   );
 
   app.post(
@@ -72,7 +72,7 @@ export async function billingRoutes(app: FastifyInstance) {
       },
       preHandler: [app.authenticate],
     },
-    createPortalSessionHandler
+    billingController.createPortalSessionHandler
   );
 
   app.patch(
@@ -86,7 +86,7 @@ export async function billingRoutes(app: FastifyInstance) {
       },
       preHandler: [app.authenticate],
     },
-    updateSubscriptionHandler
+    billingController.updateSubscriptionHandler
   );
 
   app.post(
@@ -99,7 +99,7 @@ export async function billingRoutes(app: FastifyInstance) {
       },
       preHandler: [app.authenticate],
     },
-    cancelSubscriptionHandler
+    billingController.cancelSubscriptionHandler
   );
 
   app.get(
@@ -112,7 +112,7 @@ export async function billingRoutes(app: FastifyInstance) {
       },
       preHandler: [app.authenticate],
     },
-    getBillingHistoryHandler
+    billingController.getBillingHistoryHandler
   );
 
   app.get(
@@ -136,7 +136,7 @@ export async function billingRoutes(app: FastifyInstance) {
       },
       preHandler: [app.authenticate, app.authorize(['super_admin', 'org_admin'])],
     },
-    getAllSubscriptionsHandler
+    billingController.getAllSubscriptionsHandler
   );
 
   app.get(
@@ -155,6 +155,19 @@ export async function billingRoutes(app: FastifyInstance) {
       },
       preHandler: [app.authenticate, app.authorize(['super_admin', 'org_admin'])],
     },
-    getSubscriptionByUserIdHandler
+    billingController.getSubscriptionByUserIdHandler
+  );
+
+  app.post(
+    '/sync',
+    {
+      schema: {
+        response: {
+          200: subscriptionResponseSchema.optional().nullable(),
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    billingController.syncSubscriptionHandler
   );
 }

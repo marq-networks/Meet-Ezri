@@ -531,6 +531,16 @@ export const api = {
         cache: 'no-store',
       });
       return handleResponse(res, 'Failed to fetch user subscription');
+    },
+
+    async syncSubscription() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/sync`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({}),
+      });
+      return handleResponse(res, 'Failed to sync subscription');
     }
   },
 
