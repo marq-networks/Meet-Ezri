@@ -6,7 +6,9 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
+  // Vercel requires the Transaction Pooler (Port 6543) for DATABASE_URL
   url       = env("DATABASE_URL")
+  // Migrations use Direct Connection (Port 5432) for DIRECT_URL
   directUrl = env("DIRECT_URL")
   schemas   = ["auth", "public"]
 }
