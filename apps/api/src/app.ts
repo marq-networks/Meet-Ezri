@@ -27,10 +27,13 @@ dotenv.config();
 console.log('Starting API...');
 const dbUrl = process.env.DATABASE_URL || '';
 const dbHost = dbUrl.includes('@') ? dbUrl.split('@')[1] : 'Unknown';
+const dbUser = dbUrl.includes('://') ? dbUrl.split('://')[1].split(':')[0] : 'Unknown';
+
 console.log('Environment Debug:', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
-  DATABASE_URL_HOST: dbHost, // Log the host to verify if it's pooler (6543) or direct (5432)
+  DATABASE_URL_HOST: dbHost, 
+  DATABASE_USER: dbUser, // Log the user to verify if it's 'postgres' or 'postgres.[ref]'
   DIRECT_URL_SET: !!process.env.DIRECT_URL,
 });
 
