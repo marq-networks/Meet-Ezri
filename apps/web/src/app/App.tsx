@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 
 // Contexts
 import { AuthProvider } from '@/app/contexts/AuthContext';
+import { NotificationsProvider } from '@/app/contexts/NotificationsContext';
 import { SafetyProvider } from '@/app/contexts/SafetyContext';
 import { OnboardingProvider } from '@/app/contexts/OnboardingContext';
 import { ProtectedRoute } from '@/app/components/ProtectedRoute';
@@ -168,6 +169,7 @@ import { Phase1Demo } from '@/app/pages/Phase1Demo';
 export default function App() {
   return (
     <AuthProvider>
+      <NotificationsProvider>
       <SafetyProvider>
         <BrowserRouter>
         <MobileMetaTags />
@@ -362,7 +364,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </SafetyProvider>
-  </AuthProvider>
+      </SafetyProvider>
+      </NotificationsProvider>
+    </AuthProvider>
   );
 }

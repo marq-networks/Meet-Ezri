@@ -9,100 +9,36 @@ import {
   Calendar,
   TrendingUp,
   CheckCircle2,
-  X
+  X,
+  AlertTriangle
 } from "lucide-react";
-import { useState } from "react";
 import { Button } from "@/app/components/ui/button";
-
-interface Notification {
-  id: string;
-  type: "mood" | "session" | "achievement" | "reminder" | "system" | "message";
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-  icon: typeof Bell;
-  color: string;
-}
+import { useNotifications } from "@/app/contexts/NotificationsContext";
+import { formatDistanceToNow } from "date-fns";
 
 export function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: "1",
-      type: "reminder",
-      title: "Daily Check-In Reminder",
-      message: "Don't forget to log your mood today! It's been 8 hours since your last check-in.",
-      time: "2 hours ago",
-      read: false,
-      icon: Heart,
-      color: "from-pink-500 to-rose-600"
-    },
-    {
-      id: "2",
-      type: "achievement",
-      title: "New Achievement Unlocked! 🎉",
-      message: "Congratulations! You've earned the '7-Day Streak' badge for checking in daily for a week.",
-      time: "5 hours ago",
-      read: false,
-      icon: Award,
-      color: "from-yellow-500 to-orange-600"
-    },
-    {
-      id: "3",
-      type: "session",
-      title: "Session Reminder",
-      message: "Your scheduled AI therapy session is in 30 minutes. Tap to prepare.",
-      time: "1 day ago",
-      read: true,
-      icon: Video,
-      color: "from-blue-500 to-cyan-600"
-    },
-    {
-      id: "4",
-      type: "mood",
-      title: "Mood Trending Up 📈",
-      message: "Great news! Your average mood has improved by 15% this week. Keep up the great work!",
-      time: "2 days ago",
-      read: true,
-      icon: TrendingUp,
-      color: "from-green-500 to-emerald-600"
-    },
-    {
-      id: "5",
-      type: "message",
-      title: "New Message",
-      message: "You received a supportive message from the Ezri community.",
-      time: "3 days ago",
-      read: true,
-      icon: MessageSquare,
-      color: "from-purple-500 to-indigo-600"
-    },
-    {
-      id: "6",
-      type: "reminder",
-      title: "Weekly Goal Update",
-      message: "You've completed 4 of 5 check-ins for this week. One more to hit your goal!",
-      time: "4 days ago",
-      read: true,
-      icon: Calendar,
-      color: "from-teal-500 to-cyan-600"
+  const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } = useNotifications();
+
+  // Helper to map type to UI properties
+  const getNotificationStyle = (type: string) => {
+    switch (type) {
+      case 'mood':
+        return { icon: TrendingUp, color: "from-green-500 to-emerald-600" };
+      case 'session':
+        return { icon: Video, color: "from-blue-500 to-cyan-600" };
+      case 'achievement':
+        return { icon: Award, color: "from-yellow-500 to-orange-600" };
+      case 'reminder':
+        return { icon: Calendar, color: "from-pink-500 to-rose-600" };
+      case 'message':
+        return { icon: MessageSquare, color: "from-purple-500 to-indigo-600" };
+      case 'safety':
+      case 'alert':
+        return { icon: AlertTriangle, color: "from-red-500 to-red-600" };
+      case 'system':
+      default:
+        return { icon: Bell, color: "from-gray-500 to-gray-600" };
     }
-  ]);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
-  };
-
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
   };
 
   return (
@@ -152,7 +88,9 @@ export function Notifications() {
 
         {/* Notifications List */}
         <div className="space-y-3">
-          {notifications.length === 0 ? (
+          {isLoading ? (
+             <div className="text-center py-12">Loading notifications...</div>
+          ) : notifications.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -166,7 +104,8 @@ export function Notifications() {
             </motion.div>
           ) : (
             notifications.map((notification, index) => {
-              const Icon = notification.icon;
+              const style = getNotificationStyle(notification.type);
+              const Icon = style.icon;
               
               return (
                 <motion.div
@@ -176,14 +115,14 @@ export function Notifications() {
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ scale: 1.01 }}
                   className={`bg-white rounded-2xl shadow-sm p-4 border-l-4 ${
-                    notification.read 
+                    notification.is_read 
                       ? "border-gray-200 opacity-75" 
                       : "border-blue-500"
                   }`}
                 >
                   <div className="flex gap-4">
                     {/* Icon */}
-                    <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${notification.color} flex items-center justify-center shadow-md`}>
+                    <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${style.color} flex items-center justify-center shadow-md`}>
                       <Icon className="w-6 h-6 text-white" />
                     </div>
 
@@ -192,21 +131,23 @@ export function Notifications() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <h3 className={`font-bold text-sm sm:text-base ${
-                            notification.read ? "text-gray-600" : "text-gray-900"
+                            notification.is_read ? "text-gray-600" : "text-gray-900"
                           }`}>
                             {notification.title}
                           </h3>
                           <p className={`mt-1 text-xs sm:text-sm ${
-                            notification.read ? "text-gray-500" : "text-gray-700"
+                            notification.is_read ? "text-gray-500" : "text-gray-700"
                           }`}>
                             {notification.message}
                           </p>
-                          <p className="mt-2 text-xs text-gray-400">{notification.time}</p>
+                          <p className="mt-2 text-xs text-gray-400">
+                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                          </p>
                         </div>
 
                         {/* Actions */}
                         <div className="flex items-center gap-1">
-                          {!notification.read && (
+                          {!notification.is_read && (
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
@@ -217,16 +158,6 @@ export function Notifications() {
                               <CheckCircle2 className="w-4 h-4" />
                             </motion.button>
                           )}
-                          
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => deleteNotification(notification.id)}
-                            className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
-                            title="Delete"
-                          >
-                            <X className="w-4 h-4" />
-                          </motion.button>
                         </div>
                       </div>
                     </div>

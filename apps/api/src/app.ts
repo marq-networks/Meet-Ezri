@@ -18,6 +18,7 @@ import { wellnessRoutes } from './modules/wellness/wellness.routes';
 import { sleepRoutes } from './modules/sleep/sleep.routes';
 import { habitsRoutes } from './modules/habits/habits.routes';
 import { emergencyContactRoutes } from './modules/users/emergency-contacts.routes';
+import { notificationRoutes } from './modules/notifications/notifications.routes';
 import jwkToPem from 'jwk-to-pem';
 const jwtLib = require('jsonwebtoken');
 
@@ -192,6 +193,7 @@ app.register(wellnessRoutes, { prefix: '/api/wellness' });
 app.register(sleepRoutes, { prefix: '/api/sleep' });
 app.register(habitsRoutes, { prefix: '/api/habits' });
 app.register(emergencyContactRoutes, { prefix: '/api/emergency-contacts' });
+app.register(notificationRoutes, { prefix: '/api/notifications' });
 
 // Health check routes
 app.get('/health', async () => ({ ok: true }));

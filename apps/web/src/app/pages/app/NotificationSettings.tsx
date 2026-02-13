@@ -15,10 +15,14 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/app/components/AppLayout";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export function NotificationSettings() {
+  const { profile, refreshProfile } = useAuth();
   const [notificationSettings, setNotificationSettings] = useState({
     pushEnabled: true,
     emailEnabled: true,
@@ -38,11 +42,61 @@ export function NotificationSettings() {
     crisisAlerts: true
   });
 
+  useEffect(() => {
+    if (profile?.notification_preferences) {
+      setNotificationSettings(prev => ({
+        ...prev,
+        ...profile.notification_preferences
+      }));
+    }
+  }, [profile]);
+
+  const saveSettings = async (newSettings: typeof notificationSettings) => {
+    try {
+      await api.updateProfile({
+        notification_preferences: newSettings
+      });
+      // Optionally refresh profile to sync state, though we are optimistic here
+      // refreshProfile(); 
+    } catch (error) {
+      console.error('Failed to save notification settings:', error);
+      toast.error('Failed to save settings');
+    }
+  };
+
   const toggleSetting = (key: keyof typeof notificationSettings) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    setNotificationSettings(prev => {
+      const newState = {
+        ...prev,
+        [key]: !prev[key]
+      };
+      saveSettings(newState);
+      return newState;
+    });
+  };
+
+  const updateTimeSetting = (key: 'quietStart' | 'quietEnd', value: string) => {
+      setNotificationSettings(prev => {
+          const newState = {
+              ...prev,
+              [key]: value
+          };
+          saveSettings(newState);
+          return newState;
+      });
+  };
+  
+  const updateAllSettings = (enable: boolean) => {
+      setNotificationSettings(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+              if (typeof newState[key as keyof typeof newState] === 'boolean') {
+                  (newState as any)[key] = enable;
+              }
+          });
+          saveSettings(newState);
+          return newState;
+      });
   };
 
   const notificationCategories = [
@@ -258,7 +312,7 @@ export function NotificationSettings() {
                   <input
                     type="time"
                     value={notificationSettings.quietStart}
-                    onChange={(e) => setNotificationSettings({...notificationSettings, quietStart: e.target.value})}
+                    onChange={(e) => updateTimeSetting('quietStart', e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
@@ -268,7 +322,7 @@ export function NotificationSettings() {
                   <input
                     type="time"
                     value={notificationSettings.quietEnd}
-                    onChange={(e) => setNotificationSettings({...notificationSettings, quietEnd: e.target.value})}
+                    onChange={(e) => updateTimeSetting('quietEnd', e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
@@ -331,15 +385,7 @@ export function NotificationSettings() {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                const allEnabled = {...notificationSettings};
-                Object.keys(allEnabled).forEach(key => {
-                  if (typeof allEnabled[key as keyof typeof allEnabled] === 'boolean') {
-                    (allEnabled as any)[key] = true;
-                  }
-                });
-                setNotificationSettings(allEnabled);
-              }}
+              onClick={() => updateAllSettings(true)}
               className="px-4 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium flex items-center justify-center gap-2"
             >
               <Volume2 className="w-4 h-4" />
@@ -349,15 +395,7 @@ export function NotificationSettings() {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                const allDisabled = {...notificationSettings};
-                Object.keys(allDisabled).forEach(key => {
-                  if (typeof allDisabled[key as keyof typeof allDisabled] === 'boolean') {
-                    (allDisabled as any)[key] = false;
-                  }
-                });
-                setNotificationSettings(allDisabled);
-              }}
+              onClick={() => updateAllSettings(false)}
               className="px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium flex items-center justify-center gap-2"
             >
               <VolumeX className="w-4 h-4" />

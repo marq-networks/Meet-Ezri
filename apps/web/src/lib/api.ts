@@ -745,5 +745,65 @@ export const api = {
       });
       return handleResponse(res, 'Failed to fetch user habits');
     }
+  },
+
+  // Notifications API
+  notifications: {
+    async getAll() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/notifications`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch notifications');
+    },
+
+    async getUnreadCount() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/notifications/unread-count`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch unread count');
+    },
+
+    async markAsRead(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers,
+      });
+      return handleResponse(res, 'Failed to mark notification as read');
+    },
+
+    async markAllAsRead() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/notifications/read-all`, {
+        method: 'PATCH',
+        headers,
+      });
+      return handleResponse(res, 'Failed to mark all notifications as read');
+    },
+    
+    // Admin only
+    async create(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/notifications`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to create notification');
+    },
+
+    async broadcast(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/notifications/broadcast`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to broadcast notification');
+    }
   }
 };

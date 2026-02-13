@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { useAuth } from "../contexts/AuthContext";
+import { useNotifications } from "../contexts/NotificationsContext";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -28,6 +29,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const navItems = [
     { path: "/app/dashboard", icon: Home, label: "Home" },
@@ -74,14 +76,16 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link to="/app/settings/notifications/list">
+            <Link to="/app/notifications">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 className="p-2 rounded-full hover:bg-gray-100 transition-colors relative"
               >
                 <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
               </motion.button>
             </Link>
             

@@ -29,8 +29,11 @@ import {
   Wind
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/app/components/AppLayout";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface SettingSection {
   id: string;
@@ -44,22 +47,93 @@ interface SettingSection {
 
 export function SettingsHub() {
   const navigate = useNavigate();
+  const { profile, refreshProfile } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   
   // Quick Settings State
   const [quickSettings, setQuickSettings] = useState([
     { icon: Moon, label: "Dark Mode", enabled: false, key: "darkMode" },
-    { icon: Bell, label: "Notifications", enabled: true, key: "notifications" },
-    { icon: Smartphone, label: "Mobile Alerts", enabled: true, key: "mobileAlerts" },
-    { icon: Mail, label: "Email Updates", enabled: false, key: "emailUpdates" }
+    { icon: Bell, label: "Notifications", enabled: true, key: "pushEnabled" },
+    { icon: Smartphone, label: "Mobile Alerts", enabled: true, key: "smsEnabled" },
+    { icon: Mail, label: "Email Updates", enabled: false, key: "emailEnabled" }
   ]);
 
-  const toggleQuickSetting = (key: string) => {
+  // Sync state from profile and localStorage
+  useEffect(() => {
+    // 1. Appearance (LocalStorage)
+    const savedAppearance = localStorage.getItem('ezri_appearance_settings');
+    const isDarkMode = savedAppearance ? JSON.parse(savedAppearance).theme === 'dark' : false;
+
+    // 2. Notifications (Profile)
+    const prefs = profile?.notification_preferences || {};
+    
+    setQuickSettings(prev => prev.map(setting => {
+        if (setting.key === 'darkMode') return { ...setting, enabled: isDarkMode };
+        if (setting.key === 'pushEnabled') return { ...setting, enabled: prefs.pushEnabled ?? true };
+        if (setting.key === 'smsEnabled') return { ...setting, enabled: prefs.smsEnabled ?? false };
+        if (setting.key === 'emailEnabled') return { ...setting, enabled: prefs.emailEnabled ?? true };
+        return setting;
+    }));
+  }, [profile]);
+
+  const toggleQuickSetting = async (key: string) => {
+    // Optimistic update
     setQuickSettings(prevSettings =>
       prevSettings.map(setting =>
         setting.key === key ? { ...setting, enabled: !setting.enabled } : setting
       )
     );
+
+    try {
+        if (key === 'darkMode') {
+            // Handle Appearance
+            const savedAppearance = localStorage.getItem('ezri_appearance_settings');
+            const currentSettings = savedAppearance ? JSON.parse(savedAppearance) : {};
+            const newTheme = currentSettings.theme === 'dark' ? 'light' : 'dark';
+            
+            const newSettings = { ...currentSettings, theme: newTheme };
+            localStorage.setItem('ezri_appearance_settings', JSON.stringify(newSettings));
+            
+            // Apply immediately
+            if (newTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            toast.success(`Dark mode ${newTheme === 'dark' ? 'enabled' : 'disabled'}`);
+        } else {
+            // Handle Notification Preferences
+            const currentPrefs = profile?.notification_preferences || {};
+            const newPrefs = {
+                ...currentPrefs,
+                [key]: !currentPrefs[key] // toggle based on current profile state to be safe, or we can use the state. 
+                // Using state is safer for optimistic UI if we assume state is up to date. 
+                // But let's just toggle the value we know we are flipping.
+            };
+            
+            // Fix: we need to know the *new* value. 
+            // The optimistic update flipped it. Let's find the setting in the array *before* update or just infer.
+            const setting = quickSettings.find(s => s.key === key);
+            const newValue = !setting?.enabled; // New value is opposite of current state
+            
+            newPrefs[key] = newValue;
+
+            await api.updateProfile({
+                notification_preferences: newPrefs
+            });
+            // refreshProfile(); // Optional, but good to keep sync
+            toast.success("Settings saved");
+        }
+    } catch (error) {
+        console.error("Failed to update setting:", error);
+        toast.error("Failed to update setting");
+        // Revert on error
+        setQuickSettings(prevSettings =>
+            prevSettings.map(setting =>
+              setting.key === key ? { ...setting, enabled: !setting.enabled } : setting
+            )
+        );
+    }
   };
 
   const settingSections: SettingSection[] = [

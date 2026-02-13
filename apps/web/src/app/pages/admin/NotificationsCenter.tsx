@@ -6,6 +6,8 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, Bell, Users, Calendar, MessageSquare, X, Clock, CheckCircle, Eye, TrendingUp, Target } from "lucide-react";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export function NotificationsCenter() {
   const [selectedAudience, setSelectedAudience] = useState("all");
@@ -13,6 +15,44 @@ export function NotificationsCenter() {
   const [showDetailsModal, setShowDetailsModal] = useState<any>(null);
   const [notificationTitle, setNotificationTitle] = useState("");
   const [notificationMessage, setNotificationMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!notificationTitle || !notificationMessage) {
+      toast.error('Please fill in both title and message');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      if (selectedAudience === 'all') {
+        await api.notifications.broadcast({
+          type: 'system',
+          title: notificationTitle,
+          message: notificationMessage,
+          metadata: { audience: selectedAudience }
+        });
+        toast.success(`Notification sent to all users!`);
+      } else {
+         // Fallback to broadcast for demo, or implement specific targeting later
+         toast.info("Targeted notifications coming soon. Broadcasting to all.");
+         await api.notifications.broadcast({
+          type: 'system',
+          title: notificationTitle,
+          message: notificationMessage,
+          metadata: { audience: selectedAudience }
+        });
+      }
+      setNotificationTitle('');
+      setNotificationMessage('');
+    } catch (error) {
+      toast.error('Failed to send notification');
+      console.error(error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
 
   const recentNotifications = [
     {
@@ -129,17 +169,9 @@ export function NotificationsCenter() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button className="flex-1 gap-2" onClick={() => {
-                    if (!notificationTitle || !notificationMessage) {
-                      alert('Please fill in both title and message');
-                      return;
-                    }
-                    alert(`Notification sent to ${selectedAudience} users!\n\nTitle: ${notificationTitle}\nMessage: ${notificationMessage}`);
-                    setNotificationTitle('');
-                    setNotificationMessage('');
-                  }}>
+                  <Button className="flex-1 gap-2" onClick={handleSend} disabled={isSending}>
                     <Send className="w-4 h-4" />
-                    Send Now
+                    {isSending ? 'Sending...' : 'Send Now'}
                   </Button>
                   <Button variant="outline" className="flex-1" onClick={() => setShowScheduleModal(true)}>
                     Schedule
