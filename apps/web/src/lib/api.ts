@@ -312,6 +312,16 @@ export const api = {
       return handleResponse(res, 'Failed to fetch admin stats');
     },
 
+    async getRecentActivity() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/stats/recent`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch recent activity');
+    },
+
     async getUsers() {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/admin/users`, {
@@ -804,6 +814,57 @@ export const api = {
         body: JSON.stringify(data),
       });
       return handleResponse(res, 'Failed to broadcast notification');
+    }
+  },
+
+  // AI Avatars API
+  aiAvatars: {
+    async getAll() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/ai-avatars`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch AI avatars');
+    },
+
+    async getById(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/ai-avatars/${id}`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch AI avatar');
+    },
+
+    async create(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/ai-avatars`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to create AI avatar');
+    },
+
+    async update(id: string, data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/ai-avatars/${id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to update AI avatar');
+    },
+
+    async delete(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/ai-avatars/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (res.status === 204) return true;
+      return handleResponse(res, 'Failed to delete AI avatar');
     }
   }
 };

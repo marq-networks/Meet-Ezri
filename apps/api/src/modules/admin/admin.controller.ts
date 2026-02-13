@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { getDashboardStats, getAllUsers, getUserById, updateUser, deleteUser, getUserAuditLogs } from './admin.service';
+import { getDashboardStats, getAllUsers, getUserById, updateUser, deleteUser, getUserAuditLogs, getRecentActivity } from './admin.service';
 import { updateUserSchema } from './admin.schema';
 import { z } from 'zod';
 
@@ -13,6 +13,19 @@ export async function getDashboardStatsHandler(
   } catch (error) {
     request.log.error(error);
     return reply.code(500).send({ message: 'Failed to fetch dashboard stats' });
+  }
+}
+
+export async function getRecentActivityHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const activity = await getRecentActivity();
+    return reply.code(200).send(activity);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch recent activity' });
   }
 }
 

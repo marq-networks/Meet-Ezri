@@ -4,6 +4,8 @@ export const dashboardStatsSchema = z.object({
   totalUsers: z.number(),
   activeSessions: z.number(),
   totalSessions: z.number(),
+  avgSessionLength: z.number().optional(),
+  crisisAlerts: z.number().optional(),
   revenue: z.number(),
   systemHealth: z.array(z.object({
     name: z.string(),

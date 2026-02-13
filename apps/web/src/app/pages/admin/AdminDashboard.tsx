@@ -1,3 +1,4 @@
+
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { StatsCard } from "../../components/StatsCard";
 import { Card } from "../../components/ui/card";
@@ -19,73 +20,41 @@ import { useEffect, useState } from "react";
 import { api } from "../../../lib/api";
 
 export function AdminDashboard() {
-  const [recentMoods, setRecentMoods] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [recentActivity, setRecentActivity] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchMoods = async () => {
+    const fetchData = async () => {
       try {
-        const data = await api.moods.getAllMoods();
-        setRecentMoods(data.slice(0, 5));
+        const [statsData, activityData] = await Promise.all([
+          api.admin.getStats(),
+          api.admin.getRecentActivity()
+        ]);
+        setStats(statsData);
+        setRecentActivity(activityData);
       } catch (error) {
-        console.error("Failed to fetch moods", error);
+        console.error("Failed to fetch dashboard data", error);
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchMoods();
+    fetchData();
   }, []);
 
-  const recentAlerts = [
-    {
-      id: 1,
-      type: "crisis",
-      user: "Sarah M.",
-      message: "High-risk crisis keywords detected",
-      time: "5 minutes ago",
-      status: "pending",
-    },
-    {
-      id: 2,
-      type: "support",
-      user: "John D.",
-      message: "Support ticket #2847 requires attention",
-      time: "12 minutes ago",
-      status: "pending",
-    },
-    {
-      id: 3,
-      type: "system",
-      user: "System",
-      message: "Daily backup completed successfully",
-      time: "1 hour ago",
-      status: "resolved",
-    },
-  ];
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
-  const recentSessions = [
-    {
-      id: 1,
-      user: "Emily R.",
-      avatar: "Serena",
-      duration: "45 min",
-      topic: "Anxiety Management",
-      time: "10 minutes ago",
-    },
-    {
-      id: 2,
-      user: "Michael T.",
-      avatar: "Marcus",
-      duration: "32 min",
-      topic: "Sleep Issues",
-      time: "25 minutes ago",
-    },
-    {
-      id: 3,
-      user: "Jessica L.",
-      avatar: "Luna",
-      duration: "58 min",
-      topic: "Depression Support",
-      time: "1 hour ago",
-    },
-  ];
+  const recentAlerts = recentActivity?.alerts || [];
+  const recentSessions = recentActivity?.sessions || [];
+  const recentMoods = recentActivity?.moodEntries || [];
 
   return (
     <AdminLayoutNew>
@@ -105,17 +74,17 @@ export function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             title="Total Users"
-            value="12,459"
-            change="+12.5%"
+            value={stats?.totalUsers?.toLocaleString() || "0"}
+            change="+12.5%" // You might want to calculate this real change later
             changeType="positive"
             icon={Users}
             color="primary"
             delay={0}
           />
           <StatsCard
-            title="Active Sessions Today"
-            value="1,284"
-            change="+8.3%"
+            title="Active Sessions"
+            value={stats?.activeSessions?.toLocaleString() || "0"}
+            change="Live"
             changeType="positive"
             icon={MessageSquare}
             color="secondary"
@@ -123,17 +92,17 @@ export function AdminDashboard() {
           />
           <StatsCard
             title="Crisis Alerts"
-            value="7"
-            change="-15.2%"
-            changeType="positive"
+            value={stats?.crisisAlerts?.toLocaleString() || "0"}
+            change={stats?.crisisAlerts > 0 ? "Requires Attention" : "All Good"}
+            changeType={stats?.crisisAlerts > 0 ? "negative" : "positive"}
             icon={AlertTriangle}
             color="warning"
             delay={0.2}
           />
           <StatsCard
             title="Avg Session Time"
-            value="42 min"
-            change="+5 min"
+            value={`${stats?.avgSessionLength || 0} min`}
+            change="Average"
             changeType="positive"
             icon={Clock}
             color="accent"
@@ -165,40 +134,39 @@ export function AdminDashboard() {
               </div>
 
               <div className="space-y-4">
-                {recentAlerts.map((alert, index) => (
-                  <motion.div
-                    key={alert.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 + index * 0.1 }}
-                    className="flex items-start gap-4 p-4 rounded-lg border border-gray-200 hover:border-primary/50 transition-colors group"
-                  >
-                    <div
-                      className={`w-2 h-2 rounded-full mt-2 ${
-                        alert.status === "pending"
-                          ? "bg-red-500 animate-pulse"
-                          : "bg-green-500"
-                      }`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-medium text-sm">{alert.user}</p>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {alert.time}
-                        </span>
+                {recentAlerts.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No active alerts.</p>
+                ) : (
+                  recentAlerts.map((alert: any, index: number) => (
+                    <motion.div
+                      key={alert.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 + index * 0.1 }}
+                      className="flex items-start gap-4 p-4 rounded-lg border border-gray-200 hover:border-primary/50 transition-colors group"
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full mt-2 ${
+                          alert.status === "pending"
+                            ? "bg-red-500 animate-pulse"
+                            : "bg-green-500"
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <p className="font-medium text-sm">{alert.profiles?.full_name || 'Unknown User'}</p>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {alert.risk_level} risk - {alert.event_type}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {alert.message}
-                      </p>
-                    </div>
-                    {alert.status === "pending" && (
                       <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
-                    {alert.status === "resolved" && (
-                      <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    )}
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))
+                )}
               </div>
             </Card>
           </motion.div>
@@ -227,7 +195,7 @@ export function AdminDashboard() {
                 {recentMoods.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">No mood entries yet.</p>
                 ) : (
-                recentMoods.map((mood, index) => (
+                recentMoods.map((mood: any, index: number) => (
                   <motion.div
                     key={mood.id}
                     initial={{ opacity: 0, y: 10 }}

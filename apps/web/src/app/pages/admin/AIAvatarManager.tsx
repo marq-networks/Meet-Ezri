@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminLayoutNew } from '@/app/components/AdminLayoutNew';
+import { api } from '@/lib/api';
 import { 
   Brain, 
   Plus, 
@@ -42,81 +44,8 @@ interface AIAvatar {
 }
 
 export function AIAvatarManager() {
-  const [avatars, setAvatars] = useState<AIAvatar[]>([
-    {
-      id: "maya",
-      name: "Maya Chen",
-      gender: "Female",
-      ageRange: "35-40",
-      personality: "Warm, Empathetic, Supportive",
-      specialty: ["Anxiety", "Depression", "Stress Management"],
-      description: "A compassionate AI companion with a warm presence. Maya specializes in helping with anxiety, stress, and building emotional resilience through mindfulness.",
-      image: "👩‍💼",
-      voiceType: "Warm & Soothing",
-      accentType: "Neutral American",
-      rating: 4.9,
-      totalUsers: 2456,
-      totalSessions: 8934,
-      avgSessionLength: 42,
-      isActive: true,
-      createdAt: "2025-01-01"
-    },
-    {
-      id: "alex",
-      name: "Alex Rivera",
-      gender: "Male",
-      ageRange: "30-35",
-      personality: "Calm, Patient, Understanding",
-      specialty: ["PTSD", "Trauma", "Life Transitions"],
-      description: "A gentle and patient listener who creates a safe space for healing. Alex focuses on trauma recovery and navigating life's big changes.",
-      image: "👨‍💼",
-      voiceType: "Deep & Calming",
-      accentType: "Neutral American",
-      rating: 4.8,
-      totalUsers: 1893,
-      totalSessions: 6234,
-      avgSessionLength: 38,
-      isActive: true,
-      createdAt: "2025-01-01"
-    },
-    {
-      id: "jordan",
-      name: "Jordan Taylor",
-      gender: "Non-binary",
-      ageRange: "28-32",
-      personality: "Energetic, Positive, Supportive",
-      specialty: ["Self-Esteem", "Relationships", "Personal Growth"],
-      description: "An uplifting companion who helps you discover your strengths. Jordan specializes in building confidence and personal development.",
-      image: "🧑‍💼",
-      voiceType: "Bright & Encouraging",
-      accentType: "Neutral American",
-      rating: 4.7,
-      totalUsers: 1654,
-      totalSessions: 5123,
-      avgSessionLength: 35,
-      isActive: true,
-      createdAt: "2025-01-05"
-    },
-    {
-      id: "sarah",
-      name: "Sarah Mitchell",
-      gender: "Female",
-      ageRange: "45-50",
-      personality: "Wise, Grounded, Nurturing",
-      specialty: ["Grief", "Family Issues", "Chronic Illness"],
-      description: "A wise and nurturing presence with deep empathy. Sarah brings years of life experience in supporting people through challenging times.",
-      image: "👩‍🦳",
-      voiceType: "Gentle & Maternal",
-      accentType: "British",
-      rating: 4.9,
-      totalUsers: 2103,
-      totalSessions: 7856,
-      avgSessionLength: 45,
-      isActive: true,
-      createdAt: "2025-01-10"
-    }
-  ]);
-
+  const [avatars, setAvatars] = useState<AIAvatar[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -136,11 +65,45 @@ export function AIAvatarManager() {
     accentType: ''
   });
 
+  const fetchAvatars = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.aiAvatars.getAll();
+      const mapped = data.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        gender: item.gender,
+        ageRange: item.age_range,
+        personality: item.personality,
+        specialty: item.specialties || [],
+        description: item.description,
+        image: item.image_url,
+        voiceType: item.voice_type,
+        accentType: item.accent_type,
+        rating: Number(item.rating) || 5.0,
+        totalUsers: 0, // Placeholder until relations are set
+        totalSessions: 0,
+        avgSessionLength: 0,
+        isActive: item.is_active,
+        createdAt: item.created_at
+      }));
+      setAvatars(mapped);
+    } catch (error) {
+      console.error("Failed to fetch avatars", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAvatars();
+  }, []);
+
   const stats = {
     totalAvatars: avatars.length,
     activeAvatars: avatars.filter(a => a.isActive).length,
     totalUsers: avatars.reduce((sum, a) => sum + a.totalUsers, 0),
-    avgRating: (avatars.reduce((sum, a) => sum + a.rating, 0) / avatars.length).toFixed(1)
+    avgRating: avatars.length > 0 ? (avatars.reduce((sum, a) => sum + a.rating, 0) / avatars.length).toFixed(1) : "0.0"
   };
 
   const filteredAvatars = avatars.filter(avatar =>
@@ -148,41 +111,70 @@ export function AIAvatarManager() {
     avatar.specialty.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleToggleActive = (id: string) => {
-    setAvatars(avatars.map(avatar =>
-      avatar.id === id ? { ...avatar, isActive: !avatar.isActive } : avatar
-    ));
+  const handleToggleActive = async (id: string, currentStatus: boolean) => {
+    try {
+      await api.aiAvatars.update(id, { is_active: !currentStatus });
+      fetchAvatars();
+    } catch (error) {
+      console.error("Failed to toggle status", error);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setAvatars(avatars.filter(avatar => avatar.id !== id));
-    setShowDeleteConfirm(false);
+  const handleDelete = async (id: string) => {
+    try {
+      await api.aiAvatars.delete(id);
+      setShowDeleteConfirm(false);
+      fetchAvatars();
+    } catch (error) {
+      console.error("Failed to delete avatar", error);
+    }
   };
 
-  const handleCreate = () => {
-    const newAvatar: AIAvatar = {
-      id: `avatar-${Date.now()}`,
-      ...formData,
-      rating: 0,
-      totalUsers: 0,
-      totalSessions: 0,
-      avgSessionLength: 0,
-      isActive: true,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    setAvatars([...avatars, newAvatar]);
-    setShowCreateModal(false);
-    resetForm();
-  };
-
-  const handleEdit = () => {
-    if (selectedAvatar) {
-      setAvatars(avatars.map(avatar =>
-        avatar.id === selectedAvatar.id ? { ...avatar, ...formData } : avatar
-      ));
-      setShowEditModal(false);
-      setSelectedAvatar(null);
+  const handleCreate = async () => {
+    try {
+      const payload = {
+        name: formData.name,
+        gender: formData.gender,
+        age_range: formData.ageRange,
+        personality: formData.personality,
+        specialties: formData.specialty,
+        description: formData.description,
+        image_url: formData.image,
+        voice_type: formData.voiceType,
+        accent_type: formData.accentType,
+        is_active: true
+      };
+      await api.aiAvatars.create(payload);
+      setShowCreateModal(false);
       resetForm();
+      fetchAvatars();
+    } catch (error) {
+      console.error("Failed to create avatar", error);
+    }
+  };
+
+  const handleEdit = async () => {
+    if (selectedAvatar) {
+      try {
+        const payload = {
+          name: formData.name,
+          gender: formData.gender,
+          age_range: formData.ageRange,
+          personality: formData.personality,
+          specialties: formData.specialty,
+          description: formData.description,
+          image_url: formData.image,
+          voice_type: formData.voiceType,
+          accent_type: formData.accentType
+        };
+        await api.aiAvatars.update(selectedAvatar.id, payload);
+        setShowEditModal(false);
+        setSelectedAvatar(null);
+        resetForm();
+        fetchAvatars();
+      } catch (error) {
+        console.error("Failed to update avatar", error);
+      }
     }
   };
 
@@ -217,6 +209,16 @@ export function AIAvatarManager() {
   };
 
   const emojiOptions = ['👨‍⚕️', '👩‍⚕️', '🧑‍⚕️', '👨‍💼', '👩‍💼', '👨', '👩', '🧑', '👴', '👵', '👩‍🦳', '👨‍🦳'];
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
@@ -329,7 +331,7 @@ export function AIAvatarManager() {
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => handleToggleActive(avatar.id)}
+                    onClick={() => handleToggleActive(avatar.id, avatar.isActive)}
                     className={`p-2 rounded-lg transition-all ${
                       avatar.isActive
                         ? 'bg-green-100 text-green-600 hover:bg-green-200'

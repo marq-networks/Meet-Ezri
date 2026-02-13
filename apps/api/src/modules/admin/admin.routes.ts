@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { getDashboardStatsHandler, getUsersHandler, getUserHandler, updateUserHandler, deleteUserHandler, getUserAuditLogsHandler } from './admin.controller';
+import { getDashboardStatsHandler, getUsersHandler, getUserHandler, updateUserHandler, deleteUserHandler, getUserAuditLogsHandler, getRecentActivityHandler } from './admin.controller';
 import { dashboardStatsSchema, userListSchema, userSchema, updateUserSchema } from './admin.schema';
 import { z } from 'zod';
 
@@ -15,6 +15,14 @@ export async function adminRoutes(fastify: FastifyInstance) {
       },
     },
     getDashboardStatsHandler
+  );
+
+  fastify.get(
+    '/stats/recent',
+    {
+      preHandler: [fastify.authenticate],
+    },
+    getRecentActivityHandler
   );
 
   fastify.get(

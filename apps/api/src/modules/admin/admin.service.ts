@@ -1,3 +1,4 @@
+
 import prisma from '../../lib/prisma';
 import { DashboardStats } from './admin.schema';
 
@@ -6,17 +7,24 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     totalUsers,
     activeSessions,
     totalSessions,
-    usersByMonth,
-    sessionsByDay
+    avgDurationResult,
+    crisisAlerts
   ] = await Promise.all([
     prisma.profiles.count(),
-    prisma.app_sessions.count({ where: { status: 'active' } }),
+    prisma.app_sessions.count({ 
+      where: { 
+        started_at: { not: null },
+        ended_at: null
+      } 
+    }),
     prisma.app_sessions.count(),
-    // Simple aggregation for user growth (last 6 months) - this is a bit complex in pure Prisma without raw query, 
-    // so for now we'll mock the trend but match the total.
-    Promise.resolve([]), 
-    Promise.resolve([])
+    prisma.app_sessions.aggregate({
+      _avg: { duration_minutes: true }
+    }),
+    prisma.crisis_events.count({ where: { status: 'pending' } })
   ]);
+
+  const avgSessionLength = Math.round(avgDurationResult._avg.duration_minutes || 0);
 
   // Calculate MRR (Monthly Recurring Revenue) from active subscriptions
   const revenueResult = await prisma.subscriptions.aggregate({
@@ -29,7 +37,37 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   });
   const revenue = revenueResult._sum.amount?.toNumber() || 0;
 
-  // Mock system health
+  // Real session activity for last 7 days
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  
+  const recentSessionsData = await prisma.app_sessions.findMany({
+    where: {
+      started_at: { gte: sevenDaysAgo }
+    },
+    select: {
+      started_at: true,
+      duration_minutes: true
+    }
+  });
+
+  const sessionActivity = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const daySessions = recentSessionsData.filter(s => {
+      const sDate = new Date(s.started_at!);
+      return sDate.getDate() === d.getDate() && sDate.getMonth() === d.getMonth();
+    });
+    
+    return {
+      day: dayName,
+      sessions: daySessions.length,
+      duration: Math.round(daySessions.reduce((acc, s) => acc + (s.duration_minutes || 0), 0) / (daySessions.length || 1))
+    };
+  });
+
+  // System Health - Still hard to get real metrics without infra access
   const systemHealth = [
     { name: "API Response Time", value: "45ms", status: "excellent", color: "text-green-600", percentage: 95 },
     { name: "Server Uptime", value: "99.98%", status: "excellent", color: "text-green-600", percentage: 99 },
@@ -37,7 +75,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { name: "CDN Performance", value: "98%", status: "excellent", color: "text-green-600", percentage: 98 },
   ];
 
-  // Mock charts to look realistic but grounded in some reality if we had history
+  // User Growth - Mocked trend but scaled to real total
+  // (Implementing real monthly aggregation requires raw SQL or complex grouping not easily done with simple Prisma findMany)
   const userGrowth = [
     { month: "Jan", users: Math.floor(totalUsers * 0.7), orgs: 0 },
     { month: "Feb", users: Math.floor(totalUsers * 0.75), orgs: 0 },
@@ -48,24 +87,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { month: "Jul", users: totalUsers, orgs: 0 },
   ];
 
-  const sessionActivity = [
-    { day: "Mon", sessions: 12, duration: 45 },
-    { day: "Tue", sessions: 15, duration: 48 },
-    { day: "Wed", sessions: 10, duration: 42 },
-    { day: "Thu", sessions: 8, duration: 51 },
-    { day: "Fri", sessions: 20, duration: 47 },
-    { day: "Sat", sessions: 5, duration: 39 },
-    { day: "Sun", sessions: 3, duration: 41 },
-  ];
-
+  // Revenue Data - Mocked trend scaled to real revenue
   const revenueData = [
-    { month: "Jan", revenue: 198 },
-    { month: "Feb", revenue: 215 },
-    { month: "Mar", revenue: 228 },
-    { month: "Apr", revenue: 242 },
-    { month: "May", revenue: 256 },
-    { month: "Jun", revenue: 271 },
-    { month: "Jul", revenue: 284 },
+    { month: "Jan", revenue: Math.floor(revenue * 0.7) },
+    { month: "Feb", revenue: Math.floor(revenue * 0.75) },
+    { month: "Mar", revenue: Math.floor(revenue * 0.8) },
+    { month: "Apr", revenue: Math.floor(revenue * 0.85) },
+    { month: "May", revenue: Math.floor(revenue * 0.9) },
+    { month: "Jun", revenue: Math.floor(revenue * 0.95) },
+    { month: "Jul", revenue: revenue },
   ];
 
   const platformDistribution = [
@@ -78,6 +108,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     totalUsers,
     activeSessions,
     totalSessions,
+    avgSessionLength,
+    crisisAlerts,
     revenue,
     systemHealth,
     userGrowth,
@@ -85,6 +117,29 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     revenueData,
     platformDistribution
   };
+}
+
+export async function getRecentActivity() {
+  const [alerts, moodEntries, sessions] = await Promise.all([
+    prisma.crisis_events.findMany({
+      where: { status: 'pending' },
+      take: 5,
+      orderBy: { created_at: 'desc' },
+      include: { profiles: { select: { full_name: true, email: true } } }
+    }),
+    prisma.mood_entries.findMany({
+      take: 5,
+      orderBy: { created_at: 'desc' },
+      include: { profiles: { select: { full_name: true, email: true } } }
+    }),
+    prisma.app_sessions.findMany({
+      take: 5,
+      orderBy: { started_at: 'desc' },
+      include: { profiles: { select: { full_name: true, email: true } } }
+    })
+  ]);
+
+  return { alerts, moodEntries, sessions };
 }
 
 export async function getAllUsers() {
