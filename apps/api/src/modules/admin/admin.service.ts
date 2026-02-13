@@ -125,7 +125,7 @@ export async function getRecentActivity() {
       where: { status: 'pending' },
       take: 5,
       orderBy: { created_at: 'desc' },
-      include: { profiles: { select: { full_name: true, email: true } } }
+      include: { profiles_crisis_events_user_idToprofiles: { select: { full_name: true, email: true } } }
     }),
     prisma.mood_entries.findMany({
       take: 5,
@@ -139,7 +139,12 @@ export async function getRecentActivity() {
     })
   ]);
 
-  return { alerts, moodEntries, sessions };
+  const alertsMapped = alerts.map(alert => ({
+    ...alert,
+    profiles: alert.profiles_crisis_events_user_idToprofiles
+  }));
+
+  return { alerts: alertsMapped, moodEntries, sessions };
 }
 
 export async function getAllUsers() {
