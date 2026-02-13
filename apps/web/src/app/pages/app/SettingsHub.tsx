@@ -106,7 +106,7 @@ export function SettingsHub() {
     },
     {
       id: "change-avatar",
-      title: "Change AI Therapist",
+      title: "Change AI Companion",
       description: "Switch to a different AI companion for your sessions",
       icon: Brain,
       color: "from-blue-500 to-cyan-600",

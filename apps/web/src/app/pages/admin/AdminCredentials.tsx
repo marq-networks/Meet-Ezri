@@ -53,7 +53,7 @@ const adminCredentials: AdminCredential[] = [
       "Content & community moderation",
       "Team management",
       "Organization analytics",
-      "Therapist management",
+      "Companion management",
       "Crisis monitoring",
       "Support ticket handling"
     ]

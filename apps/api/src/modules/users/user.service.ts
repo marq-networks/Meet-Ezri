@@ -126,7 +126,7 @@ export async function getProfile(userId: string) {
     prisma.profiles.findUnique({
       where: { id: userId },
       include: {
-        therapist_profiles: true,
+        companion_profiles: true,
         subscriptions: {
           where: { status: 'active' },
           orderBy: { created_at: 'desc' },

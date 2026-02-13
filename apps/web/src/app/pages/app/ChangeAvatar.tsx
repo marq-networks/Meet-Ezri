@@ -123,7 +123,7 @@ export function ChangeAvatar() {
                 <Brain className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Change AI Therapist</h1>
+                <h1 className="text-3xl font-bold text-gray-900">Change AI Companion</h1>
                 <p className="text-gray-600">Switch to a different AI companion for your sessions</p>
               </div>
             </div>
@@ -135,7 +135,7 @@ export function ChangeAvatar() {
               <div className="bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl border-2 border-purple-300 p-6 mb-8">
                 <div className="flex items-center gap-3 mb-4">
                   <CheckCircle className="w-6 h-6 text-green-600" />
-                  <h2 className="text-xl font-bold text-gray-900">Current AI Therapist</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Current AI Companion</h2>
                 </div>
 
                 <div className="flex items-start gap-6">
@@ -182,7 +182,7 @@ export function ChangeAvatar() {
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
               <RefreshCw className="w-6 h-6 text-purple-600" />
-              Choose a New AI Therapist
+              Choose a New AI Companion
             </h2>
             <p className="text-gray-600 mb-6">
               Select a different AI companion that better fits your needs. Your session history will be preserved.
@@ -359,7 +359,7 @@ export function ChangeAvatar() {
                   <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <AlertCircle className="w-8 h-8 text-purple-400" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Confirm AI Therapist Change</h3>
+                  <h3 className="text-xl font-bold text-white mb-2">Confirm AI Companion Change</h3>
                   <p className="text-purple-200">
                     Are you sure you want to switch from <span className="font-semibold">{currentAvatar?.name}</span> to <span className="font-semibold">{selectedAvatar?.name}</span>?
                   </p>

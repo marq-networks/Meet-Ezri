@@ -138,7 +138,7 @@ import { CrisisFollowUpQueue } from '@/app/pages/admin/CrisisFollowUpQueue';
 import { SafetyEventDashboard } from '@/app/pages/admin/SafetyEventDashboard';
 import { SafetyEventDetails } from '@/app/pages/admin/SafetyEventDetails';
 import { CrisisEventDetails } from '@/app/pages/admin/CrisisEventDetails';
-import { TherapistManagement } from '@/app/pages/admin/TherapistManagement';
+import { CompanionManagement } from '@/app/pages/admin/CompanionManagement';
 import { IntegrationSettings } from '@/app/pages/admin/IntegrationSettings';
 import { APIManagement } from '@/app/pages/admin/APIManagement';
 import { DataExport } from '@/app/pages/admin/DataExport';
@@ -333,7 +333,7 @@ export default function App() {
             <Route path="/admin/push-notifications" element={<PushNotifications />} />
             <Route path="/admin/billing" element={<BillingAdmin />} />
             <Route path="/admin/billing-subscriptions" element={<BillingSubscriptions />} />
-            <Route path="/admin/therapist-management" element={<TherapistManagement />} />
+            <Route path="/admin/companion-management" element={<CompanionManagement />} />
             <Route path="/admin/community-management" element={<CommunityManagement />} />
             <Route path="/admin/crisis-protocol" element={<CrisisProtocol />} />
             <Route path="/admin/data-export" element={<DataExport />} />

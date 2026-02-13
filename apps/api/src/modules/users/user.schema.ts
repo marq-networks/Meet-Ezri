@@ -19,7 +19,7 @@ export const onboardingSchema = z.object({
   emergency_contact_relationship: z.string().optional(),
   permissions: z.record(z.any()).optional(),
   notification_preferences: z.record(z.any()).optional(),
-  // Therapist specific fields
+  // Companion specific fields
   license_number: z.string().optional(),
   specializations: z.array(z.string()).optional(),
   languages: z.array(z.string()).optional(),

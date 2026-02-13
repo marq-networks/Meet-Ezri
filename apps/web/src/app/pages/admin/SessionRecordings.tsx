@@ -26,7 +26,7 @@ interface SessionRecording {
   sessionDate: Date;
   duration: number;
   status: "completed" | "flagged" | "reviewed" | "escalated";
-  aiTherapist: string;
+  aiCompanion: string;
   topics: string[];
   sentiment: "positive" | "neutral" | "negative" | "crisis";
   flaggedIssues?: string[];
@@ -52,7 +52,7 @@ export function SessionRecordings() {
       sessionDate: new Date(Date.now() - 2 * 60 * 60 * 1000),
       duration: 42,
       status: "flagged",
-      aiTherapist: "Dr. Emma (Compassionate)",
+      aiCompanion: "Dr. Emma (Compassionate)",
       topics: ["Anxiety", "Work Stress", "Sleep Issues"],
       sentiment: "negative",
       flaggedIssues: ["Mention of self-harm", "Severe anxiety indicators"],
@@ -66,7 +66,7 @@ export function SessionRecordings() {
       sessionDate: new Date(Date.now() - 5 * 60 * 60 * 1000),
       duration: 38,
       status: "completed",
-      aiTherapist: "Dr. James (Professional)",
+      aiCompanion: "Dr. James (Professional)",
       topics: ["Depression", "Relationships"],
       sentiment: "neutral",
       qualityScore: 92,
@@ -123,7 +123,7 @@ export function SessionRecordings() {
       sessionDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
       duration: 29,
       status: "flagged",
-      aiTherapist: "Dr. James (Professional)",
+      aiCompanion: "Dr. James (Professional)",
       topics: ["Anger Management", "Workplace Conflict"],
       sentiment: "negative",
       flaggedIssues: ["Violence indicators", "Threats toward others"],
@@ -187,7 +187,7 @@ export function SessionRecordings() {
         >
           <div>
             <h1 className="text-3xl font-bold text-gray-900">AI Session Recordings</h1>
-            <p className="text-gray-600 mt-1">Review and analyze therapy session recordings</p>
+            <p className="text-gray-600 mt-1">Review and analyze session recordings</p>
           </div>
         </motion.div>
 
@@ -459,7 +459,7 @@ export function SessionRecordings() {
                               <h4 className="font-bold text-gray-900 mb-2 text-sm">Transcript Preview:</h4>
                               <div className="space-y-2 text-sm">
                                 <div className="flex gap-2">
-                                  <span className="font-medium text-blue-600">{recording.aiTherapist}:</span>
+                                  <span className="font-medium text-blue-600">{recording.aiCompanion}:</span>
                                   <span className="text-gray-700">Hello {recording.userName.split(" ")[0]}, how are you feeling today?</span>
                                 </div>
                                 <div className="flex gap-2">

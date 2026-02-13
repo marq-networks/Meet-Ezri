@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-interface Therapist {
+interface Companion {
   id: string;
   name: string;
   email: string;
@@ -35,17 +35,17 @@ interface Therapist {
   languages: string[];
 }
 
-export function TherapistManagement() {
+export function CompanionManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [selectedTherapist, setSelectedTherapist] = useState<Therapist | null>(null);
+  const [selectedCompanion, setSelectedCompanion] = useState<Companion | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Mock therapists data
-  const therapists: Therapist[] = [
+  // Mock companions data
+  const companions: Companion[] = [
     {
       id: "th001",
       name: "Dr. Sarah Mitchell",
@@ -138,12 +138,12 @@ export function TherapistManagement() {
     }
   ];
 
-  const filteredTherapists = therapists.filter(therapist => {
+  const filteredCompanions = companions.filter(companion => {
     const matchesSearch = 
-      therapist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      therapist.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      therapist.specialization.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesStatus = filterStatus === "all" || therapist.status === filterStatus;
+      companion.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      companion.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      companion.specialization.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesStatus = filterStatus === "all" || companion.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -166,11 +166,11 @@ export function TherapistManagement() {
   };
 
   const stats = {
-    total: therapists.length,
-    active: therapists.filter(t => t.status === "active").length,
-    pending: therapists.filter(t => t.status === "pending").length,
-    totalSessions: therapists.reduce((sum, t) => sum + t.sessionsCount, 0),
-    avgRating: (therapists.filter(t => t.rating > 0).reduce((sum, t) => sum + t.rating, 0) / therapists.filter(t => t.rating > 0).length).toFixed(1)
+    total: companions.length,
+    active: companions.filter(t => t.status === "active").length,
+    pending: companions.filter(t => t.status === "pending").length,
+    totalSessions: companions.reduce((sum, t) => sum + t.sessionsCount, 0),
+    avgRating: (companions.filter(t => t.rating > 0).reduce((sum, t) => sum + t.rating, 0) / companions.filter(t => t.rating > 0).length).toFixed(1)
   };
 
   return (
@@ -183,8 +183,8 @@ export function TherapistManagement() {
           className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
         >
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Therapist Management</h1>
-            <p className="text-gray-600 mt-1">Manage licensed therapists and counselors</p>
+            <h1 className="text-3xl font-bold text-gray-900">Companion Management</h1>
+            <p className="text-gray-600 mt-1">Manage licensed companions and counselors</p>
           </div>
 
           <motion.button
@@ -194,7 +194,7 @@ export function TherapistManagement() {
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white flex items-center gap-2 shadow-lg"
           >
             <Plus className="w-4 h-4" />
-            Add Therapist
+            Add Companion
           </motion.button>
         </motion.div>
 
@@ -297,7 +297,7 @@ export function TherapistManagement() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search therapists by name, email, or specialization..."
+                placeholder="Search companions by name, email, or specialization..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
@@ -317,22 +317,22 @@ export function TherapistManagement() {
           </div>
         </motion.div>
 
-        {/* Therapists List */}
+        {/* Companions List */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
           className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
         >
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Therapists ({filteredTherapists.length})</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Companions ({filteredCompanions.length})</h2>
 
           <div className="space-y-4">
-            {filteredTherapists.map((therapist, index) => {
-              const StatusIcon = getStatusIcon(therapist.status);
+            {filteredCompanions.map((companion, index) => {
+              const StatusIcon = getStatusIcon(companion.status);
               
               return (
                 <motion.div
-                  key={therapist.id}
+                  key={companion.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 + index * 0.05 }}
@@ -341,44 +341,44 @@ export function TherapistManagement() {
                   <div className="flex items-start gap-4">
                     {/* Avatar */}
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-                      {therapist.name.split(' ').map(n => n[0]).join('')}
+                      {companion.name.split(' ').map(n => n[0]).join('')}
                     </div>
 
                     {/* Main Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-gray-900 text-lg">{therapist.name}</h3>
-                        {therapist.verified && (
+                        <h3 className="font-bold text-gray-900 text-lg">{companion.name}</h3>
+                        {companion.verified && (
                           <div className="p-1 rounded-full bg-blue-100">
                             <CheckCircle className="w-4 h-4 text-blue-600" />
                           </div>
                         )}
-                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getStatusColor(therapist.status)}`}>
-                          {therapist.status}
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getStatusColor(companion.status)}`}>
+                          {companion.status}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3 text-sm">
                         <div className="flex items-center gap-2 text-gray-600">
                           <Mail className="w-4 h-4" />
-                          {therapist.email}
+                          {companion.email}
                         </div>
                         <div className="flex items-center gap-2 text-gray-600">
                           <Phone className="w-4 h-4" />
-                          {therapist.phone}
+                          {companion.phone}
                         </div>
                         <div className="flex items-center gap-2 text-gray-600">
                           <Award className="w-4 h-4" />
-                          {therapist.license}
+                          {companion.license}
                         </div>
                         <div className="flex items-center gap-2 text-gray-600">
                           <Calendar className="w-4 h-4" />
-                          Joined {therapist.joinedDate.toLocaleDateString()}
+                          Joined {companion.joinedDate.toLocaleDateString()}
                         </div>
                       </div>
 
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {therapist.specialization.map(spec => (
+                        {companion.specialization.map(spec => (
                           <span key={spec} className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-lg font-medium">
                             {spec}
                           </span>
@@ -386,7 +386,7 @@ export function TherapistManagement() {
                       </div>
 
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {therapist.languages.map(lang => (
+                        {companion.languages.map(lang => (
                           <span key={lang} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-lg">
                             {lang}
                           </span>
@@ -396,17 +396,17 @@ export function TherapistManagement() {
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <p className="text-gray-600">Sessions</p>
-                          <p className="font-bold text-gray-900">{therapist.sessionsCount}</p>
+                          <p className="font-bold text-gray-900">{companion.sessionsCount}</p>
                         </div>
                         <div>
                           <p className="text-gray-600">Rating</p>
                           <p className="font-bold text-gray-900">
-                            {therapist.rating > 0 ? `${therapist.rating} ⭐` : 'N/A'}
+                            {companion.rating > 0 ? `${companion.rating} ⭐` : 'N/A'}
                           </p>
                         </div>
                         <div>
                           <p className="text-gray-600">Availability</p>
-                          <p className="font-bold text-gray-900 text-xs">{therapist.availability}</p>
+                          <p className="font-bold text-gray-900 text-xs">{companion.availability}</p>
                         </div>
                       </div>
                     </div>
@@ -417,7 +417,7 @@ export function TherapistManagement() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => {
-                          setSelectedTherapist(therapist);
+                          setSelectedCompanion(companion);
                           setShowViewModal(true);
                         }}
                         className="p-2 rounded-lg hover:bg-blue-50 text-blue-600"
@@ -429,7 +429,7 @@ export function TherapistManagement() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => {
-                          setSelectedTherapist(therapist);
+                          setSelectedCompanion(companion);
                           setShowEditModal(true);
                         }}
                         className="p-2 rounded-lg hover:bg-green-50 text-green-600"
@@ -441,7 +441,7 @@ export function TherapistManagement() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => {
-                          setSelectedTherapist(therapist);
+                          setSelectedCompanion(companion);
                           setShowDeleteModal(true);
                         }}
                         className="p-2 rounded-lg hover:bg-red-50 text-red-600"
@@ -455,10 +455,10 @@ export function TherapistManagement() {
             })}
           </div>
 
-          {filteredTherapists.length === 0 && (
+          {filteredCompanions.length === 0 && (
             <div className="text-center py-12">
               <UserCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">No therapists match your filters</p>
+              <p className="text-gray-600">No companions match your filters</p>
             </div>
           )}
         </motion.div>
@@ -477,7 +477,7 @@ export function TherapistManagement() {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             >
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Add New Therapist</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Add New Companion</h3>
 
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -505,7 +505,7 @@ export function TherapistManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                     <input
                       type="email"
-                      placeholder="therapist@ezri.com"
+                      placeholder="companion@ezri.com"
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
@@ -564,7 +564,7 @@ export function TherapistManagement() {
                   onClick={() => setShowCreateModal(false)}
                   className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium"
                 >
-                  Add Therapist
+                  Add Companion
                 </motion.button>
               </div>
             </motion.div>
@@ -572,7 +572,7 @@ export function TherapistManagement() {
         )}
 
         {/* View Modal */}
-        {showViewModal && selectedTherapist && (
+        {showViewModal && selectedCompanion && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -585,7 +585,7 @@ export function TherapistManagement() {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             >
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">View Therapist Details</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">View Companion Details</h3>
 
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -593,7 +593,7 @@ export function TherapistManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                     <input
                       type="text"
-                      value={selectedTherapist.name}
+                      value={selectedCompanion.name}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                       readOnly
                     />
@@ -603,7 +603,7 @@ export function TherapistManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">License Number</label>
                     <input
                       type="text"
-                      value={selectedTherapist.license}
+                      value={selectedCompanion.license}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                       readOnly
                     />
@@ -615,7 +615,7 @@ export function TherapistManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                     <input
                       type="email"
-                      value={selectedTherapist.email}
+                      value={selectedCompanion.email}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                       readOnly
                     />
@@ -625,7 +625,7 @@ export function TherapistManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                     <input
                       type="tel"
-                      value={selectedTherapist.phone}
+                      value={selectedCompanion.phone}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                       readOnly
                     />
@@ -636,7 +636,7 @@ export function TherapistManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Specializations</label>
                   <input
                     type="text"
-                    value={selectedTherapist.specialization.join(', ')}
+                    value={selectedCompanion.specialization.join(', ')}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     readOnly
                   />
@@ -646,7 +646,7 @@ export function TherapistManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Languages</label>
                   <input
                     type="text"
-                    value={selectedTherapist.languages.join(', ')}
+                    value={selectedCompanion.languages.join(', ')}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     readOnly
                   />
@@ -656,7 +656,7 @@ export function TherapistManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
                   <input
                     type="text"
-                    value={selectedTherapist.availability}
+                    value={selectedCompanion.availability}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     readOnly
                   />
@@ -678,7 +678,7 @@ export function TherapistManagement() {
         )}
 
         {/* Edit Modal */}
-        {showEditModal && selectedTherapist && (
+        {showEditModal && selectedCompanion && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -691,7 +691,7 @@ export function TherapistManagement() {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             >
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Edit Therapist Details</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Edit Companion Details</h3>
 
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -699,7 +699,7 @@ export function TherapistManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                     <input
                       type="text"
-                      value={selectedTherapist.name}
+                      value={selectedCompanion.name}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
@@ -708,7 +708,7 @@ export function TherapistManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">License Number</label>
                     <input
                       type="text"
-                      value={selectedTherapist.license}
+                      value={selectedCompanion.license}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
@@ -719,7 +719,7 @@ export function TherapistManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                     <input
                       type="email"
-                      value={selectedTherapist.email}
+                      value={selectedCompanion.email}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
@@ -728,7 +728,7 @@ export function TherapistManagement() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                     <input
                       type="tel"
-                      value={selectedTherapist.phone}
+                      value={selectedCompanion.phone}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
@@ -738,7 +738,7 @@ export function TherapistManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Specializations</label>
                   <input
                     type="text"
-                    value={selectedTherapist.specialization.join(', ')}
+                    value={selectedCompanion.specialization.join(', ')}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
@@ -747,7 +747,7 @@ export function TherapistManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Languages</label>
                   <input
                     type="text"
-                    value={selectedTherapist.languages.join(', ')}
+                    value={selectedCompanion.languages.join(', ')}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
@@ -756,7 +756,7 @@ export function TherapistManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
                   <input
                     type="text"
-                    value={selectedTherapist.availability}
+                    value={selectedCompanion.availability}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
@@ -786,7 +786,7 @@ export function TherapistManagement() {
         )}
 
         {/* Delete Modal */}
-        {showDeleteModal && selectedTherapist && (
+        {showDeleteModal && selectedCompanion && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -799,10 +799,10 @@ export function TherapistManagement() {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             >
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Delete Therapist</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Delete Companion</h3>
 
               <div className="space-y-4">
-                <p className="text-gray-600">Are you sure you want to delete the therapist <strong>{selectedTherapist.name}</strong>?</p>
+                <p className="text-gray-600">Are you sure you want to delete the companion <strong>{selectedCompanion.name}</strong>?</p>
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -821,7 +821,7 @@ export function TherapistManagement() {
                   onClick={() => setShowDeleteModal(false)}
                   className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-medium"
                 >
-                  Delete Therapist
+                  Delete Companion
                 </motion.button>
               </div>
             </motion.div>

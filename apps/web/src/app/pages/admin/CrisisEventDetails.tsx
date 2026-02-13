@@ -66,7 +66,7 @@ export function CrisisEventDetails() {
       relationship: "Sister",
       phone: "+1 (555) 987-6543",
     },
-    therapist: {
+    companion: {
       name: "Dr. Emily Chen",
       specialty: "Crisis Intervention",
       phone: "+1 (555) 111-2222",
@@ -270,8 +270,8 @@ export function CrisisEventDetails() {
       description: "Send supportive email message",
     },
     {
-      id: "therapist",
-      label: "Alert Therapist",
+      id: "companion",
+      label: "Alert Companion",
       icon: User,
       color: "bg-green-600 hover:bg-green-700",
       description: "Notify assigned crisis specialist",
@@ -297,7 +297,7 @@ export function CrisisEventDetails() {
       setShowEmergencyModal(true);
     } else if (actionId === "contact") {
       setShowEmergencyContactModal(true);
-    } else if (actionId === "therapist") {
+    } else if (actionId === "companion") {
       setShowTherapistModal(true);
     } else if (actionId === "status") {
       setShowStatusModal(true);
@@ -449,13 +449,13 @@ export function CrisisEventDetails() {
                   Crisis Specialist
                 </h3>
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="font-bold mb-1">{event.therapist.name}</p>
+                  <p className="font-bold mb-1">{event.companion.name}</p>
                   <p className="text-sm text-muted-foreground mb-2">
-                    {event.therapist.specialty}
+                    {event.companion.specialty}
                   </p>
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="w-4 h-4" />
-                    <span className="font-medium">{event.therapist.phone}</span>
+                    <span className="font-medium">{event.companion.phone}</span>
                   </div>
                 </div>
 
@@ -1197,7 +1197,7 @@ export function CrisisEventDetails() {
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Alert Crisis Specialist</h3>
-                  <p className="text-gray-600">Notify assigned therapist of critical event</p>
+                  <p className="text-gray-600">Notify assigned companion of critical event</p>
                 </div>
                 <button
                   onClick={() => setShowTherapistModal(false)}
@@ -1212,15 +1212,15 @@ export function CrisisEventDetails() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-green-700" />
-                    <span className="font-semibold">{event.therapist.name}</span>
+                    <span className="font-semibold">{event.companion.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Shield className="w-4 h-4 text-green-700" />
-                    <span className="text-sm">{event.therapist.specialty}</span>
+                    <span className="text-sm">{event.companion.specialty}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-green-700" />
-                    <span className="font-medium">{event.therapist.phone}</span>
+                    <span className="font-medium">{event.companion.phone}</span>
                   </div>
                 </div>
               </div>

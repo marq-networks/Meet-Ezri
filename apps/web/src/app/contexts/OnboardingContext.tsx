@@ -9,7 +9,7 @@ interface OnboardingData {
   firstName: string;
   lastName: string;
   pronouns: string;
-  role: 'user' | 'therapist';
+  role: 'user' | 'companion';
   age?: string;
   timezone?: string;
   currentMood?: string;

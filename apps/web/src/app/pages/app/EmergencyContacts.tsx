@@ -420,7 +420,7 @@ export function EmergencyContacts() {
                         type="text"
                         value={formData.relationship}
                         onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
-                        placeholder="e.g., Mother, Friend, Therapist"
+                        placeholder="e.g., Mother, Friend, Companion"
                         className="flex-1 outline-none bg-transparent"
                       />
                     </div>

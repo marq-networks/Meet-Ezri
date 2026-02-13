@@ -67,7 +67,7 @@ export function CrisisResources() {
     },
     {
       title: "Psychology Today",
-      description: "Find therapists near you",
+      description: "Find companions near you",
       url: "psychologytoday.com",
       icon: MapPin
     },
@@ -82,7 +82,7 @@ export function CrisisResources() {
   const personalContacts = [
     {
       name: "Dr. Sarah Johnson",
-      role: "Primary Therapist",
+      role: "Primary Companion",
       phone: "(555) 123-4567",
       available: "Mon-Fri, 9am-5pm"
     },

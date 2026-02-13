@@ -55,7 +55,7 @@ export function HelpSupport() {
   const faqs = [
     {
       question: "How do I start an AI therapy session?",
-      answer: "Navigate to the AI Sessions tab from your dashboard and click 'Start Session'. Choose your preferred therapist and begin your conversation."
+      answer: "Navigate to the AI Sessions tab from your dashboard and click 'Start Session'. Choose your preferred companion and begin your conversation."
     },
     {
       question: "Is my data private and secure?",

@@ -130,7 +130,7 @@ export interface UsageRecord {
   id: string;
   date: string; // ISO date
   minutesUsed: number;
-  sessionType: 'ai-avatar' | 'therapist'; // For future therapist feature
+  sessionType: 'ai-avatar' | 'companion'; // For future companion feature
   avatarName?: string;
   cost: number; // Cost of this session (0 for included minutes, PAYG rate for extra)
 }

@@ -230,7 +230,7 @@ export function AIAvatarManager() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">AI Avatar Manager</h1>
-                <p className="text-gray-600">Create and manage AI therapist avatars</p>
+                <p className="text-gray-600">Create and manage AI companion avatars</p>
               </div>
             </div>
 

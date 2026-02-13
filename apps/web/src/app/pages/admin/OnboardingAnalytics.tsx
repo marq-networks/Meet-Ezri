@@ -87,7 +87,7 @@ export function OnboardingAnalytics() {
     {
       step: 5,
       name: "Avatar Preferences",
-      description: "Therapist avatar customization",
+      description: "Companion avatar customization",
       entered: 1745,
       completed: 1689,
       dropped: 56,

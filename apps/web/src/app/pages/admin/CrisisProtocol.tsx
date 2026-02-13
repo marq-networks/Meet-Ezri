@@ -741,7 +741,7 @@ export function CrisisProtocol() {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>Licensed Therapist (if available)</span>
+                    <span>Licensed Companion (if available)</span>
                   </div>
                 </div>
               </div>

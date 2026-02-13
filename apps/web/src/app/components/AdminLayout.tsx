@@ -90,7 +90,7 @@ const navigationItems: NavItem[] = [
       { name: "User Details", href: "/admin/user-details-enhanced", icon: UserCheck, roles: ["super", "org", "team"] },
       { name: "User Segmentation", href: "/admin/user-segmentation", icon: Target, roles: ["super", "org"] },
       { name: "Team Management", href: "/admin/team-role-management", icon: Shield, roles: ["super", "org"] },
-      { name: "Therapist Management", href: "/admin/therapist-management", icon: Briefcase, roles: ["super", "org"] },
+      { name: "Companion Management", href: "/admin/companion-management", icon: Briefcase, roles: ["super", "org"] },
     ],
   },
 

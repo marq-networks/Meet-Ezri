@@ -10,7 +10,7 @@ interface Post {
   author: {
     name: string;
     avatar: string;
-    role: 'member' | 'moderator' | 'therapist';
+    role: 'member' | 'moderator' | 'companion';
   };
   content: string;
   category: string;
@@ -77,7 +77,7 @@ export function Community() {
       author: {
         name: 'Dr. Martinez',
         avatar: '👨‍⚕️',
-        role: 'therapist'
+        role: 'companion'
       },
       content: 'Reminder: It\'s okay to not be okay. Progress isn\'t linear, and setbacks are part of the journey. Be gentle with yourself today. 💜',
       category: 'Professional Insights',
@@ -168,7 +168,7 @@ export function Community() {
     const badges = {
       member: { bg: 'bg-gray-200', text: 'text-gray-700', label: 'Member' },
       moderator: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Moderator' },
-      therapist: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Therapist' }
+      companion: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Companion' }
     };
     return badges[role as keyof typeof badges] || badges.member;
   };

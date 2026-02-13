@@ -53,7 +53,7 @@ export function ContentModeration() {
       type: "session",
       userId: "u456",
       userName: "Sarah J.",
-      content: "The AI therapist recommended I try [brand name medication] without a prescription. This seems wrong.",
+      content: "The AI companion recommended I try [brand name medication] without a prescription. This seems wrong.",
       flagReason: "Medical advice concern",
       flaggedBy: "user",
       severity: "high",

@@ -74,7 +74,7 @@ const NAVIGATION: NavSection[] = [
       { name: "User Details", href: "/admin/user-details-enhanced", icon: Eye, roles: ["super_admin", "org_admin", "team_admin"] },
       { name: "User Segmentation", href: "/admin/user-segmentation", icon: Users, roles: ["super_admin", "org_admin"] },
       { name: "Team Management", href: "/admin/team-role-management", icon: Shield, roles: ["super_admin", "org_admin"] },
-      { name: "Therapist Management", href: "/admin/therapist-management", icon: Users, roles: ["super_admin", "org_admin"] },
+      { name: "Companion Management", href: "/admin/companion-management", icon: Users, roles: ["super_admin", "org_admin"] },
     ],
   },
   {

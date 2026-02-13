@@ -76,7 +76,7 @@ export function OnboardingHealthBackground() {
           transition={{ delay: 0.3 }}
         >
           <Card className="p-6 shadow-xl">
-            <Label className="text-base mb-3 block">Are you currently working with a therapist?</Label>
+            <Label className="text-base mb-3 block">Are you currently working with a companion?</Label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {["yes", "no", "prefer-not-to-say"].map((option, index) => (
                 <motion.button
@@ -100,7 +100,7 @@ export function OnboardingHealthBackground() {
             </div>
             <p className="text-xs text-muted-foreground mt-3 flex items-start gap-2">
               <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>Ezri complements but doesn't replace professional therapy</span>
+              <span>Ezri complements but doesn't replace professional companionship</span>
             </p>
           </Card>
         </motion.div>
