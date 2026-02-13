@@ -17,9 +17,11 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface SentNotification {
   id: string;
@@ -40,6 +42,12 @@ interface SentNotification {
   };
 }
 
+interface Segment {
+  id: string;
+  name: string;
+  count: number;
+}
+
 export function ManualNotifications() {
   const [channel, setChannel] = useState<"push" | "email" | "in-app" | "sms">("push");
   const [audienceType, setAudienceType] = useState<"all" | "segment" | "specific">(
@@ -48,104 +56,61 @@ export function ManualNotifications() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [scheduleType, setScheduleType] = useState<"now" | "scheduled">("now");
-  const [selectedSegment, setSelectedSegment] = useState<string>("all-active");
+  const [selectedSegment, setSelectedSegment] = useState<string>("");
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [recentNotifications, setRecentNotifications] = useState<SentNotification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
 
-  const segments = [
-    { id: "all-active", name: "All Active Users", count: 1234 },
-    { id: "new-users", name: "New Users (< 7 days)", count: 156 },
-    { id: "inactive", name: "Inactive Users (7+ days)", count: 234 },
-    { id: "high-engagement", name: "High Engagement Users", count: 456 },
-    { id: "low-engagement", name: "Low Engagement Users", count: 345 },
-    { id: "premium", name: "Premium Users", count: 89 },
-  ];
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const recentNotifications: SentNotification[] = [
-    {
-      id: "1",
-      title: "New Meditation Feature Available",
-      message: "Check out our new guided meditation sessions! 🧘",
-      channel: "push",
-      audience: {
-        segment: "All Active Users",
-        count: 1234,
-      },
-      status: "sent",
-      sentAt: "2 hours ago",
-      sentBy: "Sarah Chen",
-      performance: {
-        delivered: 1234,
-        opened: 987,
-        clicked: 654,
-      },
-    },
-    {
-      id: "2",
-      title: "Weekly Wellness Tips Newsletter",
-      message: "Your personalized wellness tips are ready...",
-      channel: "email",
-      audience: {
-        segment: "All Active Users",
-        count: 1234,
-      },
-      status: "sent",
-      sentAt: "1 day ago",
-      sentBy: "Dr. Michael Ross",
-      performance: {
-        delivered: 1234,
-        opened: 864,
-        clicked: 432,
-      },
-    },
-    {
-      id: "3",
-      title: "Crisis Resources Update",
-      message: "Important: Updated crisis hotline information",
-      channel: "push",
-      audience: {
-        segment: "All Active Users",
-        count: 1234,
-      },
-      status: "sent",
-      sentAt: "2 days ago",
-      sentBy: "Emma Wilson",
-      performance: {
-        delivered: 1234,
-        opened: 1111,
-        clicked: 890,
-      },
-    },
-    {
-      id: "4",
-      title: "Premium Feature Launch",
-      message: "Exclusive features now available for premium members",
-      channel: "email",
-      audience: {
-        segment: "Premium Users",
-        count: 89,
-      },
-      status: "sent",
-      sentAt: "3 days ago",
-      sentBy: "Sarah Chen",
-      performance: {
-        delivered: 89,
-        opened: 80,
-        clicked: 67,
-      },
-    },
-    {
-      id: "5",
-      title: "System Maintenance Notice",
-      message: "Scheduled maintenance on Sunday 2AM-4AM EST",
-      channel: "push",
-      audience: {
-        segment: "All Active Users",
-        count: 1234,
-      },
-      status: "scheduled",
-      sentAt: "Scheduled for tomorrow",
-      sentBy: "Emma Wilson",
-    },
-  ];
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [segmentsData, notificationsData] = await Promise.all([
+        api.admin.getUserSegments(),
+        api.admin.getManualNotifications()
+      ]);
+      
+      setSegments(segmentsData.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        count: s.user_count
+      })));
+
+      if (segmentsData.length > 0) {
+        setSelectedSegment(segmentsData[0].id);
+      }
+
+      setRecentNotifications(notificationsData.map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        channel: n.channel,
+        audience: {
+          segment: n.target_audience === 'all' ? 'All Active Users' : (n.segment_name || 'Custom Segment'),
+          count: n.target_count || 0
+        },
+        status: n.status,
+        sentAt: new Date(n.sent_at || n.scheduled_for || n.created_at).toLocaleString(),
+        sentBy: "Admin", // In a real app, this would come from the user context
+        performance: {
+          delivered: n.delivered_count || 0,
+          opened: n.opened_count || 0,
+          clicked: n.clicked_count || 0
+        }
+      })));
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+      toast.error("Failed to load notifications data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const selectedSegmentData = segments.find((s) => s.id === selectedSegment);
 
@@ -179,16 +144,48 @@ export function ManualNotifications() {
     }
   };
 
-  const handleSend = () => {
-    if (scheduleType === "now") {
-      alert(`✅ Notification sent successfully!\n\nChannel: ${channel}\nAudience: ${audienceType === "all" ? "All Users" : selectedSegmentData?.name}\nTitle: ${title}\nMessage: ${message}`);
-    } else {
-      alert(`✅ Notification scheduled successfully!\n\nChannel: ${channel}\nAudience: ${audienceType === "all" ? "All Users" : selectedSegmentData?.name}\nTitle: ${title}\nMessage: ${message}\n\nThis notification will be sent at the scheduled time.`);
+  const handleSend = async () => {
+    if (!title || !message) {
+      toast.error("Please fill in all required fields");
+      return;
     }
-    
-    // Reset form
-    setTitle("");
-    setMessage("");
+
+    try {
+      setIsSending(true);
+      
+      let scheduledFor = undefined;
+      if (scheduleType === "scheduled" && scheduledDate && scheduledTime) {
+        scheduledFor = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
+      }
+
+      await api.admin.createManualNotification({
+        title,
+        message,
+        channel,
+        target_audience: audienceType === "all" ? "all" : "segment",
+        segment_id: audienceType === "segment" ? selectedSegment : undefined,
+        scheduled_for: scheduledFor
+      });
+
+      if (scheduleType === "now") {
+        toast.success(`Notification sent successfully!`);
+      } else {
+        toast.success(`Notification scheduled successfully!`);
+      }
+      
+      // Reset form and refresh list
+      setTitle("");
+      setMessage("");
+      setScheduledDate("");
+      setScheduledTime("");
+      fetchData();
+      
+    } catch (error) {
+      console.error("Failed to send notification:", error);
+      toast.error("Failed to send notification");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (

@@ -14,7 +14,9 @@ import {
   Plus,
   X
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface Notification {
   id: string;
@@ -45,73 +47,37 @@ export function PushNotifications() {
   const [editingNotification, setEditingNotification] = useState<Notification | null>(null);
   const [deletingNotification, setDeletingNotification] = useState<Notification | null>(null);
 
-  // Mock notifications
-  const notifications: Notification[] = [
-    {
-      id: "n1",
-      title: "Daily Wellness Reminder",
-      message: "Take a moment for your mental health today. Start a quick session! 🌟",
-      target: "all",
-      scheduledFor: new Date(Date.now() + 2 * 60 * 60 * 1000),
-      status: "scheduled",
-      priority: "medium"
-    },
-    {
-      id: "n2",
-      title: "Session Reminder",
-      message: "Your therapy session starts in 30 minutes. Get ready! 💙",
-      target: "segment",
-      segmentName: "Active Sessions Today",
-      scheduledFor: new Date(Date.now() + 30 * 60 * 1000),
-      status: "scheduled",
-      priority: "high"
-    },
-    {
-      id: "n3",
-      title: "Weekly Progress Update",
-      message: "Amazing! You completed 3 sessions this week. Keep it up! 🎉",
-      target: "all",
-      sentAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      status: "sent",
-      deliveredCount: 1205,
-      clickRate: 45.2,
-      priority: "low"
-    },
-    {
-      id: "n4",
-      title: "Premium Feature Announcement",
-      message: "New premium features are here! Check out voice sessions and more.",
-      target: "pro",
-      sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      status: "sent",
-      deliveredCount: 345,
-      clickRate: 62.8,
-      priority: "medium"
-    },
-    {
-      id: "n5",
-      title: "Mood Check-in Reminder",
-      message: "How are you feeling today? Log your mood to track your progress.",
-      target: "all",
-      sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      status: "sent",
-      deliveredCount: 1189,
-      clickRate: 38.5,
-      priority: "low"
-    },
-    {
-      id: "n6",
-      title: "Streak Achievement",
-      message: "🔥 7-day streak! You're on fire! Keep your wellness journey going.",
-      target: "segment",
-      segmentName: "7-Day Streak Users",
-      sentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      status: "sent",
-      deliveredCount: 234,
-      clickRate: 71.3,
-      priority: "medium"
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.admin.getPushCampaigns();
+      setNotifications(data.map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        target: n.target_audience === 'segment' ? 'segment' : n.target_audience,
+        segmentName: n.segment_name,
+        scheduledFor: n.scheduled_for ? new Date(n.scheduled_for) : undefined,
+        sentAt: n.sent_at ? new Date(n.sent_at) : undefined,
+        status: n.status,
+        deliveredCount: n.delivered_count || 0,
+        clickRate: n.click_rate || 0,
+        priority: n.priority || 'medium'
+      })));
+    } catch (error) {
+      console.error("Failed to fetch push campaigns:", error);
+      toast.error("Failed to load notifications");
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
 
   const scheduledNotifications = notifications.filter(n => n.status === "scheduled");
   const sentNotifications = notifications.filter(n => n.status === "sent");

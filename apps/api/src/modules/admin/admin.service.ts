@@ -266,3 +266,346 @@ export async function getUserAuditLogs(userId: string) {
     take: 50 // Limit to recent 50 logs
   });
 }
+
+// --- New Admin Features ---
+
+// 1. User Segmentation
+export async function getUserSegments() {
+  return prisma.user_segments.findMany({
+    orderBy: { created_at: 'desc' }
+  });
+}
+
+export async function createUserSegment(data: any) {
+  return prisma.user_segments.create({
+    data
+  });
+}
+
+export async function deleteUserSegment(id: string) {
+  return prisma.user_segments.delete({
+    where: { id }
+  });
+}
+
+// 2. Notifications
+export async function getManualNotifications() {
+  // Assuming manual notifications are a subset or we track them. 
+  // For now, let's fetch recent notifications sent by admin or just general logs.
+  return prisma.notifications.findMany({
+    take: 50,
+    orderBy: { created_at: 'desc' },
+    include: {
+      profiles: { select: { full_name: true, email: true } }
+    }
+  });
+}
+
+export async function getNotificationAudienceCounts() {
+  const [all, active, premium, trial] = await Promise.all([
+    prisma.profiles.count(),
+    prisma.app_sessions.groupBy({ // Proxy for active: users with sessions
+      by: ['user_id'],
+      _count: true
+    }).then(res => res.length), 
+    prisma.subscriptions.count({
+      where: {
+        status: 'active',
+        plan_type: { not: 'trial' }
+      }
+    }),
+    prisma.subscriptions.count({
+      where: {
+        plan_type: 'trial'
+      }
+    })
+  ]);
+
+  return {
+    all,
+    active,
+    premium,
+    trial
+  };
+}
+
+export async function createManualNotification(data: any) {
+  // Helper to check preferences
+  const shouldSend = (prefs: any) => !prefs || prefs.pushEnabled !== false;
+
+  if (data.target_audience === 'all') {
+    const allUsers = await prisma.profiles.findMany({ 
+      select: { id: true, notification_preferences: true } 
+    });
+    
+    const eligibleUsers = allUsers.filter(u => shouldSend(u.notification_preferences));
+
+    if (eligibleUsers.length === 0) return { count: 0 };
+    
+    return prisma.notifications.createMany({
+      data: eligibleUsers.map(u => ({
+        user_id: u.id,
+        title: data.title,
+        message: data.message,
+        type: data.type || 'system',
+        metadata: { target_audience: 'all' },
+        created_at: new Date()
+      }))
+    });
+  }
+  
+  if (data.target_audience === 'premium') {
+    const premiumUsers = await prisma.subscriptions.findMany({
+      where: { status: 'active', plan_type: { not: 'trial' } },
+      select: { 
+        user_id: true,
+        profiles: { select: { notification_preferences: true } }
+      }
+    });
+    
+    const eligibleUsers = premiumUsers.filter(u => shouldSend(u.profiles?.notification_preferences));
+    
+    if (eligibleUsers.length === 0) return { count: 0 };
+
+    return prisma.notifications.createMany({
+      data: eligibleUsers.map(s => ({
+        user_id: s.user_id,
+        title: data.title,
+        message: data.message,
+        type: data.type || 'system',
+        metadata: { target_audience: 'premium' },
+        created_at: new Date()
+      }))
+    });
+  }
+  
+  if (data.target_audience === 'trial') {
+    const trialUsers = await prisma.subscriptions.findMany({
+      where: { plan_type: 'trial' },
+      select: { 
+        user_id: true,
+        profiles: { select: { notification_preferences: true } }
+      }
+    });
+    
+    const eligibleUsers = trialUsers.filter(u => shouldSend(u.profiles?.notification_preferences));
+    
+    if (eligibleUsers.length === 0) return { count: 0 };
+
+    return prisma.notifications.createMany({
+      data: eligibleUsers.map(s => ({
+        user_id: s.user_id,
+        title: data.title,
+        message: data.message,
+        type: data.type || 'system',
+        metadata: { target_audience: 'trial' },
+        created_at: new Date()
+      }))
+    });
+  }
+  
+  if (data.target_audience === 'active') {
+    // Users with sessions in last 30 days
+    const activeSessions = await prisma.app_sessions.groupBy({
+      by: ['user_id'],
+      where: {
+        started_at: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        }
+      }
+    });
+    
+    const userIds = activeSessions.map(s => s.user_id);
+    
+    if (userIds.length === 0) return { count: 0 };
+    
+    const activeUsers = await prisma.profiles.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, notification_preferences: true }
+    });
+
+    const eligibleUsers = activeUsers.filter(u => shouldSend(u.notification_preferences));
+    
+    if (eligibleUsers.length === 0) return { count: 0 };
+    
+    return prisma.notifications.createMany({
+      data: eligibleUsers.map(u => ({
+        user_id: u.id,
+        title: data.title,
+        message: data.message,
+        type: data.type || 'system',
+        metadata: { target_audience: 'active' },
+        created_at: new Date()
+      }))
+    });
+  }
+
+  if (data.userIds && Array.isArray(data.userIds)) {
+    const users = await prisma.profiles.findMany({
+      where: { id: { in: data.userIds } },
+      select: { id: true, notification_preferences: true }
+    });
+
+    const eligibleUsers = users.filter(u => shouldSend(u.notification_preferences));
+
+    if (eligibleUsers.length === 0) return { count: 0 };
+
+    return prisma.notifications.createMany({
+      data: eligibleUsers.map(u => ({
+        user_id: u.id,
+        title: data.title,
+        message: data.message,
+        type: data.type || 'system',
+        created_at: new Date()
+      }))
+    });
+  }
+  
+  if (data.user_id) {
+    const user = await prisma.profiles.findUnique({
+      where: { id: data.user_id },
+      select: { notification_preferences: true }
+    });
+
+    if (!user || !shouldSend(user.notification_preferences)) {
+       throw new Error("User has disabled notifications");
+    }
+
+    return prisma.notifications.create({
+      data: {
+        user_id: data.user_id,
+        title: data.title,
+        message: data.message,
+        type: data.type || 'system'
+      }
+    });
+  }
+  
+  // Fallback or error
+  throw new Error("No target audience or user IDs provided");
+}
+
+// 3. Email Templates
+export async function getEmailTemplates() {
+  return prisma.email_templates.findMany({
+    orderBy: { name: 'asc' }
+  });
+}
+
+export async function createEmailTemplate(data: any) {
+  return prisma.email_templates.create({ data });
+}
+
+export async function updateEmailTemplate(id: string, data: any) {
+  return prisma.email_templates.update({
+    where: { id },
+    data
+  });
+}
+
+export async function deleteEmailTemplate(id: string) {
+  return prisma.email_templates.delete({ where: { id } });
+}
+
+// 4. Push Campaigns
+export async function getPushCampaigns() {
+  return prisma.push_campaigns.findMany({
+    orderBy: { created_at: 'desc' }
+  });
+}
+
+export async function createPushCampaign(data: any) {
+  return prisma.push_campaigns.create({ data });
+}
+
+// 5. Support Tickets
+export async function getSupportTickets() {
+  return prisma.support_tickets.findMany({
+    orderBy: { created_at: 'desc' },
+    include: {
+      profiles_support_tickets_user_idToprofiles: {
+        select: { full_name: true, email: true, avatar_url: true }
+      }
+    }
+  });
+}
+
+export async function updateSupportTicket(id: string, data: any) {
+  return prisma.support_tickets.update({
+    where: { id },
+    data
+  });
+}
+
+// 6. Community Management
+export async function getCommunityStats() {
+  const [totalGroups, totalPosts, totalComments] = await Promise.all([
+    prisma.community_groups.count(),
+    prisma.community_posts.count(),
+    prisma.community_comments.count()
+  ]);
+  return { totalGroups, totalPosts, totalComments };
+}
+
+export async function getCommunityGroups() {
+  return prisma.community_groups.findMany({
+    include: {
+      _count: {
+        select: { community_group_members: true, community_posts: true }
+      }
+    }
+  });
+}
+
+// 7. Live Sessions
+export async function getLiveSessions() {
+  return prisma.app_sessions.findMany({
+    where: {
+      started_at: { not: null },
+      ended_at: null
+    },
+    include: {
+      profiles: {
+        select: { full_name: true, email: true, avatar_url: true }
+      }
+    },
+    orderBy: { started_at: 'desc' }
+  });
+}
+
+// 8. Activity Logs
+export async function getActivityLogs() {
+  return prisma.activity_events.findMany({
+    take: 100,
+    orderBy: { timestamp: 'desc' },
+    include: {
+      profiles: {
+        select: { full_name: true, email: true }
+      }
+    }
+  });
+}
+
+// 9. Session Recordings
+export async function getSessionRecordings() {
+  return prisma.app_sessions.findMany({
+    where: {
+      recording_url: { not: null }
+    },
+    orderBy: { created_at: 'desc' },
+    take: 50,
+    include: {
+      profiles: {
+        select: { full_name: true, email: true }
+      }
+    }
+  });
+}
+
+// 10. Error Logs
+export async function getErrorLogs() {
+  return prisma.error_logs.findMany({
+    orderBy: { created_at: 'desc' },
+    take: 100
+  });
+}

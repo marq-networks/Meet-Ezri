@@ -1,5 +1,15 @@
+
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { getDashboardStats, getAllUsers, getUserById, updateUser, deleteUser, getUserAuditLogs, getRecentActivity } from './admin.service';
+import { 
+  getDashboardStats, getAllUsers, getUserById, updateUser, deleteUser, getUserAuditLogs, getRecentActivity,
+  getUserSegments, createUserSegment, deleteUserSegment,
+  getManualNotifications, createManualNotification, getNotificationAudienceCounts,
+  getEmailTemplates, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate,
+  getPushCampaigns, createPushCampaign,
+  getSupportTickets, updateSupportTicket,
+  getCommunityStats, getCommunityGroups,
+  getLiveSessions, getActivityLogs, getSessionRecordings, getErrorLogs
+} from './admin.service';
 import { updateUserSchema } from './admin.schema';
 import { z } from 'zod';
 
@@ -99,5 +109,214 @@ export async function getUserAuditLogsHandler(
   } catch (error) {
     request.log.error(error);
     return reply.code(500).send({ message: 'Failed to fetch user audit logs' });
+  }
+}
+
+// --- New Handlers ---
+
+// User Segmentation
+export async function getUserSegmentsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const segments = await getUserSegments();
+    return reply.code(200).send(segments);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch segments' });
+  }
+}
+
+export async function createUserSegmentHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const segment = await createUserSegment(request.body);
+    return reply.code(201).send(segment);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to create segment' });
+  }
+}
+
+export async function deleteUserSegmentHandler(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  try {
+    await deleteUserSegment(request.params.id);
+    return reply.code(204).send();
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to delete segment' });
+  }
+}
+
+// Notifications
+export async function getManualNotificationsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const notifications = await getManualNotifications();
+    return reply.code(200).send(notifications);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch notifications' });
+  }
+}
+
+export async function createManualNotificationHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const notification = await createManualNotification(request.body);
+    return reply.code(201).send(notification);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to create notification' });
+  }
+}
+
+export async function getNotificationAudienceCountsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const counts = await getNotificationAudienceCounts();
+    return reply.code(200).send(counts);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch audience counts' });
+  }
+}
+
+// Email Templates
+export async function getEmailTemplatesHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const templates = await getEmailTemplates();
+    return reply.code(200).send(templates);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch templates' });
+  }
+}
+
+export async function createEmailTemplateHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const template = await createEmailTemplate(request.body);
+    return reply.code(201).send(template);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to create template' });
+  }
+}
+
+export async function updateEmailTemplateHandler(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  try {
+    const template = await updateEmailTemplate(request.params.id, request.body);
+    return reply.code(200).send(template);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to update template' });
+  }
+}
+
+export async function deleteEmailTemplateHandler(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  try {
+    await deleteEmailTemplate(request.params.id);
+    return reply.code(204).send();
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to delete template' });
+  }
+}
+
+// Push Campaigns
+export async function getPushCampaignsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const campaigns = await getPushCampaigns();
+    return reply.code(200).send(campaigns);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch campaigns' });
+  }
+}
+
+export async function createPushCampaignHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const campaign = await createPushCampaign(request.body);
+    return reply.code(201).send(campaign);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to create campaign' });
+  }
+}
+
+// Support Tickets
+export async function getSupportTicketsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const tickets = await getSupportTickets();
+    return reply.code(200).send(tickets);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch tickets' });
+  }
+}
+
+export async function updateSupportTicketHandler(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+  try {
+    const ticket = await updateSupportTicket(request.params.id, request.body);
+    return reply.code(200).send(ticket);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to update ticket' });
+  }
+}
+
+// Community
+export async function getCommunityStatsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const stats = await getCommunityStats();
+    return reply.code(200).send(stats);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch community stats' });
+  }
+}
+
+export async function getCommunityGroupsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const groups = await getCommunityGroups();
+    return reply.code(200).send(groups);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch groups' });
+  }
+}
+
+// Monitoring
+export async function getLiveSessionsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const sessions = await getLiveSessions();
+    return reply.code(200).send(sessions);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch live sessions' });
+  }
+}
+
+export async function getActivityLogsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const logs = await getActivityLogs();
+    return reply.code(200).send(logs);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch activity logs' });
+  }
+}
+
+export async function getSessionRecordingsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const recordings = await getSessionRecordings();
+    return reply.code(200).send(recordings);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch recordings' });
+  }
+}
+
+export async function getErrorLogsHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const logs = await getErrorLogs();
+    return reply.code(200).send(logs);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch error logs' });
   }
 }

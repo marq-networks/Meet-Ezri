@@ -14,7 +14,7 @@ import {
   Image as ImageIcon,
   Search
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "../../../lib/api";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "../../components/ui/dialog";
@@ -43,168 +43,39 @@ export function EmailTemplates() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock email templates
-  const templates: EmailTemplate[] = [
-    {
-      id: "t1",
-      name: "Welcome Email",
-      subject: "Welcome to Ezri - Your Mental Wellness Journey Starts Here! 🌟",
-      category: "welcome",
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;">
-            <h1 style="color: white; margin: 0;">Welcome to Ezri!</h1>
-          </div>
-          <div style="padding: 40px; background: #f9fafb;">
-            <p style="font-size: 16px; color: #374151;">Hi {{user_name}},</p>
-            <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-              We're thrilled to have you join our community! Ezri is here to support your mental health and wellness journey with AI-powered therapy sessions, mood tracking, and personalized insights.
-            </p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="{{session_url}}" style="background: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block;">
-                Start Your First Session
-              </a>
-            </div>
-            <p style="font-size: 14px; color: #6b7280;">
-              Best regards,<br>
-              The Ezri Team
-            </p>
-          </div>
-        </div>
-      `,
-      textContent: "Hi {{user_name}}, Welcome to Ezri! We're thrilled to have you join our community...",
-      variables: ["user_name", "session_url"],
-      lastModified: new Date("2024-06-15"),
-      sentCount: 1205,
-      openRate: 68.5
-    },
-    {
-      id: "t2",
-      name: "Session Reminder",
-      subject: "Your therapy session starts in 1 hour",
-      category: "notification",
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #374151;">Session Reminder</h2>
-          <p style="color: #6b7280;">Hi {{user_name}},</p>
-          <p style="color: #6b7280;">Your therapy session is scheduled to start in 1 hour at {{session_time}}.</p>
-          <a href="{{session_url}}" style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0;">
-            Join Session
-          </a>
-        </div>
-      `,
-      textContent: "Hi {{user_name}}, Your therapy session starts in 1 hour at {{session_time}}...",
-      variables: ["user_name", "session_time", "session_url"],
-      lastModified: new Date("2024-06-20"),
-      sentCount: 3421,
-      openRate: 82.3
-    },
-    {
-      id: "t3",
-      name: "Crisis Alert",
-      subject: "URGENT: Crisis Support Available 24/7",
-      category: "crisis",
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fef2f2; border: 2px solid #dc2626;">
-          <h2 style="color: #dc2626;">Crisis Support Available</h2>
-          <p style="color: #374151; font-weight: bold;">If you're in crisis, help is available 24/7:</p>
-          <ul style="color: #374151; line-height: 2;">
-            <li>National Suicide Prevention Lifeline: 988</li>
-            <li>Crisis Text Line: Text HOME to 741741</li>
-            <li>Emergency: 911</li>
-          </ul>
-          <p style="color: #6b7280;">You are not alone. Please reach out.</p>
-        </div>
-      `,
-      textContent: "Crisis Support Available 24/7. National Suicide Prevention Lifeline: 988...",
-      variables: [],
-      lastModified: new Date("2024-05-10"),
-      sentCount: 23,
-      openRate: 95.7
-    },
-    {
-      id: "t4",
-      name: "Weekly Progress Report",
-      subject: "Your Weekly Wellness Summary 📊",
-      category: "notification",
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #374151;">Weekly Progress Report</h2>
-          <p style="color: #6b7280;">Hi {{user_name}},</p>
-          <p style="color: #6b7280;">Here's your wellness summary for this week:</p>
-          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Sessions Completed:</strong> {{sessions_count}}</p>
-            <p><strong>Mood Check-ins:</strong> {{mood_count}}</p>
-            <p><strong>Journal Entries:</strong> {{journal_count}}</p>
-            <p><strong>Current Streak:</strong> {{streak_days}} days 🔥</p>
-          </div>
-        </div>
-      `,
-      textContent: "Hi {{user_name}}, Here's your wellness summary for this week...",
-      variables: ["user_name", "sessions_count", "mood_count", "journal_count", "streak_days"],
-      lastModified: new Date("2024-06-25"),
-      sentCount: 892,
-      openRate: 71.2
-    },
-    {
-      id: "t5",
-      name: "Premium Upgrade Offer",
-      subject: "Unlock Premium Features - 30% Off! 🎉",
-      category: "marketing",
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 40px; text-align: center;">
-            <h1 style="color: white; margin: 0;">Unlock Premium</h1>
-            <p style="color: white; font-size: 24px; margin: 10px 0;">30% Off Limited Time!</p>
-          </div>
-          <div style="padding: 40px;">
-            <p>Premium features include:</p>
-            <ul>
-              <li>Unlimited AI therapy sessions</li>
-              <li>Advanced analytics and insights</li>
-              <li>Priority support</li>
-              <li>Session recordings</li>
-            </ul>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="{{upgrade_url}}" style="background: #f59e0b; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block;">
-                Upgrade Now
-              </a>
-            </div>
-          </div>
-        </div>
-      `,
-      textContent: "Unlock Premium Features - 30% Off! Premium includes unlimited sessions, advanced analytics...",
-      variables: ["upgrade_url"],
-      lastModified: new Date("2024-06-28"),
-      sentCount: 567,
-      openRate: 45.8
-    },
-    {
-      id: "t6",
-      name: "Password Reset",
-      subject: "Reset Your Ezri Password",
-      category: "system",
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #374151;">Password Reset Request</h2>
-          <p style="color: #6b7280;">Hi {{user_name}},</p>
-          <p style="color: #6b7280;">We received a request to reset your password. Click the button below to create a new password:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="{{reset_url}}" style="background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block;">
-              Reset Password
-            </a>
-          </div>
-          <p style="color: #9ca3af; font-size: 12px;">This link expires in 1 hour. If you didn't request this, please ignore this email.</p>
-        </div>
-      `,
-      textContent: "Password Reset Request. Click the link to reset your password: {{reset_url}}",
-      variables: ["user_name", "reset_url"],
-      lastModified: new Date("2024-06-18"),
-      sentCount: 234,
-      openRate: 88.9
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.admin.getEmailTemplates();
+      setTemplates(data.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        subject: t.subject,
+        category: t.category,
+        htmlContent: t.html_content,
+        textContent: t.text_content,
+        variables: Array.isArray(t.variables) ? t.variables : [],
+        lastModified: new Date(t.updated_at || t.created_at),
+        sentCount: t.sent_count || 0,
+        openRate: t.open_rate || 0
+      })));
+      if (data.length > 0) {
+        // Optionally select first template or keep it null
+      }
+    } catch (error) {
+      console.error("Failed to fetch templates:", error);
+      toast.error("Failed to load email templates");
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
 
   const filteredTemplates = templates.filter(t => 
     t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

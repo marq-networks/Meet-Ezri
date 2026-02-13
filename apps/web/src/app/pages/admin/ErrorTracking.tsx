@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
+import { api } from "../../../lib/api";
 import {
   AlertTriangle,
   Bug,
@@ -17,7 +18,7 @@ import {
   BarChart3,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import {
@@ -59,97 +60,47 @@ export function ErrorTracking() {
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [errorToResolve, setErrorToResolve] = useState<ErrorLog | null>(null);
-  const [errors, setErrors] = useState<ErrorLog[]>([
-    {
-      id: "1",
-      type: "critical",
-      title: "Database Connection Timeout",
-      message: "Failed to connect to database after 3 retry attempts",
-      stackTrace: "at Database.connect (db.ts:45)\nat Server.start (server.ts:12)",
-      endpoint: "/api/sessions",
-      method: "POST",
-      statusCode: 500,
-      user: "user_1234",
-      browser: "Chrome 119",
-      os: "Windows 10",
-      occurrences: 23,
-      firstSeen: "2 hours ago",
-      lastSeen: "5 minutes ago",
-      resolved: false,
-    },
-    {
-      id: "2",
-      type: "error",
-      title: "Authentication Token Expired",
-      message: "JWT token validation failed: Token has expired",
-      stackTrace: "at Auth.verify (auth.ts:89)\nat Middleware.authenticate (middleware.ts:34)",
-      endpoint: "/api/user/profile",
-      method: "GET",
-      statusCode: 401,
-      user: "user_5678",
-      browser: "Safari 17",
-      os: "macOS 14",
-      occurrences: 156,
-      firstSeen: "1 day ago",
-      lastSeen: "10 minutes ago",
-      resolved: false,
-    },
-    {
-      id: "3",
-      type: "warning",
-      title: "API Rate Limit Approaching",
-      message: "User approaching rate limit: 95% of quota used",
-      stackTrace: "at RateLimit.check (ratelimit.ts:23)",
-      endpoint: "/api/mood-checkin",
-      method: "POST",
-      statusCode: 429,
-      user: "user_9012",
-      browser: "Firefox 120",
-      os: "Ubuntu 22.04",
-      occurrences: 8,
-      firstSeen: "30 minutes ago",
-      lastSeen: "2 minutes ago",
-      resolved: false,
-    },
-    {
-      id: "4",
-      type: "error",
-      title: "File Upload Size Exceeded",
-      message: "File size exceeds maximum allowed size of 10MB",
-      stackTrace: "at FileUpload.validate (upload.ts:56)",
-      endpoint: "/api/upload/avatar",
-      method: "POST",
-      statusCode: 413,
-      user: "user_3456",
-      browser: "Chrome 119",
-      os: "macOS 14",
-      occurrences: 12,
-      firstSeen: "3 hours ago",
-      lastSeen: "45 minutes ago",
-      resolved: true,
-    },
-    {
-      id: "5",
-      type: "critical",
-      title: "Memory Leak Detected",
-      message: "Heap usage exceeded 90% threshold",
-      stackTrace: "at Process.monitor (monitor.ts:123)",
-      endpoint: "/api/ai-session",
-      method: "POST",
-      statusCode: 500,
-      browser: "Chrome 119",
-      os: "Linux",
-      occurrences: 45,
-      firstSeen: "6 hours ago",
-      lastSeen: "1 minute ago",
-      resolved: false,
-    },
-  ]);
+  const [errors, setErrors] = useState<ErrorLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchErrors = async () => {
+      try {
+        const data = await api.admin.getErrorLogs();
+        const mappedErrors: ErrorLog[] = data.map((log: any) => ({
+          id: log.id,
+          type: (log.severity || 'error') as any,
+          title: log.context?.title || log.message.substring(0, 50) + '...',
+          message: log.message,
+          stackTrace: log.stack_trace || 'No stack trace available',
+          endpoint: log.context?.endpoint || 'Unknown',
+          method: log.context?.method || 'GET',
+          statusCode: log.context?.status_code || 500,
+          user: log.context?.user_id,
+          browser: log.context?.browser || 'Unknown',
+          os: log.context?.os || 'Unknown',
+          occurrences: log.context?.occurrences || 1,
+          firstSeen: new Date(log.created_at).toLocaleString(),
+          lastSeen: new Date(log.created_at).toLocaleString(),
+          resolved: log.status === 'resolved'
+        }));
+        setErrors(mappedErrors);
+      } catch (error) {
+        console.error("Failed to fetch error logs:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchErrors();
+  }, []);
+  
+  /* const errors: ErrorLog[] = [ ... ] */
 
   const stats = [
     {
       label: "Total Errors (24h)",
-      value: "244",
+      value: errors.length.toString(),
       change: "-12%",
       trend: "down",
       icon: Bug,
@@ -157,7 +108,7 @@ export function ErrorTracking() {
     },
     {
       label: "Critical Issues",
-      value: "3",
+      value: errors.filter(e => e.type === 'critical').length.toString(),
       change: "-50%",
       trend: "down",
       icon: AlertTriangle,
@@ -165,7 +116,7 @@ export function ErrorTracking() {
     },
     {
       label: "Resolved Today",
-      value: "89",
+      value: errors.filter(e => e.resolved).length.toString(),
       change: "+24%",
       trend: "up",
       icon: CheckCircle2,

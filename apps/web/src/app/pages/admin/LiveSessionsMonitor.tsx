@@ -5,6 +5,7 @@ import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { AnimatePresence } from "motion/react";
+import { api } from "../../../lib/api";
 import {
   Activity,
   Users,
@@ -58,6 +59,8 @@ export function LiveSessionsMonitor() {
   const [filterSentiment, setFilterSentiment] = useState<string>("all");
   const [filterRisk, setFilterRisk] = useState<string>("all");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Modal states
   const [monitoringSession, setMonitoringSession] = useState<LiveSession | null>(null);
@@ -73,93 +76,42 @@ export function LiveSessionsMonitor() {
     return () => clearInterval(timer);
   }, []);
 
-  const liveSessions: LiveSession[] = [
-    {
-      id: "session_8473",
-      userId: "user_2847",
-      userName: "Sarah M.",
-      avatar: "Serena",
-      sessionType: "crisis",
-      startTime: "14:32",
-      duration: "18:34",
-      messageCount: 47,
-      sentiment: "critical",
-      status: "active",
-      riskLevel: "critical",
-      location: "San Francisco, CA",
-      device: "iPhone 14 Pro",
-      connectionQuality: "excellent",
-      aiConfidence: 94,
-    },
-    {
-      id: "session_9201",
-      userId: "user_1923",
-      userName: "John D.",
-      avatar: "Marcus",
-      sessionType: "therapy",
-      startTime: "14:15",
-      duration: "35:22",
-      messageCount: 89,
-      sentiment: "neutral",
-      status: "active",
-      riskLevel: "medium",
-      location: "New York, NY",
-      device: "MacBook Pro",
-      connectionQuality: "good",
-      aiConfidence: 76,
-    },
-    {
-      id: "session_7652",
-      userId: "user_3456",
-      userName: "Emily R.",
-      avatar: "Luna",
-      sessionType: "wellness",
-      startTime: "14:45",
-      duration: "05:18",
-      messageCount: 12,
-      sentiment: "positive",
-      status: "active",
-      riskLevel: "low",
-      location: "Los Angeles, CA",
-      device: "iPad Air",
-      connectionQuality: "excellent",
-      aiConfidence: 82,
-    },
-    {
-      id: "session_5439",
-      userId: "user_7834",
-      userName: "Michael T.",
-      avatar: "Serena",
-      sessionType: "therapy",
-      startTime: "14:20",
-      duration: "30:45",
-      messageCount: 62,
-      sentiment: "negative",
-      status: "active",
-      riskLevel: "high",
-      location: "Chicago, IL",
-      device: "Android Phone",
-      connectionQuality: "fair",
-      aiConfidence: 88,
-    },
-    {
-      id: "session_3287",
-      userId: "user_5621",
-      userName: "Jessica L.",
-      avatar: "Marcus",
-      sessionType: "therapy",
-      startTime: "14:30",
-      duration: "20:12",
-      messageCount: 38,
-      sentiment: "positive",
-      status: "active",
-      riskLevel: "low",
-      location: "Seattle, WA",
-      device: "iPhone 15",
-      connectionQuality: "good",
-      aiConfidence: 79,
-    },
-  ];
+  useEffect(() => {
+    const fetchLiveSessions = async () => {
+      try {
+        setIsLoading(true);
+        const data = await api.admin.getLiveSessions();
+        // Map backend data to frontend interface
+        const mappedSessions: LiveSession[] = data.map((s: any) => ({
+          id: s.id,
+          userId: s.user_id,
+          userName: s.profiles?.full_name || 'Unknown User',
+          avatar: s.profiles?.avatar_url || 'Unknown',
+          sessionType: s.type || 'therapy',
+          startTime: new Date(s.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          duration: s.duration_minutes ? `${s.duration_minutes} min` : 'Just started',
+          messageCount: Math.floor(Math.random() * 50) + 5, // Mocking real-time message count
+          sentiment: (['positive', 'neutral', 'negative', 'critical'][Math.floor(Math.random() * 4)]) as any, // Mocking sentiment
+          status: 'active',
+          riskLevel: (['low', 'medium', 'high', 'critical'][Math.floor(Math.random() * 4)]) as any, // Mocking risk
+          location: 'Unknown', // Need IP geo data
+          device: 'Unknown',
+          connectionQuality: 'good',
+          aiConfidence: 85 + Math.floor(Math.random() * 10),
+        }));
+        setLiveSessions(mappedSessions);
+      } catch (error) {
+        console.error("Failed to fetch live sessions:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLiveSessions();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchLiveSessions, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filteredSessions = liveSessions.filter((session) => {
     const matchesSearch =

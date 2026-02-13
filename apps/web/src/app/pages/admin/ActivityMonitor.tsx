@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
+import { api } from "../../../lib/api";
 import {
   Activity,
   Video,
@@ -33,133 +34,42 @@ export function ActivityMonitor() {
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLive, setIsLive] = useState(true);
+  const [activities, setActivities] = useState<ActivityLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchActivities = async () => {
+      if (!isLive) return;
+      try {
+        const data = await api.admin.getActivityLogs();
+        const mappedActivities: ActivityLog[] = data.map((log: any) => ({
+          id: log.id,
+          userId: log.user_id,
+          userName: log.profiles?.full_name || 'Unknown',
+          userAvatar: (log.profiles?.full_name || 'U').split(' ').map((n: string) => n[0]).join('').substring(0, 2),
+          action: log.window_title || log.app_name || 'System Event',
+          type: (log.metadata?.type || 'session') as any,
+          timestamp: new Date(log.timestamp),
+          device: (log.metadata?.device || 'desktop') as any,
+          location: log.metadata?.location || 'Unknown',
+          duration: log.metadata?.duration,
+          status: (log.metadata?.status || 'completed') as any
+        }));
+        setActivities(mappedActivities);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Failed to fetch activity logs:", error);
+        setIsLoading(false);
+      }
+    };
+
+    fetchActivities();
+    const interval = setInterval(fetchActivities, 10000);
+    return () => clearInterval(interval);
+  }, [isLive]);
+  
   // Mock real-time activity data
-  const activities: ActivityLog[] = [
-    {
-      id: "1",
-      userId: "u001",
-      userName: "Sarah Johnson",
-      userAvatar: "SJ",
-      action: "Started AI therapy session",
-      type: "session",
-      timestamp: new Date(Date.now() - 2 * 60 * 1000),
-      device: "mobile",
-      location: "New York, NY",
-      duration: 2,
-      status: "active"
-    },
-    {
-      id: "2",
-      userId: "u002",
-      userName: "Michael Chen",
-      userAvatar: "MC",
-      action: "Logged daily mood",
-      type: "mood",
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      device: "desktop",
-      location: "San Francisco, CA",
-      status: "completed"
-    },
-    {
-      id: "3",
-      userId: "u003",
-      userName: "Emily Rodriguez",
-      userAvatar: "ER",
-      action: "Created journal entry",
-      type: "journal",
-      timestamp: new Date(Date.now() - 8 * 60 * 1000),
-      device: "tablet",
-      location: "Austin, TX",
-      status: "completed"
-    },
-    {
-      id: "4",
-      userId: "u004",
-      userName: "David Kim",
-      userAvatar: "DK",
-      action: "Logged in",
-      type: "login",
-      timestamp: new Date(Date.now() - 12 * 60 * 1000),
-      device: "mobile",
-      location: "Seattle, WA",
-      status: "idle"
-    },
-    {
-      id: "5",
-      userId: "u005",
-      userName: "Jessica Martinez",
-      userAvatar: "JM",
-      action: "New user signup",
-      type: "signup",
-      timestamp: new Date(Date.now() - 15 * 60 * 1000),
-      device: "desktop",
-      location: "Miami, FL",
-      status: "completed"
-    },
-    {
-      id: "6",
-      userId: "u006",
-      userName: "Alex Thompson",
-      userAvatar: "AT",
-      action: "Started AI therapy session",
-      type: "session",
-      timestamp: new Date(Date.now() - 18 * 60 * 1000),
-      device: "mobile",
-      location: "Boston, MA",
-      duration: 18,
-      status: "active"
-    },
-    {
-      id: "7",
-      userId: "u007",
-      userName: "Rachel Green",
-      userAvatar: "RG",
-      action: "Updated settings",
-      type: "settings",
-      timestamp: new Date(Date.now() - 22 * 60 * 1000),
-      device: "desktop",
-      location: "Chicago, IL",
-      status: "completed"
-    },
-    {
-      id: "8",
-      userId: "u008",
-      userName: "James Wilson",
-      userAvatar: "JW",
-      action: "Logged daily mood",
-      type: "mood",
-      timestamp: new Date(Date.now() - 25 * 60 * 1000),
-      device: "mobile",
-      location: "Denver, CO",
-      status: "completed"
-    },
-    {
-      id: "9",
-      userId: "u009",
-      userName: "Lisa Anderson",
-      userAvatar: "LA",
-      action: "Created journal entry",
-      type: "journal",
-      timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      device: "tablet",
-      location: "Portland, OR",
-      status: "completed"
-    },
-    {
-      id: "10",
-      userId: "u010",
-      userName: "Kevin Brown",
-      userAvatar: "KB",
-      action: "Started AI therapy session",
-      type: "session",
-      timestamp: new Date(Date.now() - 35 * 60 * 1000),
-      device: "desktop",
-      location: "Los Angeles, CA",
-      duration: 35,
-      status: "active"
-    }
-  ];
+  /* const activities: ActivityLog[] = [ ... ] */
 
   const filteredActivities = activities.filter(activity => {
     const matchesFilter = filter === "all" || activity.type === filter;

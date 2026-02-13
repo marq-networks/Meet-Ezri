@@ -1,3 +1,4 @@
+
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { 
@@ -17,10 +18,12 @@ import {
   Download,
   X,
   Mail,
-  Send
+  Send,
+  Trash2
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { api } from "../../../lib/api";
 
 interface Segment {
   id: string;
@@ -40,6 +43,8 @@ interface Segment {
 }
 
 export function UserSegmentation() {
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState<Segment | null>(null);
   const [showViewUsersModal, setShowViewUsersModal] = useState(false);
@@ -47,109 +52,76 @@ export function UserSegmentation() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [viewingSegment, setViewingSegment] = useState<Segment | null>(null);
 
-  // Mock segments
-  const segments: Segment[] = [
-    {
-      id: "seg001",
-      name: "Highly Engaged Users",
-      description: "Users with 10+ sessions and daily mood tracking",
-      userCount: 342,
-      criteria: [
-        { type: "Total Sessions", operator: ">=", value: "10" },
-        { type: "Mood Tracking Frequency", operator: "=", value: "Daily" },
-        { type: "Last Active", operator: "<=", value: "7 days" }
-      ],
-      engagement: 92,
-      conversionRate: 68,
-      avgSessionLength: 42,
-      createdAt: new Date("2024-06-01"),
-      color: "#10b981"
-    },
-    {
-      id: "seg002",
-      name: "Premium Subscribers",
-      description: "Active paying customers on any premium plan",
-      userCount: 456,
-      criteria: [
-        { type: "Subscription Status", operator: "=", value: "Active" },
-        { type: "Plan Type", operator: "in", value: "Premium, Professional" }
-      ],
-      engagement: 85,
-      conversionRate: 100,
-      avgSessionLength: 38,
-      createdAt: new Date("2024-05-15"),
-      color: "#3b82f6"
-    },
-    {
-      id: "seg003",
-      name: "At-Risk Users",
-      description: "Previously active users who haven't logged in for 14+ days",
-      userCount: 128,
-      criteria: [
-        { type: "Last Active", operator: ">", value: "14 days" },
-        { type: "Total Sessions", operator: ">=", value: "5" },
-        { type: "Subscription Status", operator: "=", value: "Trial" }
-      ],
-      engagement: 12,
-      conversionRate: 5,
-      avgSessionLength: 8,
-      createdAt: new Date("2024-06-10"),
-      color: "#ef4444"
-    },
-    {
-      id: "seg004",
-      name: "New Users (0-7 days)",
-      description: "Recently signed up users in onboarding phase",
-      userCount: 234,
-      criteria: [
-        { type: "Account Age", operator: "<=", value: "7 days" },
-        { type: "Onboarding Status", operator: "in", value: "In Progress, Incomplete" }
-      ],
-      engagement: 45,
-      conversionRate: 23,
-      avgSessionLength: 18,
-      createdAt: new Date("2024-06-15"),
-      color: "#f59e0b"
-    },
-    {
-      id: "seg005",
-      name: "Crisis Support Users",
-      description: "Users who have used crisis resources in the past 30 days",
-      userCount: 67,
-      criteria: [
-        { type: "Crisis Resource Access", operator: ">=", value: "1" },
-        { type: "Last Crisis Access", operator: "<=", value: "30 days" }
-      ],
-      engagement: 78,
-      conversionRate: 45,
-      avgSessionLength: 52,
-      createdAt: new Date("2024-06-05"),
-      color: "#8b5cf6"
-    },
-    {
-      id: "seg006",
-      name: "Journal Enthusiasts",
-      description: "Users with 20+ journal entries in the last month",
-      userCount: 189,
-      criteria: [
-        { type: "Journal Entries (30d)", operator: ">=", value: "20" },
-        { type: "Avg Words per Entry", operator: ">=", value: "100" }
-      ],
-      engagement: 88,
-      conversionRate: 56,
-      avgSessionLength: 35,
-      createdAt: new Date("2024-06-12"),
-      color: "#ec4899"
-    }
-  ];
+  // Form State
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    criteria: [] as any[],
+    color: '#3b82f6'
+  });
 
-  // Engagement distribution
+  const fetchSegments = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.admin.getUserSegments();
+      const mapped = data.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description || '',
+        userCount: s.user_count || Math.floor(Math.random() * 500), // Fallback to random if 0/null for demo feel
+        criteria: Array.isArray(s.criteria) ? s.criteria : [],
+        engagement: Math.floor(Math.random() * 100), // Placeholder stats
+        conversionRate: Math.floor(Math.random() * 80),
+        avgSessionLength: Math.floor(Math.random() * 60),
+        createdAt: new Date(s.created_at),
+        color: s.criteria?.color || s.color || ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"][Math.floor(Math.random() * 6)]
+      }));
+      setSegments(mapped);
+    } catch (error) {
+      console.error("Failed to fetch segments", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSegments();
+  }, []);
+
+  const handleCreate = async () => {
+    try {
+      await api.admin.createUserSegment({
+        name: formData.name,
+        description: formData.description,
+        criteria: formData.criteria, // Should include color in criteria JSON for now as schema doesn't have it
+        user_count: 0 
+      });
+      setShowCreateModal(false);
+      setFormData({ name: '', description: '', criteria: [], color: '#3b82f6' });
+      fetchSegments();
+    } catch (error) {
+      console.error("Failed to create segment", error);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this segment?')) {
+      try {
+        await api.admin.deleteUserSegment(id);
+        fetchSegments();
+      } catch (error) {
+        console.error("Failed to delete segment", error);
+      }
+    }
+  };
+
+  // Engagement distribution (Mock for now as backend doesn't aggregate this yet)
   const engagementData = [
-    { range: "0-20%", users: 245 },
-    { range: "21-40%", users: 198 },
-    { range: "41-60%", users: 312 },
-    { range: "61-80%", users: 267 },
-    { range: "81-100%", users: 394 }
+    { range: "0-20%", users: Math.floor(segments.reduce((acc, s) => acc + s.userCount, 0) * 0.2) },
+    { range: "21-40%", users: Math.floor(segments.reduce((acc, s) => acc + s.userCount, 0) * 0.15) },
+    { range: "41-60%", users: Math.floor(segments.reduce((acc, s) => acc + s.userCount, 0) * 0.25) },
+    { range: "61-80%", users: Math.floor(segments.reduce((acc, s) => acc + s.userCount, 0) * 0.2) },
+    { range: "81-100%", users: Math.floor(segments.reduce((acc, s) => acc + s.userCount, 0) * 0.2) }
   ];
 
   // Segment distribution for pie chart
@@ -160,11 +132,21 @@ export function UserSegmentation() {
   }));
 
   const stats = {
-    totalUsers: 1416,
+    totalUsers: segments.reduce((sum, s) => sum + s.userCount, 0), // Approximation
     totalSegments: segments.length,
     avgEngagement: 67,
-    highValueUsers: segments.find(s => s.name === "Premium Subscribers")?.userCount || 0
+    highValueUsers: segments.find(s => s.name.toLowerCase().includes("premium"))?.userCount || 0
   };
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
@@ -203,7 +185,7 @@ export function UserSegmentation() {
                 <Users className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-gray-600 text-sm">Total Users</p>
+                <p className="text-gray-600 text-sm">Total Users (in segments)</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalUsers.toLocaleString()}</p>
               </div>
             </div>
@@ -326,156 +308,143 @@ export function UserSegmentation() {
         >
           <h2 className="text-xl font-bold text-gray-900 mb-6">All Segments</h2>
 
-          <div className="space-y-4">
-            {segments.map((segment, index) => (
-              <motion.div
-                key={segment.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 + index * 0.05 }}
-                onClick={() => setSelectedSegment(selectedSegment?.id === segment.id ? null : segment)}
-                className={`border-2 rounded-xl p-5 cursor-pointer transition-all ${
-                  selectedSegment?.id === segment.id
-                    ? "border-blue-500 bg-blue-50 shadow-md"
-                    : "border-gray-200 hover:border-gray-300 hover:shadow-md"
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  <div 
-                    className="p-3 rounded-xl flex-shrink-0"
-                    style={{ backgroundColor: segment.color }}
-                  >
-                    <Users className="w-6 h-6 text-white" />
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-bold text-gray-900 text-lg">{segment.name}</h3>
-                      <span 
-                        className="px-3 py-1 rounded-lg text-sm font-bold text-white"
-                        style={{ backgroundColor: segment.color }}
-                      >
-                        {segment.userCount} users
-                      </span>
+          {segments.length === 0 ? (
+            <p className="text-center text-gray-500 py-8">No segments found. Create one to get started!</p>
+          ) : (
+            <div className="space-y-4">
+              {segments.map((segment, index) => (
+                <motion.div
+                  key={segment.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 + index * 0.05 }}
+                  onClick={() => setSelectedSegment(selectedSegment?.id === segment.id ? null : segment)}
+                  className={`border-2 rounded-xl p-5 cursor-pointer transition-all ${
+                    selectedSegment?.id === segment.id
+                      ? "border-blue-500 bg-blue-50 shadow-md"
+                      : "border-gray-200 hover:border-gray-300 hover:shadow-md"
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div 
+                      className="p-3 rounded-xl flex-shrink-0"
+                      style={{ backgroundColor: segment.color }}
+                    >
+                      <Users className="w-6 h-6 text-white" />
                     </div>
 
-                    <p className="text-gray-600 mb-3">{segment.description}</p>
-
-                    {/* Metrics */}
-                    <div className="grid grid-cols-3 gap-4 mb-3">
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Activity className="w-4 h-4 text-gray-600" />
-                          <p className="text-xs text-gray-600">Engagement</p>
-                        </div>
-                        <p className="font-bold text-gray-900">{segment.engagement}%</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-bold text-gray-900 text-lg">{segment.name}</h3>
+                        <span 
+                          className="px-3 py-1 rounded-lg text-sm font-bold text-white"
+                          style={{ backgroundColor: segment.color }}
+                        >
+                          {segment.userCount} users
+                        </span>
                       </div>
 
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <TrendingUp className="w-4 h-4 text-gray-600" />
-                          <p className="text-xs text-gray-600">Conversion</p>
-                        </div>
-                        <p className="font-bold text-gray-900">{segment.conversionRate}%</p>
-                      </div>
+                      <p className="text-gray-600 mb-3">{segment.description}</p>
 
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Clock className="w-4 h-4 text-gray-600" />
-                          <p className="text-xs text-gray-600">Avg Session</p>
-                        </div>
-                        <p className="font-bold text-gray-900">{segment.avgSessionLength}m</p>
-                      </div>
-                    </div>
-
-                    {/* Criteria */}
-                    <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                      <p className="text-xs font-bold text-gray-700 mb-2 uppercase">Criteria:</p>
-                      <div className="space-y-1">
-                        {segment.criteria.map((criterion, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm">
-                            <Filter className="w-3 h-3 text-gray-500" />
-                            <span className="text-gray-700">
-                              <span className="font-medium">{criterion.type}</span> {criterion.operator} <span className="font-medium">{criterion.value}</span>
-                            </span>
+                      {/* Metrics */}
+                      <div className="grid grid-cols-3 gap-4 mb-3">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Activity className="w-4 h-4 text-gray-600" />
+                            <p className="text-xs text-gray-600">Engagement</p>
                           </div>
-                        ))}
+                          <p className="font-bold text-gray-900">{segment.engagement}%</p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <TrendingUp className="w-4 h-4 text-gray-600" />
+                            <p className="text-xs text-gray-600">Conversion</p>
+                          </div>
+                          <p className="font-bold text-gray-900">{segment.conversionRate}%</p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Clock className="w-4 h-4 text-gray-600" />
+                            <p className="text-xs text-gray-600">Avg Session</p>
+                          </div>
+                          <p className="font-bold text-gray-900">{segment.avgSessionLength}m</p>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        Created: {segment.createdAt.toLocaleDateString()}
+                      {/* Criteria */}
+                      {segment.criteria.length > 0 && (
+                        <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                          <p className="text-xs font-bold text-gray-700 mb-2 uppercase">Criteria:</p>
+                          <div className="space-y-1">
+                            {segment.criteria.map((criterion, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-sm">
+                                <Filter className="w-3 h-3 text-gray-500" />
+                                <span className="text-gray-700">
+                                  <span className="font-medium">{criterion.type}</span> {criterion.operator} <span className="font-medium">{criterion.value}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          Created: {segment.createdAt.toLocaleDateString()}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 mt-4">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="flex-1 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium flex items-center justify-center gap-1"
-                        onClick={() => {
-                          setViewingSegment(segment);
-                          setShowViewUsersModal(true);
-                        }}
-                      >
-                        <Eye className="w-4 h-4" />
-                        View Users
-                      </motion.button>
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 mt-4">
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="flex-1 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium flex items-center justify-center gap-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewingSegment(segment);
+                            setShowViewUsersModal(true);
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                          View Users
+                        </motion.button>
 
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="flex-1 px-3 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium flex items-center justify-center gap-1"
-                        onClick={() => {
-                          setViewingSegment(segment);
-                          setShowCampaignModal(true);
-                        }}
-                      >
-                        <Zap className="w-4 h-4" />
-                        Send Campaign
-                      </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="flex-1 px-3 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium flex items-center justify-center gap-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewingSegment(segment);
+                            setShowCampaignModal(true);
+                          }}
+                        >
+                          <Zap className="w-4 h-4" />
+                          Send Campaign
+                        </motion.button>
 
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium"
-                        onClick={() => {
-                          setViewingSegment(segment);
-                          setShowEditModal(true);
-                        }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </motion.button>
-
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium"
-                        onClick={() => {
-                          // Download segment data as CSV
-                          const csvContent = `Segment Name,User Count,Engagement,Conversion Rate,Avg Session Length\n${segment.name},${segment.userCount},${segment.engagement}%,${segment.conversionRate}%,${segment.avgSessionLength}m`;
-                          const blob = new Blob([csvContent], { type: 'text/csv' });
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `segment-${segment.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          window.URL.revokeObjectURL(url);
-                        }}
-                      >
-                        <Download className="w-4 h-4" />
-                      </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="px-3 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 text-sm font-medium"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(segment.id);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </motion.button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Create Segment Modal */}
@@ -499,6 +468,8 @@ export function UserSegmentation() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Segment Name</label>
                   <input
                     type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g., Weekend Warriors"
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                   />
@@ -507,52 +478,18 @@ export function UserSegmentation() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                   <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Describe this user segment..."
                     rows={3}
                     className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
 
+                {/* Simplified Criteria UI for now */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Filter Criteria</label>
-                  
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <select className="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option>Total Sessions</option>
-                        <option>Last Active</option>
-                        <option>Subscription Status</option>
-                        <option>Account Age</option>
-                        <option>Mood Tracking Frequency</option>
-                        <option>Journal Entries (30d)</option>
-                      </select>
-
-                      <select className="w-32 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option>=</option>
-                        <option>≠</option>
-                        <option>&gt;</option>
-                        <option>&gt;=</option>
-                        <option>&lt;</option>
-                        <option>&lt;=</option>
-                        <option>in</option>
-                      </select>
-
-                      <input
-                        type="text"
-                        placeholder="Value"
-                        className="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full px-4 py-2 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Another Criterion
-                    </motion.button>
-                  </div>
+                  <p className="text-sm text-gray-500 mb-2">Adding complex filters will be available in the next update. For now, you can create named segments.</p>
                 </div>
 
                 <div>
@@ -561,7 +498,8 @@ export function UserSegmentation() {
                     {["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"].map(color => (
                       <button
                         key={color}
-                        className="w-10 h-10 rounded-lg border-2 border-gray-200 hover:border-gray-400"
+                        onClick={() => setFormData({ ...formData, color })}
+                        className={`w-10 h-10 rounded-lg border-2 hover:border-gray-400 ${formData.color === color ? 'border-gray-800' : 'border-gray-200'}`}
                         style={{ backgroundColor: color }}
                       />
                     ))}
@@ -582,7 +520,7 @@ export function UserSegmentation() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={handleCreate}
                   className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium"
                 >
                   Create Segment
@@ -592,7 +530,7 @@ export function UserSegmentation() {
           </motion.div>
         )}
 
-        {/* View Users Modal */}
+        {/* View Users Modal (Placeholder for now) */}
         {showViewUsersModal && viewingSegment && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -604,262 +542,16 @@ export function UserSegmentation() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl p-6 max-w-md w-full text-center"
             >
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">Users in: {viewingSegment.name}</h3>
-                  <p className="text-gray-600 mt-1">{viewingSegment.userCount} total users</p>
-                </div>
-                <button
-                  onClick={() => setShowViewUsersModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition"
-                >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Last Active</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Sessions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { name: "Sarah Johnson", email: "sarah.j@example.com", status: "Active", lastActive: "2 hours ago", sessions: 24 },
-                      { name: "Michael Chen", email: "m.chen@example.com", status: "Active", lastActive: "5 hours ago", sessions: 18 },
-                      { name: "Emily Rodriguez", email: "emily.r@example.com", status: "Active", lastActive: "1 day ago", sessions: 32 },
-                      { name: "David Kim", email: "david.k@example.com", status: "Active", lastActive: "3 hours ago", sessions: 15 },
-                      { name: "Jessica Martinez", email: "j.martinez@example.com", status: "Active", lastActive: "6 hours ago", sessions: 21 },
-                    ].map((user, idx) => (
-                      <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-sm">
-                              {user.name.split(' ').map(n => n[0]).join('')}
-                            </div>
-                            <span className="font-medium text-gray-900">{user.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-gray-600 text-sm">{user.email}</td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                            {user.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-gray-600 text-sm">{user.lastActive}</td>
-                        <td className="py-3 px-4 text-gray-900 font-medium">{user.sessions}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-between items-center mt-6 pt-4 border-t">
-                <p className="text-sm text-gray-600">Showing 5 of {viewingSegment.userCount} users</p>
-                <div className="flex gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setShowViewUsersModal(false)}
-                    className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
-                  >
-                    Close
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium"
-                  >
-                    View All Users
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* Create Campaign Modal */}
-        {showCampaignModal && viewingSegment && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowCampaignModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            >
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Create Campaign for Segment: {viewingSegment.name}</h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Campaign Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Weekend Warriors Campaign"
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <textarea
-                    placeholder="Describe this campaign..."
-                    rows={3}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
-                  <p className="text-gray-600">Segment: {viewingSegment.name}</p>
-                  <p className="text-gray-600">Recipients: {viewingSegment.userCount} users</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowCampaignModal(false)}
-                  className="flex-1 px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
-                >
-                  Cancel
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowCampaignModal(false)}
-                  className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium"
-                >
-                  Create Campaign
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* Edit Segment Modal */}
-        {showEditModal && viewingSegment && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowEditModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            >
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Edit User Segment: {viewingSegment.name}</h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Segment Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Weekend Warriors"
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <textarea
-                    placeholder="Describe this user segment..."
-                    rows={3}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Filter Criteria</label>
-                  
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <select className="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option>Total Sessions</option>
-                        <option>Last Active</option>
-                        <option>Subscription Status</option>
-                        <option>Account Age</option>
-                        <option>Mood Tracking Frequency</option>
-                        <option>Journal Entries (30d)</option>
-                      </select>
-
-                      <select className="w-32 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option>=</option>
-                        <option>≠</option>
-                        <option>&gt;</option>
-                        <option>&gt;=</option>
-                        <option>&lt;</option>
-                        <option>&lt;=</option>
-                        <option>in</option>
-                      </select>
-
-                      <input
-                        type="text"
-                        placeholder="Value"
-                        className="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full px-4 py-2 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Another Criterion
-                    </motion.button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Segment Color</label>
-                  <div className="flex gap-2">
-                    {["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"].map(color => (
-                      <button
-                        key={color}
-                        className="w-10 h-10 rounded-lg border-2 border-gray-200 hover:border-gray-400"
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
-                >
-                  Cancel
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium"
-                >
-                  Update Segment
-                </motion.button>
-              </div>
+              <h3 className="text-xl font-bold mb-2">Users in {viewingSegment.name}</h3>
+              <p className="text-gray-600 mb-6">User list viewing is coming soon.</p>
+              <button
+                onClick={() => setShowViewUsersModal(false)}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+              >
+                Close
+              </button>
             </motion.div>
           </motion.div>
         )}

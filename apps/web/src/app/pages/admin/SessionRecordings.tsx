@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
+import { api } from "../../../lib/api";
 import {
   Video,
   Flag,
@@ -42,95 +43,42 @@ export function SessionRecordings() {
   const [selectedRecording, setSelectedRecording] = useState<SessionRecording | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [recordings, setRecordings] = useState<SessionRecording[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecordings = async () => {
+      try {
+        const data = await api.admin.getSessionRecordings();
+        const mappedRecordings: SessionRecording[] = data.map((session: any) => ({
+          id: session.id,
+          userId: session.user_id,
+          userName: session.profiles?.full_name || 'Unknown User',
+          sessionDate: new Date(session.started_at || session.created_at),
+          duration: session.duration_minutes || 0,
+          status: (session.config?.status || 'completed') as any,
+          aiCompanion: session.config?.ai_name || 'AI Assistant',
+          topics: session.config?.topics || ['General'],
+          sentiment: (session.config?.sentiment || 'neutral') as any,
+          flaggedIssues: session.config?.flagged_issues,
+          qualityScore: session.config?.quality_score || 85,
+          transcriptAvailable: true,
+          reviewedBy: session.config?.reviewed_by,
+          reviewNotes: session.config?.review_notes
+        }));
+        setRecordings(mappedRecordings);
+      } catch (error) {
+        console.error("Failed to fetch session recordings:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecordings();
+  }, []);
 
   // Mock session recordings
-  const recordings: SessionRecording[] = [
-    {
-      id: "rec001",
-      userId: "u456",
-      userName: "Sarah J.",
-      sessionDate: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      duration: 42,
-      status: "flagged",
-      aiCompanion: "Dr. Emma (Compassionate)",
-      topics: ["Anxiety", "Work Stress", "Sleep Issues"],
-      sentiment: "negative",
-      flaggedIssues: ["Mention of self-harm", "Severe anxiety indicators"],
-      qualityScore: 78,
-      transcriptAvailable: true
-    },
-    {
-      id: "rec002",
-      userId: "u789",
-      userName: "Michael C.",
-      sessionDate: new Date(Date.now() - 5 * 60 * 60 * 1000),
-      duration: 38,
-      status: "completed",
-      aiCompanion: "Dr. James (Professional)",
-      topics: ["Depression", "Relationships"],
-      sentiment: "neutral",
-      qualityScore: 92,
-      transcriptAvailable: true
-    },
-    {
-      id: "rec003",
-      userId: "u234",
-      userName: "Emily R.",
-      sessionDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      duration: 45,
-      status: "reviewed",
-      aiTherapist: "Dr. Sofia (Empathetic)",
-      topics: ["Grief", "Loss", "Coping"],
-      sentiment: "negative",
-      qualityScore: 88,
-      transcriptAvailable: true,
-      reviewedBy: "Admin John",
-      reviewNotes: "High quality session, appropriate responses, follow-up scheduled"
-    },
-    {
-      id: "rec004",
-      userId: "u567",
-      userName: "David L.",
-      sessionDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      duration: 52,
-      status: "escalated",
-      aiTherapist: "Dr. Alex (Supportive)",
-      topics: ["Suicidal Ideation", "Crisis"],
-      sentiment: "crisis",
-      flaggedIssues: ["Active suicidal ideation", "Plan mentioned", "Immediate intervention required"],
-      qualityScore: 95,
-      transcriptAvailable: true,
-      reviewedBy: "Crisis Team Lead",
-      reviewNotes: "Escalated to crisis team. User contacted by hotline within 10 minutes."
-    },
-    {
-      id: "rec005",
-      userId: "u890",
-      userName: "Jessica M.",
-      sessionDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      duration: 35,
-      status: "completed",
-      aiTherapist: "Dr. Emma (Compassionate)",
-      topics: ["Self-esteem", "Personal Growth"],
-      sentiment: "positive",
-      qualityScore: 91,
-      transcriptAvailable: true
-    },
-    {
-      id: "rec006",
-      userId: "u123",
-      userName: "Robert K.",
-      sessionDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-      duration: 29,
-      status: "flagged",
-      aiCompanion: "Dr. James (Professional)",
-      topics: ["Anger Management", "Workplace Conflict"],
-      sentiment: "negative",
-      flaggedIssues: ["Violence indicators", "Threats toward others"],
-      qualityScore: 72,
-      transcriptAvailable: true
-    }
-  ];
+  /* const recordings: SessionRecording[] = [ ... ] */
 
   const filteredRecordings = recordings.filter(rec => {
     const matchesSearch = rec.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||

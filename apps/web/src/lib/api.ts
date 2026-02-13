@@ -379,6 +379,120 @@ export const api = {
         cache: 'no-store',
       });
       return handleResponse(res, 'Failed to fetch user subscription');
+    },
+
+    // User Segments
+    async getUserSegments() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/user-segments`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch segments');
+    },
+    async createUserSegment(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/user-segments`, { method: 'POST', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to create segment');
+    },
+    async deleteUserSegment(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/user-segments/${id}`, { method: 'DELETE', headers });
+      return handleResponse(res, 'Failed to delete segment');
+    },
+
+    // Notifications
+    async getManualNotifications() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/notifications/manual`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch notifications');
+    },
+    async getNotificationAudienceCounts() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/notifications/audience-counts`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch audience counts');
+    },
+    async createManualNotification(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/notifications/manual`, { method: 'POST', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to create notification');
+    },
+
+    // Email Templates
+    async getEmailTemplates() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/email-templates`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch templates');
+    },
+    async createEmailTemplate(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/email-templates`, { method: 'POST', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to create template');
+    },
+    async updateEmailTemplate(id: string, data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/email-templates/${id}`, { method: 'PUT', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to update template');
+    },
+    async deleteEmailTemplate(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/email-templates/${id}`, { method: 'DELETE', headers });
+      return handleResponse(res, 'Failed to delete template');
+    },
+
+    // Push Campaigns
+    async getPushCampaigns() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/push-campaigns`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch campaigns');
+    },
+    async createPushCampaign(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/push-campaigns`, { method: 'POST', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to create campaign');
+    },
+
+    // Support Tickets
+    async getSupportTickets() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/support-tickets`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch tickets');
+    },
+    async updateSupportTicket(id: string, data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/support-tickets/${id}`, { method: 'PUT', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to update ticket');
+    },
+
+    // Community
+    async getCommunityStats() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/community/stats`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch community stats');
+    },
+    async getCommunityGroups() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/community/groups`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch groups');
+    },
+
+    // Monitoring
+    async getLiveSessions() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/live-sessions`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch live sessions');
+    },
+    async getActivityLogs() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/activity-logs`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch activity logs');
+    },
+    async getSessionRecordings() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/session-recordings`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch recordings');
+    },
+    async getErrorLogs() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/error-logs`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch error logs');
     }
   },
 
@@ -480,6 +594,7 @@ export const api = {
       const res = await fetch(`${API_URL}/billing/portal`, {
         method: 'POST',
         headers,
+        body: JSON.stringify({}),
       });
       return handleResponse(res, 'Failed to create portal session');
     },
@@ -499,6 +614,7 @@ export const api = {
       const res = await fetch(`${API_URL}/billing/cancel`, {
         method: 'POST',
         headers,
+        body: JSON.stringify({}),
       });
       return handleResponse(res, 'Failed to cancel subscription');
     },
@@ -782,6 +898,7 @@ export const api = {
       const res = await fetch(`${API_URL}/notifications/${id}/read`, {
         method: 'PATCH',
         headers,
+        body: JSON.stringify({}),
       });
       return handleResponse(res, 'Failed to mark notification as read');
     },
@@ -791,6 +908,7 @@ export const api = {
       const res = await fetch(`${API_URL}/notifications/read-all`, {
         method: 'PATCH',
         headers,
+        body: JSON.stringify({}),
       });
       return handleResponse(res, 'Failed to mark all notifications as read');
     },

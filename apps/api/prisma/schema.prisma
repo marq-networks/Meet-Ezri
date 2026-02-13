@@ -26,6 +26,58 @@ model activity_events {
   @@schema("public")
 }
 
+model email_templates {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String   @unique
+  subject     String
+  body        String
+  variables   String[]
+  created_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+model user_segments {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String
+  description String?
+  criteria    Json
+  user_count  Int?
+  created_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+model error_logs {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message     String
+  stack_trace String?
+  context     Json?
+  severity    String
+  status      String   @default("open")
+  created_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  resolved_at DateTime? @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+model push_campaigns {
+  id                String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title             String
+  message           String
+  target_segment_id String?  @db.Uuid
+  status            String   @default("draft")
+  scheduled_at      DateTime? @db.Timestamptz(6)
+  sent_at           DateTime? @db.Timestamptz(6)
+  metrics           Json?
+  created_at        DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  created_by        String?  @db.Uuid
+
+  @@schema("public")
+}
+
 model ai_avatars {
   id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name             String

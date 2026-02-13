@@ -16,10 +16,12 @@ import {
   Tag,
   Flag,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface Ticket {
-  id: number;
+  id: string;
   subject: string;
   user: string;
   status: "open" | "in-progress" | "resolved" | "closed";
@@ -40,123 +42,46 @@ export function SupportTickets() {
   const [replyMessage, setReplyMessage] = useState("");
   const [newStatus, setNewStatus] = useState<"open" | "in-progress" | "resolved" | "closed">("open");
   const [selectedAgent, setSelectedAgent] = useState("");
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 5;
 
-  const allTickets: Ticket[] = [
-    {
-      id: 2847,
-      subject: "Unable to start AI session",
-      user: "john.d@example.com",
-      status: "open",
-      priority: "high",
-      category: "Technical",
-      created: "2024-12-29 14:30",
-      lastUpdate: "12 minutes ago",
-      description: "I'm trying to start an AI therapy session but the app keeps crashing when I click 'Start Session'. I've tried restarting the app multiple times but the issue persists.",
-      messages: [
-        { from: "john.d@example.com", message: "I'm trying to start an AI therapy session but the app keeps crashing.", time: "2024-12-29 14:30" },
-        { from: "Support Team", message: "Thank you for reporting this. We're looking into it now.", time: "2024-12-29 14:35" },
-      ]
-    },
-    {
-      id: 2846,
-      subject: "Billing inquiry about subscription",
-      user: "emily.r@example.com",
-      status: "in-progress",
-      priority: "medium",
-      category: "Billing",
-      created: "2024-12-29 13:15",
-      lastUpdate: "1 hour ago",
-      description: "I was charged twice for my premium subscription this month. Could you please check my account and issue a refund for the duplicate charge?",
-      messages: [
-        { from: "emily.r@example.com", message: "I was charged twice for my premium subscription.", time: "2024-12-29 13:15" },
-        { from: "Support Team", message: "We're reviewing your billing history and will resolve this shortly.", time: "2024-12-29 13:45" },
-      ]
-    },
-    {
-      id: 2845,
-      subject: "Request to export my data",
-      user: "michael.t@example.com",
-      status: "resolved",
-      priority: "medium",
-      category: "Account",
-      created: "2024-12-29 11:45",
-      lastUpdate: "2 hours ago",
-      description: "I would like to export all my data including session history, mood logs, and journal entries. How can I do this?",
-      messages: [
-        { from: "michael.t@example.com", message: "I would like to export all my data.", time: "2024-12-29 11:45" },
-        { from: "Support Team", message: "You can export your data from Settings > Privacy > Export Data.", time: "2024-12-29 12:00" },
-        { from: "michael.t@example.com", message: "Found it, thank you!", time: "2024-12-29 12:15" },
-      ]
-    },
-    {
-      id: 2844,
-      subject: "Feature request: Dark mode",
-      user: "sarah.m@example.com",
-      status: "open",
-      priority: "low",
-      category: "Feature Request",
-      created: "2024-12-29 10:20",
-      lastUpdate: "3 hours ago",
-      description: "Would love to see a dark mode option for the app. It would be easier on the eyes during evening sessions.",
-      messages: [
-        { from: "sarah.m@example.com", message: "Would love to see a dark mode option for the app.", time: "2024-12-29 10:20" },
-      ]
-    },
-    {
-      id: 2843,
-      subject: "Cannot reset password",
-      user: "jessica.l@example.com",
-      status: "in-progress",
-      priority: "urgent",
-      category: "Technical",
-      created: "2024-12-29 09:00",
-      lastUpdate: "30 minutes ago",
-      description: "I've tried to reset my password multiple times but I'm not receiving the reset email. I've checked spam folder as well.",
-      messages: [
-        { from: "jessica.l@example.com", message: "I'm not receiving the password reset email.", time: "2024-12-29 09:00" },
-        { from: "Support Team", message: "We're investigating the email delivery issue.", time: "2024-12-29 09:15" },
-      ]
-    },
-    {
-      id: 2842,
-      subject: "Session recording not working",
-      user: "david.k@example.com",
-      status: "open",
-      priority: "medium",
-      category: "Technical",
-      created: "2024-12-29 08:30",
-      lastUpdate: "4 hours ago",
-      description: "The session recording feature is not saving my sessions. I have premium subscription and the feature should be enabled.",
-    },
-    {
-      id: 2841,
-      subject: "Upgrade to premium",
-      user: "lisa.w@example.com",
-      status: "resolved",
-      priority: "low",
-      category: "Billing",
-      created: "2024-12-29 07:15",
-      lastUpdate: "5 hours ago",
-      description: "How do I upgrade my trial account to premium? What are the payment options?",
-    },
-    {
-      id: 2840,
-      subject: "Avatar not loading",
-      user: "robert.m@example.com",
-      status: "in-progress",
-      priority: "high",
-      category: "Technical",
-      created: "2024-12-28 22:45",
-      lastUpdate: "Yesterday",
-      description: "The AI avatar is not loading during my therapy sessions. Just seeing a blank screen.",
-    },
-  ];
+  useEffect(() => {
+    fetchTickets();
+  }, []);
 
-  const totalPages = Math.ceil(allTickets.length / itemsPerPage);
+  const fetchTickets = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.admin.getSupportTickets();
+      setTickets(data.map((t: any) => ({
+        id: t.id,
+        subject: t.subject,
+        user: t.user?.email || 'Unknown User',
+        status: t.status,
+        priority: t.priority,
+        category: t.category,
+        created: new Date(t.created_at).toLocaleString(),
+        lastUpdate: new Date(t.updated_at).toLocaleString(),
+        description: t.description,
+        messages: t.messages?.map((m: any) => ({
+          from: m.sender_type === 'admin' ? 'Support Team' : (t.user?.email || 'User'),
+          message: m.message,
+          time: new Date(m.created_at).toLocaleString()
+        })) || []
+      })));
+    } catch (error) {
+      console.error("Failed to fetch tickets:", error);
+      toast.error("Failed to load support tickets");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const totalPages = Math.ceil(tickets.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const tickets = allTickets.slice(startIndex, endIndex);
+  const currentTickets = tickets.slice(startIndex, endIndex);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -366,7 +291,7 @@ export function SupportTickets() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {tickets.map((ticket, index) => (
+                  {currentTickets.map((ticket, index) => (
                     <motion.tr
                       key={ticket.id}
                       initial={{ opacity: 0, x: -20 }}

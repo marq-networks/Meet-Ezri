@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -16,6 +16,66 @@ export function NotificationsCenter() {
   const [notificationTitle, setNotificationTitle] = useState("");
   const [notificationMessage, setNotificationMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
+  const [audienceCounts, setAudienceCounts] = useState({
+    all: 0,
+    active: 0,
+    premium: 0,
+    trial: 0
+  });
+  const [stats, setStats] = useState({
+    sentThisWeek: 0,
+    avgOpenRate: 0,
+    totalDelivered: 0
+  });
+
+  useEffect(() => {
+    fetchNotifications();
+    fetchAudienceCounts();
+  }, []);
+
+  const fetchAudienceCounts = async () => {
+    try {
+      const data = await api.admin.getNotificationAudienceCounts();
+      setAudienceCounts(data);
+    } catch (error) {
+      console.error("Failed to fetch audience counts:", error);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await api.admin.getManualNotifications();
+      
+      const formatted = data.map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        audience: n.metadata?.target_audience ? 
+          (n.metadata.target_audience === 'all' ? 'All Users' : 
+           n.metadata.target_audience.charAt(0).toUpperCase() + n.metadata.target_audience.slice(1) + ' Users') 
+          : (n.segment_name || 'Targeted'),
+        sent: new Date(n.sent_at || n.created_at).toLocaleString(),
+        delivered: 1,
+        status: n.is_read ? 'Read' : 'Sent'
+      }));
+
+      setRecentNotifications(formatted);
+
+      // Calculate simple stats
+      const totalSent = formatted.length;
+      const totalDelivered = formatted.length; // Since each is 1
+      
+      setStats({
+        sentThisWeek: totalSent, // Ideally this should be filtered by date
+        avgOpenRate: 0, // Not tracking opens yet
+        totalDelivered: totalDelivered
+      });
+
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    }
+  };
 
   const handleSend = async () => {
     if (!notificationTitle || !notificationMessage) {
@@ -25,26 +85,17 @@ export function NotificationsCenter() {
 
     setIsSending(true);
     try {
-      if (selectedAudience === 'all') {
-        await api.notifications.broadcast({
-          type: 'system',
-          title: notificationTitle,
-          message: notificationMessage,
-          metadata: { audience: selectedAudience }
-        });
-        toast.success(`Notification sent to all users!`);
-      } else {
-         // Fallback to broadcast for demo, or implement specific targeting later
-         toast.info("Targeted notifications coming soon. Broadcasting to all.");
-         await api.notifications.broadcast({
-          type: 'system',
-          title: notificationTitle,
-          message: notificationMessage,
-          metadata: { audience: selectedAudience }
-        });
-      }
+      await api.admin.createManualNotification({
+        title: notificationTitle,
+        message: notificationMessage,
+        channel: 'push', // Defaulting to push for this quick send
+        target_audience: selectedAudience,
+      });
+      
+      toast.success(`Notification sent successfully!`);
       setNotificationTitle('');
       setNotificationMessage('');
+      fetchNotifications();
     } catch (error) {
       toast.error('Failed to send notification');
       console.error(error);
@@ -53,34 +104,9 @@ export function NotificationsCenter() {
     }
   };
 
-
-  const recentNotifications = [
-    {
-      id: 1,
-      title: "Platform Maintenance Notice",
-      audience: "All Users",
-      sent: "2024-12-28 18:00",
-      delivered: 12459,
-    },
-    {
-      id: 2,
-      title: "New Wellness Exercise Available",
-      audience: "Active Users",
-      sent: "2024-12-27 14:30",
-      delivered: 10234,
-    },
-    {
-      id: 3,
-      title: "Mental Health Awareness Week",
-      audience: "All Users",
-      sent: "2024-12-26 10:00",
-      delivered: 12459,
-    },
-  ];
-
   return (
     <AdminLayoutNew>
-      <div className="space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-3xl font-bold mb-2">Notifications Center</h1>
           <p className="text-muted-foreground">
@@ -126,10 +152,10 @@ export function NotificationsCenter() {
                   <Label className="mb-3 block">Target Audience</Label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { id: "all", label: "All Users", count: "12,459" },
-                      { id: "active", label: "Active Users", count: "10,234" },
-                      { id: "premium", label: "Premium Users", count: "8,234" },
-                      { id: "trial", label: "Trial Users", count: "1,225" },
+                      { id: "all", label: "All Users", count: audienceCounts.all.toLocaleString() },
+                      { id: "active", label: "Active Users", count: audienceCounts.active.toLocaleString() },
+                      { id: "premium", label: "Premium Users", count: audienceCounts.premium.toLocaleString() },
+                      { id: "trial", label: "Trial Users", count: audienceCounts.trial.toLocaleString() },
                     ].map((option) => (
                       <button
                         key={option.id}
@@ -196,15 +222,15 @@ export function NotificationsCenter() {
               <div className="space-y-4">
                 <div className="p-3 bg-primary/5 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Sent This Week</p>
-                  <p className="text-2xl font-bold text-primary">8</p>
+                  <p className="text-2xl font-bold text-primary">{stats.sentThisWeek}</p>
                 </div>
                 <div className="p-3 bg-green-50 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Avg Open Rate</p>
-                  <p className="text-2xl font-bold text-green-600">87%</p>
+                  <p className="text-2xl font-bold text-green-600">{stats.avgOpenRate}%</p>
                 </div>
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Total Delivered</p>
-                  <p className="text-2xl font-bold text-blue-600">45,234</p>
+                  <p className="text-2xl font-bold text-blue-600">{stats.totalDelivered.toLocaleString()}</p>
                 </div>
               </div>
             </Card>
