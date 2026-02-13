@@ -139,12 +139,18 @@ export function SessionLobby() {
 
   const durations = [15, 30, 45, 60];
 
-  const preSessionChecklist = [
+  const [checklistItems, setChecklistItems] = useState([
     { label: "Find a quiet, private space", checked: true },
     { label: "Check your audio/video", checked: true },
     { label: "Take a few deep breaths", checked: false },
     { label: "Set your intention for this session", checked: false }
-  ];
+  ]);
+
+  const toggleChecklist = (index: number) => {
+    const newItems = [...checklistItems];
+    newItems[index].checked = !newItems[index].checked;
+    setChecklistItems(newItems);
+  };
 
   return (
     <AppLayout>
@@ -302,16 +308,17 @@ export function SessionLobby() {
               <Card className="p-6 shadow-xl">
                 <h2 className="text-xl font-bold mb-4">Before You Start</h2>
                 <div className="space-y-3">
-                  {preSessionChecklist.map((item, index) => (
+                  {checklistItems.map((item, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.6 + index * 0.05 }}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      onClick={() => toggleChecklist(index)}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
                     >
                       <div
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                           item.checked
                             ? "bg-green-500 border-green-500"
                             : "border-gray-300"
@@ -321,7 +328,7 @@ export function SessionLobby() {
                           <CheckCircle className="w-4 h-4 text-white" />
                         )}
                       </div>
-                      <span className={item.checked ? "text-muted-foreground line-through" : ""}>
+                      <span className={item.checked ? "text-muted-foreground line-through transition-colors" : "transition-colors"}>
                         {item.label}
                       </span>
                     </motion.div>

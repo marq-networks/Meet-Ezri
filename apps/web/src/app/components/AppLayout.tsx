@@ -47,7 +47,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
+    <div className="h-screen overflow-auto bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
       {/* Header */}
       <motion.header
         initial={{ y: -100 }}
