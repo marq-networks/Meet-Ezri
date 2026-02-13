@@ -1,10 +1,11 @@
 
 import prisma from "../../lib/prisma";
+import { Prisma } from "@prisma/client";
 import { CreateAvatarInput, UpdateAvatarInput } from "./ai-avatars.schema";
 
 export async function createAvatar(input: CreateAvatarInput) {
   return prisma.ai_avatars.create({
-    data: input,
+    data: input as Prisma.ai_avatarsCreateInput,
   });
 }
 
