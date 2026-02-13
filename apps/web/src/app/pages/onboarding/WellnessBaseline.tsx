@@ -42,7 +42,7 @@ export function OnboardingWellnessBaseline() {
 
   const handleContinue = () => {
     updateData({ currentMood, selectedGoals });
-    navigate("/onboarding/health-background");
+    navigate("/onboarding/avatar-preferences");
   };
 
   return (

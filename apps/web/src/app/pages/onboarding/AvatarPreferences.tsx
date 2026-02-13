@@ -106,7 +106,7 @@ export function OnboardingAvatarPreferences() {
       currentStep={5}
       totalSteps={8}
       title="Choose Your AI Companion"
-      subtitle="Select the AI therapist who will support your wellness journey"
+      subtitle="Select the AI companion who will support your wellness journey"
     >
       <div className="space-y-6">
         {/* Important Notice */}
@@ -139,7 +139,7 @@ export function OnboardingAvatarPreferences() {
           <div className="mb-4">
             <Label className="text-base font-semibold flex items-center gap-2">
               <Brain className="w-5 h-5 text-primary" />
-              Select Your AI Therapist
+              Select Your AI Companion
             </Label>
             <p className="text-sm text-muted-foreground mt-1">
               Choose the AI companion that feels right for you. You can change this later in settings.
@@ -294,7 +294,7 @@ export function OnboardingAvatarPreferences() {
         >
           <Card className="p-4 bg-blue-50 border-blue-200">
             <p className="text-sm text-blue-900">
-              💡 <span className="font-medium">Tip:</span> You can change your AI therapist and session preferences anytime in your settings
+              💡 <span className="font-medium">Tip:</span> You can change your AI companion and session preferences anytime in your settings
             </p>
           </Card>
         </motion.div>
@@ -306,7 +306,7 @@ export function OnboardingAvatarPreferences() {
           transition={{ delay: 1 }}
           className="flex gap-3"
         >
-          <Link to="/onboarding/health-background" className="flex-1">
+          <Link to="/onboarding/wellness-baseline" className="flex-1">
             <Button type="button" variant="outline" className="w-full group">
               <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
               Back

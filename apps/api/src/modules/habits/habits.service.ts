@@ -2,6 +2,15 @@ import prisma from "../../lib/prisma";
 import { CreateHabitInput, UpdateHabitInput, LogHabitInput } from "./habits.schema";
 
 export async function createHabit(userId: string, data: CreateHabitInput) {
+  // Check if profile exists
+  const profile = await prisma.profiles.findUnique({
+    where: { id: userId }
+  });
+
+  if (!profile) {
+    throw new Error('User profile not found. Please complete onboarding first.');
+  }
+
   return prisma.habits.create({
     data: {
       name: data.name!,

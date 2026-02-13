@@ -203,9 +203,9 @@ export function HabitTracker() {
       fetchHabits();
       setShowNewHabit(false);
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create habit", error);
-      alert("Failed to create habit");
+      alert(error.message || "Failed to create habit");
     }
   };
 
@@ -217,9 +217,9 @@ export function HabitTracker() {
       fetchHabits();
       setShowNewHabit(false);
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update habit", error);
-      alert("Failed to update habit");
+      alert(error.message || "Failed to update habit");
     }
   };
 

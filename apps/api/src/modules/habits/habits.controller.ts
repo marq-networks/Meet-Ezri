@@ -11,9 +11,12 @@ export async function createHabitHandler(
   try {
     const habit = await createHabit(request.user.id, request.body);
     return reply.code(201).send(habit);
-  } catch (e) {
-    console.error(e);
-    return reply.code(500).send({ message: "Error creating habit" });
+  } catch (e: any) {
+    console.error('Error creating habit:', e);
+    if (e.message && e.message.includes('User profile not found')) {
+      return reply.code(400).send({ message: e.message });
+    }
+    return reply.code(500).send({ message: "Error creating habit", error: e.message });
   }
 }
 
