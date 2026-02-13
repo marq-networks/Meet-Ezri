@@ -1,4 +1,5 @@
 import prisma from '../../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { CreateNotificationInput } from './notifications.schema';
 
 export const notificationsService = {
@@ -14,7 +15,7 @@ export const notificationsService = {
     }
 
     return prisma.notifications.create({
-      data: input,
+      data: input as Prisma.notificationsUncheckedCreateInput,
     });
   },
 
