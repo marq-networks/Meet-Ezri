@@ -62,7 +62,6 @@ const NAVIGATION: NavSection[] = [
       { name: "Super Admin Dashboard", href: "/admin/super-admin-dashboard", icon: Crown, roles: ["super_admin"] },
       { name: "Org Admin Dashboard", href: "/admin/org-admin-dashboard", icon: Building2, roles: ["org_admin"] },
       { name: "Team Admin Dashboard", href: "/admin/team-admin-dashboard", icon: Shield, roles: ["team_admin"] },
-      { name: "Admin Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, roles: ["super_admin", "org_admin", "team_admin"] },
     ],
   },
   {
@@ -71,7 +70,6 @@ const NAVIGATION: NavSection[] = [
     roles: ["super_admin", "org_admin", "team_admin"],
     pages: [
       { name: "All Users", href: "/admin/user-management", icon: Users, roles: ["super_admin", "org_admin", "team_admin"] },
-      { name: "User Details", href: "/admin/user-details-enhanced", icon: Eye, roles: ["super_admin", "org_admin", "team_admin"] },
       { name: "User Segmentation", href: "/admin/user-segmentation", icon: Users, roles: ["super_admin", "org_admin"] },
       { name: "Team Management", href: "/admin/team-role-management", icon: Shield, roles: ["super_admin", "org_admin"] },
       { name: "Companion Management", href: "/admin/companion-management", icon: Users, roles: ["super_admin", "org_admin"] },

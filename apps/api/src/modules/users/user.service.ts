@@ -271,7 +271,7 @@ export async function completeOnboarding(userId: string, data: OnboardingInput) 
 
   // If therapist, create/update therapist profile
   if (role === 'therapist') {
-    await prisma.therapist_profiles.upsert({
+    await prisma.companion_profiles.upsert({
       where: { id: userId },
       create: {
         id: userId,

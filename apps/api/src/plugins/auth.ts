@@ -39,7 +39,7 @@ export default fp(async (fastify: FastifyInstance) => {
             
             // Update cache
             userRoleCache.set(user.sub, {
-              role: profile.role,
+              role: profile.role || 'user',
               permissions: profile.permissions,
               timestamp: now
             });

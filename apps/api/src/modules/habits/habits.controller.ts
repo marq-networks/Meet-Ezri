@@ -2,6 +2,12 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { CreateHabitInput, UpdateHabitInput, LogHabitInput } from "./habits.schema";
 import { createHabit, getHabits, updateHabit, deleteHabit, logHabitCompletion, removeHabitCompletion } from "./habits.service";
 
+interface UserPayload {
+  sub: string;
+  email?: string;
+  role?: string;
+}
+
 export async function createHabitHandler(
   request: FastifyRequest<{
     Body: CreateHabitInput;
@@ -9,7 +15,8 @@ export async function createHabitHandler(
   reply: FastifyReply
 ) {
   try {
-    const habit = await createHabit(request.user.id, request.body);
+    const user = request.user as UserPayload;
+    const habit = await createHabit(user.sub, request.body);
     return reply.code(201).send(habit);
   } catch (e: any) {
     console.error('Error creating habit:', e);
@@ -25,7 +32,8 @@ export async function getHabitsHandler(
   reply: FastifyReply
 ) {
   try {
-    const habits = await getHabits(request.user.id);
+    const user = request.user as UserPayload;
+    const habits = await getHabits(user.sub);
     return reply.code(200).send(habits);
   } catch (e) {
     console.error(e);
@@ -41,7 +49,8 @@ export async function updateHabitHandler(
   reply: FastifyReply
 ) {
   try {
-    const habit = await updateHabit(request.user.id, request.params.id, request.body);
+    const user = request.user as UserPayload;
+    const habit = await updateHabit(user.sub, request.params.id, request.body);
     return reply.code(200).send(habit);
   } catch (e) {
     console.error(e);
@@ -56,7 +65,8 @@ export async function deleteHabitHandler(
   reply: FastifyReply
 ) {
   try {
-    await deleteHabit(request.user.id, request.params.id);
+    const user = request.user as UserPayload;
+    await deleteHabit(user.sub, request.params.id);
     return reply.code(204).send();
   } catch (e) {
     console.error(e);
@@ -72,7 +82,8 @@ export async function logHabitCompletionHandler(
   reply: FastifyReply
 ) {
   try {
-    const log = await logHabitCompletion(request.user.id, request.params.id, request.body);
+    const user = request.user as UserPayload;
+    const log = await logHabitCompletion(user.sub, request.params.id, request.body);
     return reply.code(201).send(log);
   } catch (e) {
     console.error(e);
@@ -102,7 +113,8 @@ export async function removeHabitCompletionHandler(
   reply: FastifyReply
 ) {
   try {
-    const result = await removeHabitCompletion(request.user.id, request.params.id, request.query.date);
+    const user = request.user as UserPayload;
+    const result = await removeHabitCompletion(user.sub, request.params.id, request.query.date);
     return reply.code(200).send(result);
   } catch (e) {
     console.error(e);
