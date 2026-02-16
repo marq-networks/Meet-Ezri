@@ -194,3 +194,20 @@ export async function deleteUserHandler(
     return reply.code(500).send({ message: 'Failed to delete user account' });
   }
 }
+
+export async function exportUserDataHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const user = request.user as UserPayload;
+  request.log.info({ user }, 'Processing user data export request');
+
+  try {
+    const userData = await userService.exportUserData(user.sub);
+    reply.header('Content-Disposition', `attachment; filename="meetezri-data-export-${new Date().toISOString()}.json"`);
+    return reply.send(userData);
+  } catch (error) {
+    request.log.error({ error }, 'User data export failed');
+    return reply.code(500).send({ message: 'Failed to export user data' });
+  }
+}

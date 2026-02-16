@@ -4,6 +4,7 @@ import {
   getMeHandler,
   updateProfileHandler,
   deleteUserHandler,
+  exportUserDataHandler,
   getCreditsHandler,
   initProfileHandler,
   getAllUsersHandler,
@@ -75,5 +76,13 @@ export async function userRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate],
     },
     deleteUserHandler
+  );
+
+  fastify.get(
+    '/export',
+    {
+      preHandler: [fastify.authenticate],
+    },
+    exportUserDataHandler
   );
 }

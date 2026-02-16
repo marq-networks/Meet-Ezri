@@ -613,6 +613,7 @@ model profiles {
   emergency_contact_relationship String?
   in_therapy                     String?
   notification_preferences       Json?
+  privacy_settings               Json?
   on_medication                  String?
   permissions                    Json?
   selected_avatar                String?

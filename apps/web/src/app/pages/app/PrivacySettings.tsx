@@ -16,12 +16,17 @@ import {
   Heart
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSafetyConsent } from "@/app/contexts/SafetyContext";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { AppLayout } from "@/app/components/AppLayout";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export function PrivacySettings() {
   const { consent, updateConsent } = useSafetyConsent();
+  const { profile } = useAuth();
+  
   const [settings, setSettings] = useState({
     profileVisibility: "private",
     showOnlineStatus: false,
@@ -32,46 +37,64 @@ export function PrivacySettings() {
     thirdPartySharing: false
   });
 
+  // Load settings from profile when component mounts or profile changes
+  useEffect(() => {
+    if (profile?.privacy_settings) {
+      setSettings(prev => ({
+        ...prev,
+        ...profile.privacy_settings
+      }));
+    }
+  }, [profile]);
+
+  const updateSettings = async (newSettings: typeof settings) => {
+    setSettings(newSettings); // Optimistic update
+    
+    try {
+      await api.updateProfile({
+        privacy_settings: newSettings
+      });
+    } catch (error) {
+      console.error("Failed to update privacy settings:", error);
+      toast.error("Failed to save settings");
+      // Revert state on error
+      if (profile?.privacy_settings) {
+        setSettings(prev => ({
+          ...prev,
+          ...profile.privacy_settings
+        }));
+      }
+    }
+  };
+
   const toggleSetting = (key: keyof typeof settings) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-  };
-
-  const handleDownloadData = () => {
-    // Collect all user data from localStorage or state
-    const userData = {
-      profile: {
-        name: localStorage.getItem('userName') || 'User',
-        email: localStorage.getItem('userEmail') || 'user@example.com',
-        joinedDate: new Date().toISOString()
-      },
-      settings: settings,
-      exportDate: new Date().toISOString(),
-      dataType: 'Ezri User Data Export'
+    const newSettings = {
+      ...settings,
+      [key]: !settings[key]
     };
-
-    // Create a blob with formatted JSON data
-    const dataStr = JSON.stringify(userData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    
-    // Create download link
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ezri-data-export-${new Date().toISOString().split('T')[0]}.json`;
-    
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    alert('Your data has been downloaded successfully!');
+    updateSettings(newSettings);
   };
 
-  const handleDeleteAllData = () => {
+  const handleDownloadData = async () => {
+    toast.info("Preparing your data for download...");
+    try {
+      const blob = await api.exportUserData();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ezri-data-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      toast.success("Your data has been downloaded successfully!");
+    } catch (error) {
+      console.error("Failed to download user data:", error);
+      toast.error("Failed to download your data. Please try again.");
+    }
+  };
+
+  const handleDeleteAllData = async () => {
     const confirmation = window.confirm(
       '⚠️ Warning: This will permanently delete ALL your data including:\n\n' +
       '• Profile information\n' +
@@ -89,24 +112,15 @@ export function PrivacySettings() {
       );
       
       if (finalConfirmation) {
-        // Clear all localStorage data
-        localStorage.clear();
-        
-        // Reset settings to default
-        setSettings({
-          profileVisibility: "private",
-          showOnlineStatus: false,
-          allowAnalytics: true,
-          shareProgress: false,
-          allowCookies: true,
-          marketingEmails: false,
-          thirdPartySharing: false
-        });
-        
-        alert('✓ All your data has been permanently deleted.');
-        
-        // Optionally redirect to home or logout
-        // window.location.href = '/';
+        try {
+          await api.deleteUser();
+          toast.success('Your data has been permanently deleted.');
+          // Optionally redirect to home or logout
+          // window.location.href = '/';
+        } catch (error) {
+          console.error("Failed to delete user data:", error);
+          toast.error("Failed to delete your data. Please try again.");
+        }
       }
     }
   };
@@ -161,7 +175,7 @@ export function PrivacySettings() {
                 </div>
                 <select
                   value={settings.profileVisibility}
-                  onChange={(e) => setSettings({...settings, profileVisibility: e.target.value})}
+                  onChange={(e) => updateSettings({...settings, profileVisibility: e.target.value})}
                   className="px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
                 >
                   <option value="public">Public</option>

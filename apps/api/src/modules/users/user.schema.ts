@@ -19,6 +19,7 @@ export const onboardingSchema = z.object({
   emergency_contact_relationship: z.string().optional(),
   permissions: z.record(z.any()).optional(),
   notification_preferences: z.record(z.any()).optional(),
+  privacy_settings: z.record(z.any()).optional(),
   // Companion specific fields
   license_number: z.string().optional(),
   specializations: z.array(z.string()).optional(),
@@ -45,6 +46,7 @@ export const updateProfileSchema = z.object({
   emergency_contact_phone: z.string().optional(),
   emergency_contact_relationship: z.string().optional(),
   notification_preferences: z.record(z.any()).optional(),
+  privacy_settings: z.record(z.any()).optional(),
 });
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>;

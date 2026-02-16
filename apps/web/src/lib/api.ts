@@ -27,6 +27,15 @@ async function handleResponse(res: Response, defaultErrorMessage: string) {
   return res.json();
 }
 
+async function handleBlobResponse(res: Response, errorMessage: string) {
+  if (!res.ok) {
+    const errorBody = await res.text();
+    console.error(errorMessage, { status: res.status, body: errorBody });
+    throw new Error(errorMessage);
+  }
+  return res.blob();
+}
+
 export const api = {
   async getMe() {
     const headers = await getHeaders();
@@ -81,6 +90,15 @@ export const api = {
     });
     
     return handleResponse(res, 'Failed to delete account');
+  },
+
+  async exportUserData() {
+    const headers = await getHeaders();
+    const res = await fetch(`${API_URL}/users/export`, {
+      method: 'GET',
+      headers,
+    });
+    return handleBlobResponse(res, 'Failed to export user data');
   },
 
   async sendEmail(to: string, subject: string, html: string, text?: string) {
