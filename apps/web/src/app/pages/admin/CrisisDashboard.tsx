@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { AlertTriangle, Phone, Mail, Eye, CheckCircle, Clock, TrendingDown, Shield, MessageSquare, User, Bell, ArrowRight, AlertCircle, Activity, Users, Calendar, Filter, Download } from "lucide-react";
 import { Link } from "react-router-dom";
+import { api } from "../../../lib/api";
 
 interface CrisisEvent {
-  id: number;
+  id: string;
   userId: string;
   userName: string;
-  riskLevel: "critical" | "high" | "medium";
+  riskLevel: "critical" | "high" | "medium" | "low";
   type: string;
   keywords: string[];
   timestamp: string;
@@ -19,10 +20,90 @@ interface CrisisEvent {
   responseTime?: string;
   assignedTo?: string;
   lastContact?: string;
+  createdAt?: string;
+  resolvedAt?: string;
 }
 
 type FilterType = "all" | "pending" | "contacted" | "in-progress" | "resolved";
 type RiskFilter = "all" | "critical" | "high" | "medium";
+
+function formatRelativeTime(timestamp: string | null | undefined) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffMinutes = Math.round(diffMs / 60000);
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min${diffMinutes === 1 ? "" : "s"} ago`;
+  }
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} hr${diffHours === 1 ? "" : "s"} ago`;
+  }
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
+
+function getResponseTimeLabel(start?: string, end?: string) {
+  if (!start || !end) return undefined;
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return undefined;
+  }
+  const diffMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+  if (diffMinutes <= 0) return undefined;
+  return `${diffMinutes} min`;
+}
+
+function getAverageResponseTime(events: CrisisEvent[]): string {
+  let totalMinutes = 0;
+  let count = 0;
+  events.forEach((event) => {
+    if (!event.createdAt || !event.resolvedAt) return;
+    const start = new Date(event.createdAt);
+    const end = new Date(event.resolvedAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+    const diffMinutes = (end.getTime() - start.getTime()) / 60000;
+    if (diffMinutes <= 0) return;
+    totalMinutes += diffMinutes;
+    count += 1;
+  });
+  if (!count) return "N/A";
+  const avg = totalMinutes / count;
+  return `${avg.toFixed(1)} min`;
+}
+
+function mapApiCrisisEvent(event: any): CrisisEvent {
+  const createdAt = event.created_at as string | undefined;
+  const resolvedAt = event.resolved_at as string | undefined;
+  const userName =
+    event.profiles?.full_name ||
+    event.profiles?.email ||
+    "Unknown user";
+  const assignedTo =
+    event.assigned_profile?.full_name ||
+    event.assigned_profile?.email ||
+    undefined;
+  return {
+    id: event.id,
+    userId: event.user_id,
+    userName,
+    riskLevel: (event.risk_level || "medium") as CrisisEvent["riskLevel"],
+    type: event.event_type || "Crisis event",
+    keywords: Array.isArray(event.keywords) ? event.keywords : [],
+    timestamp: formatRelativeTime(createdAt),
+    status: (event.status || "pending") as CrisisEvent["status"],
+    aiConfidence: typeof event.ai_confidence === "number" ? event.ai_confidence : 0,
+    responseTime: getResponseTimeLabel(createdAt, resolvedAt),
+    assignedTo,
+    lastContact: undefined,
+    createdAt,
+    resolvedAt,
+  };
+}
 
 export function CrisisDashboard() {
   const [statusFilter, setStatusFilter] = useState<FilterType>("all");
@@ -35,91 +116,31 @@ export function CrisisDashboard() {
   const [contactNotes, setContactNotes] = useState("");
   const [statusNotes, setStatusNotes] = useState("");
   const [newStatus, setNewStatus] = useState<"contacted" | "in-progress" | "resolved">("contacted");
+  const [events, setEvents] = useState<CrisisEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const crisisEvents: CrisisEvent[] = [
-    {
-      id: 1,
-      userId: "user_2847",
-      userName: "Sarah M.",
-      riskLevel: "critical",
-      type: "Self-harm indication",
-      keywords: ["harm", "end", "pain", "can't take it"],
-      timestamp: "5 minutes ago",
-      status: "pending",
-      aiConfidence: 94,
-      assignedTo: "Crisis Team Alpha",
-    },
-    {
-      id: 2,
-      userId: "user_1923",
-      userName: "John D.",
-      riskLevel: "high",
-      type: "Severe depression",
-      keywords: ["hopeless", "worthless", "give up"],
-      timestamp: "12 minutes ago",
-      status: "contacted",
-      aiConfidence: 87,
-      responseTime: "8 min",
-      assignedTo: "Dr. Emily Chen",
-      lastContact: "4 minutes ago",
-    },
-    {
-      id: 3,
-      userId: "user_3456",
-      userName: "Michael T.",
-      riskLevel: "critical",
-      type: "Suicidal ideation",
-      keywords: ["suicide", "death", "end it all", "no point"],
-      timestamp: "18 minutes ago",
-      status: "in-progress",
-      aiConfidence: 91,
-      responseTime: "5 min",
-      assignedTo: "Crisis Team Beta",
-      lastContact: "2 minutes ago",
-    },
-    {
-      id: 4,
-      userId: "user_5621",
-      userName: "Emily R.",
-      riskLevel: "medium",
-      type: "Anxiety spike",
-      keywords: ["panic", "scared", "afraid", "can't breathe"],
-      timestamp: "1 hour ago",
-      status: "resolved",
-      aiConfidence: 76,
-      responseTime: "12 min",
-      assignedTo: "Support Team",
-      lastContact: "45 minutes ago",
-    },
-    {
-      id: 5,
-      userId: "user_7834",
-      userName: "David W.",
-      riskLevel: "high",
-      type: "Crisis escalation",
-      keywords: ["hurt myself", "desperate", "nowhere to turn"],
-      timestamp: "35 minutes ago",
-      status: "contacted",
-      aiConfidence: 89,
-      responseTime: "10 min",
-      assignedTo: "Dr. Sarah Williams",
-      lastContact: "15 minutes ago",
-    },
-    {
-      id: 6,
-      userId: "user_4512",
-      userName: "Jessica L.",
-      riskLevel: "critical",
-      type: "Imminent danger",
-      keywords: ["tonight", "plan", "goodbye", "sorry"],
-      timestamp: "2 minutes ago",
-      status: "pending",
-      aiConfidence: 96,
-    },
-  ];
+  const loadEvents = async () => {
+    try {
+      setError(null);
+      const data = await api.admin.getCrisisEvents();
+      const items = Array.isArray(data) ? data : [];
+      setEvents(items.map(mapApiCrisisEvent));
+    } catch (err) {
+      console.error("Failed to fetch crisis events", err);
+      setError("Failed to load crisis events");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
 
   // Filter events
-  const filteredEvents = crisisEvents.filter((event) => {
+  const filteredEvents = events.filter((event) => {
     const matchesStatus = statusFilter === "all" || event.status === statusFilter;
     const matchesRisk = riskFilter === "all" || event.riskLevel === riskFilter;
     return matchesStatus && matchesRisk;
@@ -127,12 +148,12 @@ export function CrisisDashboard() {
 
   // Stats
   const stats = {
-    critical: crisisEvents.filter((e) => e.riskLevel === "critical").length,
-    pending: crisisEvents.filter((e) => e.status === "pending").length,
-    contacted: crisisEvents.filter((e) => e.status === "contacted" || e.status === "in-progress").length,
-    resolved: crisisEvents.filter((e) => e.status === "resolved").length,
-    avgResponseTime: "8.5 min",
-    activeFollowUps: 12,
+    critical: events.filter((e) => e.riskLevel === "critical").length,
+    pending: events.filter((e) => e.status === "pending").length,
+    contacted: events.filter((e) => e.status === "contacted" || e.status === "in-progress").length,
+    resolved: events.filter((e) => e.status === "resolved").length,
+    avgResponseTime: getAverageResponseTime(events),
+    activeFollowUps: events.filter((e) => e.status === "contacted" || e.status === "in-progress").length,
   };
 
   const getRiskColor = (level: string) => {
@@ -175,6 +196,34 @@ export function CrisisDashboard() {
         return "bg-gray-100 text-gray-700";
     }
   };
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <p className="text-red-600 font-medium">{error}</p>
+          <Button
+            onClick={() => {
+              setIsLoading(true);
+              loadEvents();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
@@ -714,11 +763,23 @@ export function CrisisDashboard() {
             <div className="flex gap-3">
               <Button
                 className="flex-1 bg-red-600 hover:bg-red-700 gap-2"
-                onClick={() => {
-                  // Handle contact submission
-                  console.log('Contact initiated:', selectedEvent.id, contactNotes);
-                  setShowContactModal(false);
-                  setContactNotes("");
+                disabled={isUpdating}
+                onClick={async () => {
+                  if (!selectedEvent) return;
+                  try {
+                    setIsUpdating(true);
+                    await api.admin.updateCrisisEventStatus(selectedEvent.id, {
+                      status: "contacted",
+                      notes: contactNotes || undefined,
+                    });
+                    await loadEvents();
+                    setShowContactModal(false);
+                    setContactNotes("");
+                  } catch (error) {
+                    console.error("Failed to update crisis event", error);
+                  } finally {
+                    setIsUpdating(false);
+                  }
                 }}
               >
                 <Phone className="w-4 h-4" />
@@ -804,11 +865,23 @@ export function CrisisDashboard() {
             <div className="flex gap-3">
               <Button
                 className="flex-1 gap-2"
-                onClick={() => {
-                  // Handle status update
-                  console.log('Status updated:', selectedEvent.id, newStatus, statusNotes);
-                  setShowStatusModal(false);
-                  setStatusNotes("");
+                disabled={isUpdating}
+                onClick={async () => {
+                  if (!selectedEvent) return;
+                  try {
+                    setIsUpdating(true);
+                    await api.admin.updateCrisisEventStatus(selectedEvent.id, {
+                      status: newStatus,
+                      notes: statusNotes || undefined,
+                    });
+                    await loadEvents();
+                    setShowStatusModal(false);
+                    setStatusNotes("");
+                  } catch (error) {
+                    console.error("Failed to update crisis event", error);
+                  } finally {
+                    setIsUpdating(false);
+                  }
                 }}
               >
                 <CheckCircle className="w-4 h-4" />

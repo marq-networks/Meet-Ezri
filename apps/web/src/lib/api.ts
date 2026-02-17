@@ -511,6 +511,30 @@ export const api = {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/admin/error-logs`, { method: 'GET', headers });
       return handleResponse(res, 'Failed to fetch error logs');
+    },
+
+    async getCrisisEvents(status?: string) {
+      const headers = await getHeaders();
+      const query = status ? `?status=${encodeURIComponent(status)}` : '';
+      const res = await fetch(`${API_URL}/admin/crisis-events${query}`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch crisis events');
+    },
+
+    async updateCrisisEventStatus(
+      id: string,
+      data: { status?: string; notes?: string; assigned_to?: string }
+    ) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/crisis-events/${id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(res, 'Failed to update crisis event');
     }
   },
 
