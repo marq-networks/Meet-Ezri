@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
@@ -28,7 +28,96 @@ import {
   Ban,
   X,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { api } from "../../../lib/api";
+
+interface CrisisEvent {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  userPhone?: string;
+  riskLevel: "critical" | "high" | "medium" | "low";
+  type: string;
+  keywords: string[];
+  timestamp: string;
+  detectedAt?: string;
+  status: "pending" | "contacted" | "in-progress" | "resolved";
+  aiConfidence: number;
+  sessionId?: string;
+  location?: string;
+  timezone?: string;
+  emergencyContact?: {
+    name: string;
+    relationship?: string;
+    phone?: string;
+  } | null;
+  companion?: {
+    name: string;
+    specialty?: string;
+    phone?: string;
+  } | null;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString();
+}
+
+function formatRelativeTime(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffMinutes = Math.round(diffMs / 60000);
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes} min${diffMinutes === 1 ? "" : "s"} ago`;
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hr${diffHours === 1 ? "" : "s"} ago`;
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
+
+function mapApiEvent(event: any): CrisisEvent {
+  const profile = event.profiles;
+  const assignedProfile = event.assigned_profile;
+  const userName =
+    profile?.full_name ||
+    profile?.email ||
+    "Unknown user";
+  const userEmail = profile?.email;
+  const riskLevel = (event.risk_level || "medium") as CrisisEvent["riskLevel"];
+  const status = (event.status || "pending") as CrisisEvent["status"];
+
+  return {
+    id: event.id,
+    userId: event.user_id,
+    userName,
+    userEmail,
+    userPhone: undefined,
+    riskLevel,
+    type: event.event_type || "Crisis event",
+    keywords: Array.isArray(event.keywords) ? event.keywords : [],
+    timestamp: formatRelativeTime(event.created_at as string | undefined),
+    detectedAt: formatDateTime(event.created_at as string | undefined),
+    status,
+    aiConfidence: typeof event.ai_confidence === "number" ? event.ai_confidence : 0,
+    sessionId: event.session_id || undefined,
+    location: undefined,
+    timezone: undefined,
+    emergencyContact: null,
+    companion: assignedProfile
+      ? {
+          name: assignedProfile.full_name || assignedProfile.email || "Assigned specialist",
+          specialty: undefined,
+          phone: undefined,
+        }
+      : null,
+  };
+}
 
 export function CrisisEventDetails() {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
@@ -44,34 +133,34 @@ export function CrisisEventDetails() {
   const [emailContent, setEmailContent] = useState("");
   const [callNotes, setCallNotes] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [event, setEvent] = useState<CrisisEvent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const event = {
-    id: 1,
-    userId: "user_2847",
-    userName: "Sarah M.",
-    userEmail: "sarah.m@healthcare.com",
-    userPhone: "+1 (555) 123-4567",
-    riskLevel: "critical",
-    type: "Self-harm indication",
-    keywords: ["harm", "end", "pain", "can't take it"],
-    timestamp: "5 minutes ago",
-    detectedAt: "Dec 29, 2024 14:32",
-    status: "pending",
-    aiConfidence: 94,
-    sessionId: "session_8473",
-    location: "San Francisco, CA",
-    timezone: "PST (UTC-8)",
-    emergencyContact: {
-      name: "Jennifer Mitchell",
-      relationship: "Sister",
-      phone: "+1 (555) 987-6543",
-    },
-    companion: {
-      name: "Dr. Emily Chen",
-      specialty: "Crisis Intervention",
-      phone: "+1 (555) 111-2222",
-    },
-  };
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const eventId = searchParams.get("id");
+
+  useEffect(() => {
+    const load = async () => {
+      if (!eventId) {
+        setError("Missing crisis event id");
+        setIsLoading(false);
+        return;
+      }
+      try {
+        setError(null);
+        const data = await api.admin.getCrisisEvent(eventId);
+        setEvent(mapApiEvent(data));
+      } catch (err) {
+        console.error("Failed to fetch crisis event", err);
+        setError("Failed to load crisis event");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [eventId]);
 
   const conversationContext = [
     {
@@ -306,6 +395,29 @@ export function CrisisEventDetails() {
       alert(`Performing action: ${actionId}`);
     }
   };
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error || !event) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <p className="text-red-600 font-medium">{error || "Crisis event not found"}</p>
+          <Link to="/admin/crisis-dashboard">
+            <Button variant="outline">Back to Crisis Dashboard</Button>
+          </Link>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>

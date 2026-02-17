@@ -15,62 +15,84 @@ import {
   User,
   MessageSquare,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../../../lib/api";
 
 interface CrisisEvent {
-  id: number;
+  id: string;
   user: string;
-  riskLevel: "critical" | "high" | "medium";
+  riskLevel: "critical" | "high" | "medium" | "low";
   type: string;
   keywords: string[];
   timestamp: string;
   status: "pending" | "contacted" | "resolved";
   aiConfidence: number;
+  createdAt?: string;
+  resolvedAt?: string;
+}
+
+function formatRelativeTime(timestamp: string | null | undefined) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffMinutes = Math.round(diffMs / 60000);
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min${diffMinutes === 1 ? "" : "s"} ago`;
+  }
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} hr${diffHours === 1 ? "" : "s"} ago`;
+  }
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
+
+function getAverageResponseTime(events: CrisisEvent[]): string {
+  let totalMinutes = 0;
+  let count = 0;
+  events.forEach((event) => {
+    if (!event.createdAt || !event.resolvedAt) return;
+    const start = new Date(event.createdAt);
+    const end = new Date(event.resolvedAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+    const diffMinutes = (end.getTime() - start.getTime()) / 60000;
+    if (diffMinutes <= 0) return;
+    totalMinutes += diffMinutes;
+    count += 1;
+  });
+  if (!count) return "N/A";
+  const avg = totalMinutes / count;
+  return `${avg.toFixed(1)} min`;
+}
+
+function mapApiCrisisEvent(event: any): CrisisEvent {
+  const createdAt = event.created_at as string | undefined;
+  const resolvedAt = event.resolved_at as string | undefined;
+  const user =
+    event.profiles?.full_name ||
+    event.profiles?.email ||
+    "Unknown user";
+  return {
+    id: event.id,
+    user,
+    riskLevel: (event.risk_level || "medium") as CrisisEvent["riskLevel"],
+    type: event.event_type || "Crisis event",
+    keywords: Array.isArray(event.keywords) ? event.keywords : [],
+    timestamp: formatRelativeTime(createdAt),
+    status: (event.status || "pending") as CrisisEvent["status"],
+    aiConfidence: typeof event.ai_confidence === "number" ? event.ai_confidence : 0,
+    createdAt,
+    resolvedAt,
+  };
 }
 
 export function CrisisMonitoring() {
-  const crisisEvents: CrisisEvent[] = [
-    {
-      id: 1,
-      user: "Sarah M.",
-      riskLevel: "critical",
-      type: "Self-harm indication",
-      keywords: ["harm", "end", "pain"],
-      timestamp: "5 minutes ago",
-      status: "pending",
-      aiConfidence: 94,
-    },
-    {
-      id: 2,
-      user: "John D.",
-      riskLevel: "high",
-      type: "Severe depression",
-      keywords: ["hopeless", "worthless", "give up"],
-      timestamp: "12 minutes ago",
-      status: "contacted",
-      aiConfidence: 87,
-    },
-    {
-      id: 3,
-      user: "Emily R.",
-      riskLevel: "medium",
-      type: "Anxiety spike",
-      keywords: ["panic", "scared", "afraid"],
-      timestamp: "1 hour ago",
-      status: "resolved",
-      aiConfidence: 76,
-    },
-    {
-      id: 4,
-      user: "Michael T.",
-      riskLevel: "high",
-      type: "Suicidal ideation",
-      keywords: ["suicide", "death", "end it all"],
-      timestamp: "2 hours ago",
-      status: "contacted",
-      aiConfidence: 91,
-    },
-  ];
+  const [events, setEvents] = useState<CrisisEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const getRiskColor = (level: string) => {
     switch (level) {
@@ -104,6 +126,57 @@ export function CrisisMonitoring() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailContent, setEmailContent] = useState("");
   const [callNotes, setCallNotes] = useState("");
+
+  const loadEvents = async () => {
+    try {
+      setError(null);
+      const data = await api.admin.getCrisisEvents();
+      const items = Array.isArray(data) ? data : [];
+      setEvents(items.map(mapApiCrisisEvent));
+    } catch (err) {
+      console.error("Failed to fetch crisis events", err);
+      setError("Failed to load crisis events");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  const criticalCount = events.filter((e) => e.riskLevel === "critical").length;
+  const pendingCount = events.filter((e) => e.status === "pending").length;
+  const resolvedToday = events.filter((e) => e.status === "resolved").length;
+  const avgResponseTime = getAverageResponseTime(events);
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <p className="text-red-600 font-medium">{error}</p>
+          <Button
+            onClick={() => {
+              setIsLoading(true);
+              loadEvents();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
@@ -139,7 +212,7 @@ export function CrisisMonitoring() {
                   <p className="text-sm text-muted-foreground mb-1">
                     Critical Alerts
                   </p>
-                  <p className="text-2xl font-bold text-red-600">3</p>
+                  <p className="text-2xl font-bold text-red-600">{criticalCount}</p>
                 </div>
                 <AlertTriangle className="w-8 h-8 text-red-500" />
               </div>
@@ -156,7 +229,7 @@ export function CrisisMonitoring() {
                   <p className="text-sm text-muted-foreground mb-1">
                     Pending Review
                   </p>
-                  <p className="text-2xl font-bold text-yellow-600">7</p>
+                  <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
                 </div>
                 <Clock className="w-8 h-8 text-yellow-500" />
               </div>
@@ -173,7 +246,7 @@ export function CrisisMonitoring() {
                   <p className="text-sm text-muted-foreground mb-1">
                     Resolved Today
                   </p>
-                  <p className="text-2xl font-bold text-green-600">24</p>
+                  <p className="text-2xl font-bold text-green-600">{resolvedToday}</p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-500" />
               </div>
@@ -190,7 +263,7 @@ export function CrisisMonitoring() {
                   <p className="text-sm text-muted-foreground mb-1">
                     Avg Response Time
                   </p>
-                  <p className="text-2xl font-bold text-primary">8 min</p>
+                  <p className="text-2xl font-bold text-primary">{avgResponseTime}</p>
                 </div>
                 <TrendingDown className="w-8 h-8 text-primary" />
               </div>
@@ -213,8 +286,8 @@ export function CrisisMonitoring() {
               </Button>
             </div>
 
-            <div className="space-y-4">
-              {crisisEvents.map((event, index) => (
+              <div className="space-y-4">
+              {events.map((event, index) => (
                 <motion.div
                   key={event.id}
                   initial={{ opacity: 0, x: -20 }}

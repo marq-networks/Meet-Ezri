@@ -524,6 +524,16 @@ export const api = {
       return handleResponse(res, 'Failed to fetch crisis events');
     },
 
+    async getCrisisEvent(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/crisis-events/${id}`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch crisis event');
+    },
+
     async updateCrisisEventStatus(
       id: string,
       data: { status?: string; notes?: string; assigned_to?: string }
