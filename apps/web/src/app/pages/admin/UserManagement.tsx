@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { BulkUserActionsModal } from "../../components/BulkUserActionsModal";
 import { motion, AnimatePresence } from "motion/react";
+import { ConfirmationModal } from "../../components/ConfirmationModal";
 import {
   Search,
   Filter,
@@ -71,6 +72,17 @@ export function UserManagement() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [confirmationModal, setConfirmationModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
   const [newUser, setNewUser] = useState<{
     name: string;
     email: string;
@@ -116,26 +128,48 @@ export function UserManagement() {
   }, []);
 
   const handleAction = async (userId: string, action: 'suspend' | 'activate' | 'delete' | 'email') => {
-    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
-
-    try {
-      if (action === 'delete') {
-        await api.admin.deleteUser(userId);
-        setUsers(users.filter(u => u.id !== userId));
-      } else if (action === 'suspend') {
-        await api.admin.updateUser(userId, { status: 'suspended' });
-        setUsers(users.map(u => u.id === userId ? { ...u, status: 'suspended' } : u));
-      } else if (action === 'activate') {
-        await api.admin.updateUser(userId, { status: 'active' });
-        setUsers(users.map(u => u.id === userId ? { ...u, status: 'active' } : u));
-      } else if (action === 'email') {
-        // Redirect to email composition or show modal
-        alert("Email feature pending implementation");
+    const onConfirm = async () => {
+      try {
+        if (action === 'delete') {
+          await api.admin.deleteUser(userId);
+          setUsers(users.filter(u => u.id !== userId));
+        } else if (action === 'suspend') {
+          await api.admin.updateUser(userId, { status: 'suspended' });
+          setUsers(users.map(u => u.id === userId ? { ...u, status: 'suspended' } : u));
+        } else if (action === 'activate') {
+          await api.admin.updateUser(userId, { status: 'active' });
+          setUsers(users.map(u => u.id === userId ? { ...u, status: 'active' } : u));
+        } else if (action === 'email') {
+          // Redirect to email composition or show modal
+          setConfirmationModal({
+            isOpen: true,
+            title: "Email Feature",
+            message: "This feature is pending implementation. You will be able to email users from here soon.",
+            onConfirm: () => setConfirmationModal({ ...confirmationModal, isOpen: false }),
+          });
+        }
+      } catch (error) {
+        console.error(`Failed to ${action} user:`, error);
+        // Keep the modal open on error or show an error toast
+        setConfirmationModal({
+          isOpen: true,
+          title: "Error",
+          message: `Failed to ${action} user. Please try again.`,
+          onConfirm: () => setConfirmationModal({ ...confirmationModal, isOpen: false }),
+        });
       }
-    } catch (error) {
-      console.error(`Failed to ${action} user:`, error);
-      alert(`Failed to ${action} user`);
-    }
+      // Close modal on success
+      if (action !== 'email') {
+        setConfirmationModal({ ...confirmationModal, isOpen: false });
+      }
+    };
+
+    setConfirmationModal({
+      isOpen: true,
+      title: `Confirm ${action}`,
+      message: `Are you sure you want to ${action} this user?`,
+      onConfirm,
+    });
   };
 
   // Filter users
@@ -275,9 +309,46 @@ export function UserManagement() {
     setShowAddUserModal(true);
   };
 
-  const handleBulkAction = (action: string) => {
-    alert(`Performing ${action} on ${selectedUsers.length} users`);
-    setSelectedUsers([]);
+  const handleBulkAction = async (action: string) => {
+    const onConfirm = async () => {
+      try {
+        if (action === 'activate') {
+          await Promise.all(selectedUsers.map(userId => api.admin.updateUser(userId, { status: 'active' })));
+          setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, status: 'active' } : u));
+        } else if (action === 'suspend') {
+          await Promise.all(selectedUsers.map(userId => api.admin.updateUser(userId, { status: 'suspended' })));
+          setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, status: 'suspended' } : u));
+        } else if (action === 'email') {
+          setConfirmationModal({
+            isOpen: true,
+            title: "Email Feature",
+            message: "This feature is pending implementation for bulk actions. You will be able to email selected users soon.",
+            onConfirm: () => setConfirmationModal({ ...confirmationModal, isOpen: false }),
+          });
+        }
+        if (action !== 'email') {
+          setSelectedUsers([]);
+        }
+      } catch (error) {
+        console.error(`Failed to ${action} users:`, error);
+        setConfirmationModal({
+          isOpen: true,
+          title: "Error",
+          message: `Failed to ${action} users. Please try again.`,
+          onConfirm: () => setConfirmationModal({ ...confirmationModal, isOpen: false }),
+        });
+      }
+      if (action !== 'email') {
+        setConfirmationModal({ ...confirmationModal, isOpen: false });
+      }
+    };
+
+    setConfirmationModal({
+      isOpen: true,
+      title: `Confirm ${action}`,
+      message: `Are you sure you want to ${action} ${selectedUsers.length} users?`,
+      onConfirm,
+    });
   };
 
   const navigate = useNavigate();
@@ -976,6 +1047,13 @@ export function UserManagement() {
           </motion.div>
         )}
       </AnimatePresence>
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() => setConfirmationModal({ ...confirmationModal, isOpen: false })}
+        onConfirm={confirmationModal.onConfirm}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+      />
     </AdminLayoutNew>
   );
 }

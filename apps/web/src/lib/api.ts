@@ -266,7 +266,7 @@ export const api = {
 
     async getUserSessions(userId: string) { // Admin only
       const headers = await getHeaders();
-      const res = await fetch(`${API_URL}/sessions/admin/users/${userId}/sessions`, {
+      const res = await fetch(`${API_URL}/admin/users/${userId}/sessions`, {
         method: 'GET',
         headers,
         cache: 'no-store',
@@ -309,7 +309,7 @@ export const api = {
 
     async getUserMoods(userId: string) { // Admin only
       const headers = await getHeaders();
-      const res = await fetch(`${API_URL}/moods/admin/users/${userId}/moods`, {
+      const res = await fetch(`${API_URL}/admin/users/${userId}/moods`, {
         method: 'GET',
         headers,
         cache: 'no-store',
@@ -566,7 +566,7 @@ export const api = {
 
     async getUserJournals(userId: string) { // Admin only
       const headers = await getHeaders();
-      const res = await fetch(`${API_URL}/journal/admin/users/${userId}/journals`, {
+      const res = await fetch(`${API_URL}/admin/users/${userId}/journals`, {
         method: 'GET',
         headers,
         cache: 'no-store',

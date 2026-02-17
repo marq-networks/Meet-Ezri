@@ -51,7 +51,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
   );
 
   fastify.get(
-    '/users/:id',
+    '/users/:userId',
     {
       preHandler: [fastify.authenticate],
       schema: {
