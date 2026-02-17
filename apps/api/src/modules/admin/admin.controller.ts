@@ -8,7 +8,8 @@ import {
   getPushCampaigns, createPushCampaign,
   getSupportTickets, updateSupportTicket,
   getCommunityStats, getCommunityGroups,
-  getLiveSessions, getActivityLogs, getSessionRecordings, getErrorLogs
+  getLiveSessions, getActivityLogs, getSessionRecordings, getErrorLogs,
+  getCrisisEvents, getCrisisEvent, updateCrisisEventStatus
 } from './admin.service';
 import { updateUserSchema } from './admin.schema';
 import { z } from 'zod';
@@ -109,6 +110,52 @@ export async function getUserAuditLogsHandler(
   } catch (error) {
     request.log.error(error);
     return reply.code(500).send({ message: 'Failed to fetch user audit logs' });
+  }
+}
+
+export async function getCrisisEventsHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const status = (request.query as any)?.status as string | undefined;
+    const events = await getCrisisEvents(status);
+    return reply.code(200).send(events);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch crisis events' });
+  }
+}
+
+export async function getCrisisEventHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const { id } = request.params;
+    const event = await getCrisisEvent(id);
+    if (!event) {
+      return reply.code(404).send({ message: 'Crisis event not found' });
+    }
+    return reply.code(200).send(event);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch crisis event' });
+  }
+}
+
+export async function updateCrisisEventStatusHandler(
+  request: FastifyRequest<{ Params: { id: string }, Body: { status?: string; notes?: string; assigned_to?: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const { id } = request.params;
+    const body = (request.body || {}) as { status?: string; notes?: string; assigned_to?: string };
+    const event = await updateCrisisEventStatus(id, body);
+    return reply.code(200).send(event);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to update crisis event' });
   }
 }
 

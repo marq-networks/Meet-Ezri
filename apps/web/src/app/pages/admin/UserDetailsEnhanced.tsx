@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { ConfirmationModal } from "../../components/ConfirmationModal";
 import { ArrowLeft, Mail, Phone, Calendar, Activity, MessageSquare, Heart, AlertTriangle, Ban, CheckCircle2, Clock, MapPin, Shield, Star, TrendingUp, TrendingDown, Edit, Trash2, Key, Send, Download, Eye, EyeOff, User, CreditCard, Bell, Settings, Moon, Sun } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../../lib/api";
@@ -17,8 +18,18 @@ export function UserDetailsEnhanced() {
   const [userData, setUserData] = useState<any>(null);
   const [activityTimeline, setActivityTimeline] = useState<any[]>([]);
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
-  
   const [securityLogs, setSecurityLogs] = useState<any[]>([]);
+  const [confirmationModal, setConfirmationModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -159,8 +170,82 @@ export function UserDetailsEnhanced() {
   };
 
   const handleAction = (action: string) => {
-    alert(`Performing action: ${action}`);
+    if (!userData) return;
+
+    const performAction = async () => {
+      try {
+        if (action === "reset-password") {
+          const subject = "Reset your Ezri password";
+          const text = `Hello ${userData.name},\n\nAn admin has requested a password reset for your Ezri account. If this was not you, please contact support.`;
+          const html = `<p>Hello ${userData.name},</p><p>An admin has requested a password reset for your Ezri account. If this was not you, please contact support.</p>`;
+          await api.sendEmail(userData.email, subject, html, text);
+        } else if (action === "send-message") {
+          const subject = "Message from Ezri Admin";
+          const text = `Hello ${userData.name},\n\nYou have received a message from the Ezri admin team.`;
+          const html = `<p>Hello ${userData.name},</p><p>You have received a message from the Ezri admin team.</p>`;
+          await api.sendEmail(userData.email, subject, html, text);
+        } else if (action === "export-data") {
+          const blob = await api.exportUserData();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `ezri-user-${userData.id}-data.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        } else if (action === "suspend") {
+          await api.admin.updateUser(userData.id, { status: "suspended" });
+          setUserData((prev: any) =>
+            prev ? { ...prev, status: "suspended" } : prev
+          );
+        } else if (action === "delete") {
+          await api.admin.deleteUser(userData.id);
+          window.location.href = "/admin/user-management";
+        }
+        setConfirmationModal((prev) => ({ ...prev, isOpen: false }));
+      } catch (err) {
+        console.error("Failed to perform action", err);
+        setConfirmationModal({
+          isOpen: true,
+          title: "Error",
+          message: "Failed to perform action. Please try again.",
+          onConfirm: () =>
+            setConfirmationModal((prev) => ({
+              ...prev,
+              isOpen: false,
+            })),
+        });
+      }
+    };
+
+    let title = "";
+    let message = "";
+
+    if (action === "reset-password") {
+      title = "Reset Password";
+      message = `Send a password reset email to ${userData.name}?`;
+    } else if (action === "send-message") {
+      title = "Send Message";
+      message = `Send a message email to ${userData.name}?`;
+    } else if (action === "export-data") {
+      title = "Export Data";
+      message = `Export all data for ${userData.name}?`;
+    } else if (action === "suspend") {
+      title = "Suspend Account";
+      message = `Suspend ${userData.name}'s account?`;
+    } else if (action === "delete") {
+      title = "Delete Account";
+      message = `Permanently delete ${userData.name}'s account and profile?`;
+    }
+
     setShowActionMenu(false);
+    setConfirmationModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: performAction,
+    });
   };
   
   const statsCards = userData ? [
@@ -246,7 +331,11 @@ export function UserDetailsEnhanced() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" className="gap-2">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => handleAction("send-message")}
+              >
                 <Mail className="w-4 h-4" />
                 Email
               </Button>
@@ -621,6 +710,15 @@ export function UserDetailsEnhanced() {
           )}
         </AnimatePresence>
       </div>
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() =>
+          setConfirmationModal({ ...confirmationModal, isOpen: false })
+        }
+        onConfirm={confirmationModal.onConfirm}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+      />
     </AdminLayoutNew>
   );
 }

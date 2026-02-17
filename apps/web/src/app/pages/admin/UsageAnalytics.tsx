@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
@@ -36,133 +36,199 @@ import {
   Area,
   AreaChart,
 } from "recharts";
+import { api } from "../../../lib/api";
 
 export function UsageAnalytics() {
   const [timeRange, setTimeRange] = useState("7d");
   const [selectedMetric, setSelectedMetric] = useState("sessions");
+  const [statsData, setStatsData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Session data over time
-  const sessionData = [
-    { date: "Dec 23", sessions: 245, users: 189, avgDuration: 42 },
-    { date: "Dec 24", sessions: 198, users: 156, avgDuration: 38 },
-    { date: "Dec 25", sessions: 156, users: 124, avgDuration: 35 },
-    { date: "Dec 26", sessions: 289, users: 221, avgDuration: 45 },
-    { date: "Dec 27", sessions: 312, users: 245, avgDuration: 48 },
-    { date: "Dec 28", sessions: 298, users: 234, avgDuration: 46 },
-    { date: "Dec 29", sessions: 334, users: 267, avgDuration: 50 },
-  ];
+  useEffect(() => {
+    let isMounted = true;
 
-  // User engagement data
+    const fetchStats = async () => {
+      try {
+        const data = await api.admin.getStats();
+        if (isMounted) {
+          setStatsData(data);
+        }
+      } catch (err: any) {
+        console.error("Failed to fetch usage analytics", err);
+        if (isMounted) {
+          setError(err.message || "Failed to load usage analytics");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const sessionData =
+    (statsData?.sessionActivity || []).map((item: any) => ({
+      date: item.day,
+      sessions: item.sessions,
+      users: Math.max(item.sessions, 0),
+      avgDuration: item.duration,
+    }));
+
+  const totalSessions = statsData?.totalSessions || 0;
+  const featureUsage = statsData?.featureUsage || [];
+
+  const getFeatureUsagePercent = (name: string) => {
+    const found = featureUsage.find((item: any) => item.feature === name);
+    return found ? found.usage : 0;
+  };
+
+  const moodUsagePercent = getFeatureUsagePercent("Mood Tracking");
+  const journalUsagePercent = getFeatureUsagePercent("Journal");
+  const wellnessUsagePercent = getFeatureUsagePercent("Wellness Tools");
+
   const engagementData = [
-    { date: "Dec 23", moodChecks: 456, journalEntries: 234, wellness: 189 },
-    { date: "Dec 24", moodChecks: 398, journalEntries: 201, wellness: 167 },
-    { date: "Dec 25", moodChecks: 312, journalEntries: 178, wellness: 145 },
-    { date: "Dec 26", moodChecks: 512, journalEntries: 289, wellness: 223 },
-    { date: "Dec 27", moodChecks: 545, journalEntries: 312, wellness: 245 },
-    { date: "Dec 28", moodChecks: 523, journalEntries: 298, wellness: 234 },
-    { date: "Dec 29", moodChecks: 589, journalEntries: 334, wellness: 267 },
+    {
+      date: "All time",
+      moodChecks: Math.round((moodUsagePercent / 100) * totalSessions),
+      journalEntries: Math.round((journalUsagePercent / 100) * totalSessions),
+      wellness: Math.round((wellnessUsagePercent / 100) * totalSessions),
+    },
   ];
 
-  // Avatar usage distribution
-  const avatarData = [
-    { name: "Serena", value: 1245, color: "#8B5CF6" },
-    { name: "Marcus", value: 987, color: "#3B82F6" },
-    { name: "Luna", value: 856, color: "#EC4899" },
-    { name: "Alex", value: 723, color: "#10B981" },
-    { name: "Kai", value: 634, color: "#F59E0B" },
-  ];
+  const platformDistribution = statsData?.platformDistribution || [];
 
-  // Session type distribution
-  const sessionTypeData = [
-    { name: "Therapy", value: 2567, color: "#3B82F6" },
-    { name: "Wellness", value: 1234, color: "#10B981" },
-    { name: "Crisis", value: 345, color: "#EF4444" },
-    { name: "Check-in", value: 789, color: "#8B5CF6" },
-  ];
+  const avatarData = platformDistribution.map((item: any) => ({
+    name: item.name,
+    value: item.value,
+    color: item.color,
+  }));
 
-  // Peak usage hours
-  const hourlyData = [
-    { hour: "12am", sessions: 45 },
-    { hour: "3am", sessions: 23 },
-    { hour: "6am", sessions: 67 },
-    { hour: "9am", sessions: 189 },
-    { hour: "12pm", sessions: 245 },
-    { hour: "3pm", sessions: 289 },
-    { hour: "6pm", sessions: 312 },
-    { hour: "9pm", sessions: 267 },
-  ];
+  const sessionTypeData = featureUsage.map((item: any) => ({
+    name: item.feature,
+    value: item.usage,
+    color:
+      item.feature === "AI Sessions"
+        ? "#3B82F6"
+        : item.feature === "Mood Tracking"
+        ? "#10B981"
+        : item.feature === "Journal"
+        ? "#8B5CF6"
+        : "#F59E0B",
+  }));
 
-  // User retention data
-  const retentionData = [
-    { week: "Week 1", retained: 100, churned: 0 },
-    { week: "Week 2", retained: 87, churned: 13 },
-    { week: "Week 3", retained: 76, churned: 11 },
-    { week: "Week 4", retained: 68, churned: 8 },
-    { week: "Week 5", retained: 64, churned: 4 },
-    { week: "Week 6", retained: 61, churned: 3 },
-  ];
+  const hourlyData = statsData?.hourlyActivity || [];
 
-  const stats = [
-    {
-      label: "Total Sessions",
-      value: "12,456",
-      change: "+12.5%",
-      trend: "up",
-      icon: MessageSquare,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-    },
-    {
-      label: "Active Users",
-      value: "8,234",
-      change: "+8.3%",
-      trend: "up",
-      icon: Users,
-      color: "text-green-600",
-      bg: "bg-green-100",
-    },
-    {
-      label: "Avg Session Time",
-      value: "45 min",
-      change: "+3.2%",
-      trend: "up",
-      icon: Clock,
-      color: "text-purple-600",
-      bg: "bg-purple-100",
-    },
-    {
-      label: "Engagement Rate",
-      value: "78.5%",
-      change: "-2.1%",
-      trend: "down",
-      icon: Activity,
-      color: "text-orange-600",
-      bg: "bg-orange-100",
-    },
-    {
-      label: "Avg Mood Score",
-      value: "7.2/10",
-      change: "+0.8",
-      trend: "up",
-      icon: Heart,
-      color: "text-pink-600",
-      bg: "bg-pink-100",
-    },
-    {
-      label: "Completion Rate",
-      value: "92.3%",
-      change: "+4.7%",
-      trend: "up",
-      icon: TrendingUp,
-      color: "text-emerald-600",
-      bg: "bg-emerald-100",
-    },
-  ];
+  const retentionData =
+    (statsData?.userGrowth || []).map((item: any, index: number, arr: any[]) => {
+      const latestUsers = arr.length > 0 ? arr[arr.length - 1].users : 0;
+      const retained =
+        latestUsers > 0 ? Math.round((item.users / latestUsers) * 100) : 0;
+      const churned = Math.max(0, 100 - retained);
+      return {
+        week: `Period ${index + 1}`,
+        retained,
+        churned,
+      };
+    });
+
+  const stats = statsData
+    ? [
+        {
+          label: "Total Sessions",
+          value: statsData.totalSessions.toLocaleString(),
+          change: "0.0%",
+          trend: "up",
+          icon: MessageSquare,
+          color: "text-blue-600",
+          bg: "bg-blue-100",
+        },
+        {
+          label: "Active Users",
+          value: statsData.totalUsers.toLocaleString(),
+          change: "0.0%",
+          trend: "up",
+          icon: Users,
+          color: "text-green-600",
+          bg: "bg-green-100",
+        },
+        {
+          label: "Avg Session Time",
+          value: `${statsData.avgSessionLength || 0} min`,
+          change: "0.0%",
+          trend: "up",
+          icon: Clock,
+          color: "text-purple-600",
+          bg: "bg-purple-100",
+        },
+        {
+          label: "Engagement Rate",
+          value:
+            featureUsage.length > 0
+              ? `${Math.round(
+                  featureUsage.reduce(
+                    (sum: number, item: any) => sum + item.usage,
+                    0
+                  ) / featureUsage.length
+                )}%`
+              : "0%",
+          change: "0.0%",
+          trend: "up",
+          icon: Activity,
+          color: "text-orange-600",
+          bg: "bg-orange-100",
+        },
+        {
+          label: "Avg Mood Score",
+          value: "N/A",
+          change: "0.0",
+          trend: "up",
+          icon: Heart,
+          color: "text-pink-600",
+          bg: "bg-pink-100",
+        },
+        {
+          label: "Completion Rate",
+          value: "N/A",
+          change: "0.0%",
+          trend: "up",
+          icon: TrendingUp,
+          color: "text-emerald-600",
+          bg: "bg-emerald-100",
+        },
+      ]
+    : [];
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error && !statsData) {
+    return (
+      <AdminLayoutNew>
+        <div className="max-w-2xl mx-auto py-16 text-center space-y-4">
+          <h1 className="text-2xl font-bold">Usage analytics unavailable</h1>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
       <div className="space-y-6">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -198,7 +264,6 @@ export function UsageAnalytics() {
           </div>
         </motion.div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {stats.map((stat, index) => (
             <motion.div
@@ -226,7 +291,6 @@ export function UsageAnalytics() {
           ))}
         </div>
 
-        {/* Session Trend Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -289,7 +353,6 @@ export function UsageAnalytics() {
           </Card>
         </motion.div>
 
-        {/* Engagement Metrics */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -312,7 +375,6 @@ export function UsageAnalytics() {
           </Card>
         </motion.div>
 
-        {/* Distribution Charts */}
         <div className="grid lg:grid-cols-2 gap-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -320,7 +382,7 @@ export function UsageAnalytics() {
             transition={{ delay: 0.5 }}
           >
             <Card className="p-6">
-              <h2 className="text-xl font-bold mb-6">Avatar Preferences</h2>
+              <h2 className="text-xl font-bold mb-6">Platform Preferences</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <RechartsPie>
                   <Pie
@@ -362,7 +424,7 @@ export function UsageAnalytics() {
             transition={{ delay: 0.6 }}
           >
             <Card className="p-6">
-              <h2 className="text-xl font-bold mb-6">Session Types</h2>
+              <h2 className="text-xl font-bold mb-6">Feature Usage</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <RechartsPie>
                   <Pie
@@ -399,7 +461,6 @@ export function UsageAnalytics() {
           </motion.div>
         </div>
 
-        {/* Peak Usage Hours */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -8,7 +8,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     activeSessions,
     totalSessions,
     avgDurationResult,
-    crisisAlerts
+    crisisAlerts,
+    moodEntriesCount,
+    journalEntriesCount,
+    sleepEntriesCount,
+    habitLogsCount,
+    wellnessProgressCount,
+    crisisEventsCount
   ] = await Promise.all([
     prisma.profiles.count(),
     prisma.app_sessions.count({ 
@@ -21,7 +27,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     prisma.app_sessions.aggregate({
       _avg: { duration_minutes: true }
     }),
-    prisma.crisis_events.count({ where: { status: 'pending' } })
+    prisma.crisis_events.count({ where: { status: 'pending' } }),
+    prisma.mood_entries.count(),
+    prisma.journal_entries.count(),
+    prisma.sleep_entries.count(),
+    prisma.habit_logs.count(),
+    prisma.user_wellness_progress.count(),
+    prisma.crisis_events.count()
   ]);
 
   const avgSessionLength = Math.round(avgDurationResult._avg.duration_minutes || 0);
@@ -67,6 +79,39 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     };
   });
 
+  const hourlyBuckets = new Array(24).fill(0).map((_, hour) => ({
+    hour,
+    sessions: 0
+  }));
+
+  recentSessionsData.forEach(session => {
+    if (!session.started_at) {
+      return;
+    }
+    const hour = new Date(session.started_at).getHours();
+    if (hour >= 0 && hour < 24) {
+      hourlyBuckets[hour].sessions += 1;
+    }
+  });
+
+  const hourlyActivity = hourlyBuckets.map(bucket => {
+    const hour = bucket.hour;
+    let label = "";
+    if (hour === 0) {
+      label = "12am";
+    } else if (hour < 12) {
+      label = `${hour}am`;
+    } else if (hour === 12) {
+      label = "12pm";
+    } else {
+      label = `${hour - 12}pm`;
+    }
+    return {
+      hour: label,
+      sessions: bucket.sessions
+    };
+  });
+
   // System Health - Still hard to get real metrics without infra access
   const systemHealth = [
     { name: "API Response Time", value: "45ms", status: "excellent", color: "text-green-600", percentage: 95 },
@@ -98,6 +143,25 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { month: "Jul", revenue: revenue },
   ];
 
+  const featureUsageRaw = [
+    { feature: "AI Sessions", count: totalSessions },
+    { feature: "Mood Tracking", count: moodEntriesCount },
+    { feature: "Journal", count: journalEntriesCount },
+    { feature: "Sleep Tracker", count: sleepEntriesCount },
+    { feature: "Habit Tracker", count: habitLogsCount },
+    { feature: "Wellness Tools", count: wellnessProgressCount },
+    { feature: "Crisis Resources", count: crisisEventsCount }
+  ];
+
+  const maxFeatureCount = featureUsageRaw.reduce((max, item) => {
+    return item.count > max ? item.count : max;
+  }, 0);
+
+  const featureUsage = featureUsageRaw.map(item => ({
+    feature: item.feature,
+    usage: maxFeatureCount > 0 ? Math.round((item.count / maxFeatureCount) * 100) : 0
+  }));
+
   const platformDistribution = [
     { name: "Mobile App", value: 58, color: "#8b5cf6" },
     { name: "Web", value: 32, color: "#ec4899" },
@@ -114,8 +178,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     systemHealth,
     userGrowth,
     sessionActivity,
+    hourlyActivity,
     revenueData,
-    platformDistribution
+    platformDistribution,
+    featureUsage
   };
 }
 
@@ -613,4 +679,114 @@ export async function getErrorLogs() {
     orderBy: { created_at: 'desc' },
     take: 100
   });
+}
+
+function mapCrisisStatusFromDb(status: string | null): string {
+  if (!status) {
+    return 'pending';
+  }
+  if (status === 'in_progress') {
+    return 'in-progress';
+  }
+  return status;
+}
+
+function mapCrisisStatusToDb(status: string): string {
+  if (status === 'in-progress') {
+    return 'in_progress';
+  }
+  return status;
+}
+
+export async function getCrisisEvents(status?: string) {
+  const where: any = {};
+  if (status) {
+    where.status = mapCrisisStatusToDb(status);
+  }
+
+  const events = await prisma.crisis_events.findMany({
+    where,
+    orderBy: { created_at: 'desc' },
+    take: 100,
+    include: {
+      profiles_crisis_events_user_idToprofiles: {
+        select: { full_name: true, email: true }
+      },
+      profiles_crisis_events_assigned_toToprofiles: {
+        select: { full_name: true, email: true }
+      }
+    }
+  });
+
+  return events.map((event: any) => ({
+    ...event,
+    status: mapCrisisStatusFromDb(event.status || null),
+    profiles: event.profiles_crisis_events_user_idToprofiles,
+    assigned_profile: event.profiles_crisis_events_assigned_toToprofiles
+  }));
+}
+
+export async function getCrisisEvent(id: string) {
+  const event = await prisma.crisis_events.findUnique({
+    where: { id },
+    include: {
+      profiles_crisis_events_user_idToprofiles: {
+        select: { full_name: true, email: true }
+      },
+      profiles_crisis_events_assigned_toToprofiles: {
+        select: { full_name: true, email: true }
+      }
+    }
+  });
+
+  if (!event) return null;
+
+  return {
+    ...event,
+    status: mapCrisisStatusFromDb(event.status as any),
+    profiles: event.profiles_crisis_events_user_idToprofiles,
+    assigned_profile: event.profiles_crisis_events_assigned_toToprofiles
+  };
+}
+
+export async function updateCrisisEventStatus(
+  id: string,
+  data: { status?: string; notes?: string; assigned_to?: string }
+) {
+  const updateData: any = {};
+
+  if (data.status) {
+    updateData.status = mapCrisisStatusToDb(data.status);
+    if (updateData.status === 'resolved') {
+      updateData.resolved_at = new Date();
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(data, 'notes')) {
+    updateData.notes = data.notes;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(data, 'assigned_to')) {
+    updateData.assigned_to = data.assigned_to;
+  }
+
+  const event = await prisma.crisis_events.update({
+    where: { id },
+    data: updateData,
+    include: {
+      profiles_crisis_events_user_idToprofiles: {
+        select: { full_name: true, email: true }
+      },
+      profiles_crisis_events_assigned_toToprofiles: {
+        select: { full_name: true, email: true }
+      }
+    }
+  });
+
+  return {
+    ...event,
+    status: mapCrisisStatusFromDb(event.status as any),
+    profiles: event.profiles_crisis_events_user_idToprofiles,
+    assigned_profile: event.profiles_crisis_events_assigned_toToprofiles
+  };
 }

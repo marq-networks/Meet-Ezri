@@ -8,7 +8,8 @@ import {
   getPushCampaignsHandler, createPushCampaignHandler,
   getSupportTicketsHandler, updateSupportTicketHandler,
   getCommunityStatsHandler, getCommunityGroupsHandler,
-  getLiveSessionsHandler, getActivityLogsHandler, getSessionRecordingsHandler, getErrorLogsHandler
+  getLiveSessionsHandler, getActivityLogsHandler, getSessionRecordingsHandler, getErrorLogsHandler,
+  getCrisisEventsHandler, getCrisisEventHandler, updateCrisisEventStatusHandler
 } from './admin.controller';
 import { dashboardStatsSchema, userListSchema, userSchema, updateUserSchema } from './admin.schema';
 import { z } from 'zod';
@@ -51,7 +52,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
   );
 
   fastify.get(
-    '/users/:userId',
+    '/users/:id',
     {
       preHandler: [fastify.authenticate],
       schema: {
@@ -126,4 +127,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
   fastify.get('/activity-logs', { preHandler: [fastify.authenticate] }, getActivityLogsHandler);
   fastify.get('/session-recordings', { preHandler: [fastify.authenticate] }, getSessionRecordingsHandler);
   fastify.get('/error-logs', { preHandler: [fastify.authenticate] }, getErrorLogsHandler);
+
+  // Crisis Management
+  fastify.get('/crisis-events', { preHandler: [fastify.authenticate] }, getCrisisEventsHandler);
+  fastify.get('/crisis-events/:id', { preHandler: [fastify.authenticate] }, getCrisisEventHandler);
+  fastify.patch('/crisis-events/:id/status', { preHandler: [fastify.authenticate] }, updateCrisisEventStatusHandler);
 }

@@ -132,42 +132,46 @@ export function UserManagement() {
       try {
         if (action === 'delete') {
           await api.admin.deleteUser(userId);
-          setUsers(users.filter(u => u.id !== userId));
+          setUsers(users.filter((u) => u.id !== userId));
         } else if (action === 'suspend') {
           await api.admin.updateUser(userId, { status: 'suspended' });
-          setUsers(users.map(u => u.id === userId ? { ...u, status: 'suspended' } : u));
+          setUsers(users.map((u) => (u.id === userId ? { ...u, status: 'suspended' } : u)));
         } else if (action === 'activate') {
           await api.admin.updateUser(userId, { status: 'active' });
-          setUsers(users.map(u => u.id === userId ? { ...u, status: 'active' } : u));
+          setUsers(users.map((u) => (u.id === userId ? { ...u, status: 'active' } : u)));
         } else if (action === 'email') {
-          // Redirect to email composition or show modal
-          setConfirmationModal({
-            isOpen: true,
-            title: "Email Feature",
-            message: "This feature is pending implementation. You will be able to email users from here soon.",
-            onConfirm: () => setConfirmationModal({ ...confirmationModal, isOpen: false }),
-          });
+          const user = users.find((u) => u.id === userId);
+          if (!user) {
+            throw new Error("User not found");
+          }
+          const subject = "Message from Ezri Admin";
+          const text = `Hello ${user.name},\n\nYou have received a message from the Ezri admin team.`;
+          const html = `<p>Hello ${user.name},</p><p>You have received a message from the Ezri admin team.</p>`;
+          await api.sendEmail(user.email, subject, html, text);
         }
+        setConfirmationModal((prev) => ({ ...prev, isOpen: false }));
       } catch (error) {
         console.error(`Failed to ${action} user:`, error);
-        // Keep the modal open on error or show an error toast
         setConfirmationModal({
           isOpen: true,
           title: "Error",
           message: `Failed to ${action} user. Please try again.`,
-          onConfirm: () => setConfirmationModal({ ...confirmationModal, isOpen: false }),
+          onConfirm: () =>
+            setConfirmationModal((prev) => ({
+              ...prev,
+              isOpen: false,
+            })),
         });
-      }
-      // Close modal on success
-      if (action !== 'email') {
-        setConfirmationModal({ ...confirmationModal, isOpen: false });
       }
     };
 
     setConfirmationModal({
       isOpen: true,
       title: `Confirm ${action}`,
-      message: `Are you sure you want to ${action} this user?`,
+      message:
+        action === "email"
+          ? "Are you sure you want to send an email to this user?"
+          : `Are you sure you want to ${action} this user?`,
       onConfirm,
     });
   };
@@ -312,41 +316,59 @@ export function UserManagement() {
   const handleBulkAction = async (action: string) => {
     const onConfirm = async () => {
       try {
-        if (action === 'activate') {
-          await Promise.all(selectedUsers.map(userId => api.admin.updateUser(userId, { status: 'active' })));
-          setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, status: 'active' } : u));
-        } else if (action === 'suspend') {
-          await Promise.all(selectedUsers.map(userId => api.admin.updateUser(userId, { status: 'suspended' })));
-          setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, status: 'suspended' } : u));
-        } else if (action === 'email') {
-          setConfirmationModal({
-            isOpen: true,
-            title: "Email Feature",
-            message: "This feature is pending implementation for bulk actions. You will be able to email selected users soon.",
-            onConfirm: () => setConfirmationModal({ ...confirmationModal, isOpen: false }),
-          });
+        if (action === "activate") {
+          await Promise.all(
+            selectedUsers.map((userId) => api.admin.updateUser(userId, { status: "active" }))
+          );
+          setUsers(
+            users.map((u) =>
+              selectedUsers.includes(u.id) ? { ...u, status: "active" } : u
+            )
+          );
+        } else if (action === "suspend") {
+          await Promise.all(
+            selectedUsers.map((userId) => api.admin.updateUser(userId, { status: "suspended" }))
+          );
+          setUsers(
+            users.map((u) =>
+              selectedUsers.includes(u.id) ? { ...u, status: "suspended" } : u
+            )
+          );
+        } else if (action === "email") {
+          const usersToEmail = users.filter((u) => selectedUsers.includes(u.id));
+          await Promise.all(
+            usersToEmail.map((user) => {
+              const subject = "Message from Ezri Admin";
+              const text = `Hello ${user.name},\n\nYou have received a message from the Ezri admin team.`;
+              const html = `<p>Hello ${user.name},</p><p>You have received a message from the Ezri admin team.</p>`;
+              return api.sendEmail(user.email, subject, html, text);
+            })
+          );
         }
-        if (action !== 'email') {
-          setSelectedUsers([]);
-        }
+        setSelectedUsers([]);
+        setConfirmationModal((prev) => ({ ...prev, isOpen: false }));
       } catch (error) {
         console.error(`Failed to ${action} users:`, error);
         setConfirmationModal({
           isOpen: true,
           title: "Error",
           message: `Failed to ${action} users. Please try again.`,
-          onConfirm: () => setConfirmationModal({ ...confirmationModal, isOpen: false }),
+          onConfirm: () =>
+            setConfirmationModal((prev) => ({
+              ...prev,
+              isOpen: false,
+            })),
         });
-      }
-      if (action !== 'email') {
-        setConfirmationModal({ ...confirmationModal, isOpen: false });
       }
     };
 
     setConfirmationModal({
       isOpen: true,
       title: `Confirm ${action}`,
-      message: `Are you sure you want to ${action} ${selectedUsers.length} users?`,
+      message:
+        action === "email"
+          ? `Are you sure you want to send an email to ${selectedUsers.length} users?`
+          : `Are you sure you want to ${action} ${selectedUsers.length} users?`,
       onConfirm,
     });
   };

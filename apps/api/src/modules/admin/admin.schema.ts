@@ -24,6 +24,10 @@ export const dashboardStatsSchema = z.object({
     sessions: z.number(),
     duration: z.number()
   })),
+  hourlyActivity: z.array(z.object({
+    hour: z.string(),
+    sessions: z.number()
+  })),
   revenueData: z.array(z.object({
     month: z.string(),
     revenue: z.number()
@@ -32,6 +36,10 @@ export const dashboardStatsSchema = z.object({
     name: z.string(),
     value: z.number(),
     color: z.string()
+  })),
+  featureUsage: z.array(z.object({
+    feature: z.string(),
+    usage: z.number()
   }))
 });
 

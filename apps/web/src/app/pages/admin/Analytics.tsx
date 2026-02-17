@@ -14,93 +14,177 @@ import {
   Target
 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../../../lib/api";
 
 export function Analytics() {
   const [timeRange, setTimeRange] = useState("30d");
+  const [dashboard, setDashboard] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data for charts
-  const userGrowthData = [
-    { date: "Week 1", users: 120, active: 98, premium: 12 },
-    { date: "Week 2", users: 245, active: 189, premium: 28 },
-    { date: "Week 3", users: 398, active: 312, premium: 45 },
-    { date: "Week 4", users: 521, active: 423, premium: 67 },
-    { date: "Week 5", users: 689, active: 556, premium: 89 },
-    { date: "Week 6", users: 834, active: 678, premium: 112 },
-    { date: "Week 7", users: 1024, active: 845, premium: 145 },
-    { date: "Week 8", users: 1205, active: 987, premium: 178 }
-  ];
+  useEffect(() => {
+    let isMounted = true;
 
-  const sessionData = [
-    { day: "Mon", sessions: 245, duration: 28 },
-    { day: "Tue", sessions: 312, duration: 32 },
-    { day: "Wed", sessions: 289, duration: 27 },
-    { day: "Thu", sessions: 356, duration: 35 },
-    { day: "Fri", sessions: 298, duration: 29 },
-    { day: "Sat", sessions: 234, duration: 31 },
-    { day: "Sun", sessions: 198, duration: 26 }
-  ];
+    const fetchStats = async () => {
+      try {
+        const data = await api.admin.getStats();
+        if (isMounted) {
+          setDashboard(data);
+        }
+      } catch (err: any) {
+        console.error("Failed to fetch analytics stats", err);
+        if (isMounted) {
+          setError(err.message || "Failed to load analytics");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
 
-  const userTypeData = [
-    { name: "Core", value: 658, color: "#3b82f6" },
-    { name: "Pro", value: 345, color: "#8b5cf6" },
-    { name: "Trial", value: 123, color: "#10b981" },
-    { name: "Inactive", value: 79, color: "#6b7280" }
-  ];
+    fetchStats();
 
-  const featureUsageData = [
-    { feature: "AI Sessions", usage: 89 },
-    { feature: "Mood Tracking", usage: 95 },
-    { feature: "Journal", usage: 67 },
-    { feature: "Sleep Tracker", usage: 54 },
-    { feature: "Habit Tracker", usage: 62 },
-    { feature: "Wellness Tools", usage: 73 },
-    { feature: "Crisis Resources", usage: 23 }
-  ];
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  const revenueData = [
-    { month: "Jan", revenue: 12500, recurring: 10200, oneTime: 2300 },
-    { month: "Feb", revenue: 15800, recurring: 13100, oneTime: 2700 },
-    { month: "Mar", revenue: 18900, recurring: 15800, oneTime: 3100 },
-    { month: "Apr", revenue: 22400, recurring: 18900, oneTime: 3500 },
-    { month: "May", revenue: 26700, recurring: 22500, oneTime: 4200 },
-    { month: "Jun", revenue: 31200, recurring: 26800, oneTime: 4400 }
-  ];
+  const userGrowthData =
+    (dashboard?.userGrowth || []).map((item: any) => ({
+      date: item.month,
+      users: item.users,
+      active: Math.round(item.users * 0.8),
+      premium: Math.round(item.users * 0.2)
+    }));
 
-  const stats = [
-    {
-      label: "Total Revenue",
-      value: "$127,500",
-      change: "+23.5%",
-      trend: "up",
-      icon: DollarSign,
-      color: "from-green-500 to-emerald-600"
-    },
-    {
-      label: "Active Users",
-      value: "1,205",
-      change: "+18.2%",
-      trend: "up",
-      icon: Users,
-      color: "from-blue-500 to-indigo-600"
-    },
-    {
-      label: "Avg Engagement",
-      value: "82%",
-      change: "+5.7%",
-      trend: "up",
-      icon: Activity,
-      color: "from-purple-500 to-pink-600"
-    },
-    {
-      label: "Conversion Rate",
-      value: "14.8%",
-      change: "-2.1%",
-      trend: "down",
-      icon: Target,
-      color: "from-orange-500 to-red-600"
+  const sessionData =
+    (dashboard?.sessionActivity || []).map((item: any) => ({
+      day: item.day,
+      sessions: item.sessions,
+      duration: item.duration
+    }));
+
+  const userTypeData =
+    (dashboard?.platformDistribution || []).map((item: any) => ({
+      name: item.name,
+      value: item.value,
+      color: item.color
+    }));
+
+  const featureUsageData =
+    (dashboard?.featureUsage || []).map((item: any) => ({
+      feature: item.feature,
+      usage: item.usage
+    }));
+
+  const revenueData =
+    (dashboard?.revenueData || []).map((item: any) => {
+      const recurring = Math.round(item.revenue * 0.8);
+      const oneTime = item.revenue - recurring;
+      return {
+        month: item.month,
+        revenue: item.revenue,
+        recurring,
+        oneTime
+      };
+    });
+
+  let revenueChange = "";
+  let revenueTrend: "up" | "down" = "up";
+  if (dashboard?.revenueData && dashboard.revenueData.length >= 2) {
+    const last = dashboard.revenueData[dashboard.revenueData.length - 1].revenue;
+    const prev = dashboard.revenueData[dashboard.revenueData.length - 2].revenue;
+    if (prev > 0) {
+      const diff = ((last - prev) / prev) * 100;
+      revenueTrend = diff >= 0 ? "up" : "down";
+      revenueChange = `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`;
     }
-  ];
+  }
+
+  let activeUsersChange = "";
+  let activeUsersTrend: "up" | "down" = "up";
+  if (dashboard?.userGrowth && dashboard.userGrowth.length >= 2) {
+    const firstUsers = dashboard.userGrowth[0].users;
+    const lastUsers = dashboard.userGrowth[dashboard.userGrowth.length - 1].users;
+    if (firstUsers > 0) {
+      const diff = ((lastUsers - firstUsers) / firstUsers) * 100;
+      activeUsersTrend = diff >= 0 ? "up" : "down";
+      activeUsersChange = `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`;
+    }
+  }
+
+  const avgEngagement =
+    featureUsageData.length > 0
+      ? Math.round(
+          featureUsageData.reduce((sum, item) => sum + item.usage, 0) /
+            featureUsageData.length
+        )
+      : 0;
+
+  const conversionRate =
+    dashboard && dashboard.totalUsers > 0
+      ? ((dashboard.activeSessions / dashboard.totalUsers) * 100).toFixed(1)
+      : "0.0";
+
+  const stats = dashboard
+    ? [
+        {
+          label: "Total Revenue",
+          value: `$${dashboard.revenue.toLocaleString()}`,
+          change: revenueChange || "0.0%",
+          trend: revenueTrend,
+          icon: DollarSign,
+          color: "from-green-500 to-emerald-600"
+        },
+        {
+          label: "Active Users",
+          value: dashboard.totalUsers.toLocaleString(),
+          change: activeUsersChange || "0.0%",
+          trend: activeUsersTrend,
+          icon: Users,
+          color: "from-blue-500 to-indigo-600"
+        },
+        {
+          label: "Avg Engagement",
+          value: `${avgEngagement}%`,
+          change: "0.0%",
+          trend: "up",
+          icon: Activity,
+          color: "from-purple-500 to-pink-600"
+        },
+        {
+          label: "Conversion Rate",
+          value: `${conversionRate}%`,
+          change: "0.0%",
+          trend: "up",
+          icon: Target,
+          color: "from-orange-500 to-red-600"
+        }
+      ]
+    : [];
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error && !dashboard) {
+    return (
+      <AdminLayoutNew>
+        <div className="max-w-2xl mx-auto py-16 text-center space-y-4">
+          <h1 className="text-2xl font-bold text-gray-900">Analytics unavailable</h1>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
@@ -217,7 +301,6 @@ export function Analytics() {
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Session Analytics */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -240,14 +323,13 @@ export function Analytics() {
             </ResponsiveContainer>
           </motion.div>
 
-          {/* User Types Distribution */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
             className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">User Distribution</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Platform Distribution</h2>
             <ResponsiveContainer width="100%" height={300}>
               <RechartsPie>
                 <Pie
