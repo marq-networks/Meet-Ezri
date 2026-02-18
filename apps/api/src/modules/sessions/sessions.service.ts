@@ -165,13 +165,30 @@ export async function createMessage(userId: string, sessionId: string, input: Cr
     throw new Error('Session not found');
   }
 
-  return prisma.session_messages.create({
-    data: {
-      session_id: sessionId,
-      role: input.role,
-      content: input.content,
-    },
-  });
+  const [message] = await prisma.$transaction([
+    prisma.session_messages.create({
+      data: {
+        session_id: sessionId,
+        role: input.role,
+        content: input.content,
+      },
+    }),
+    prisma.activity_events.create({
+      data: {
+        session_id: sessionId,
+        user_id: userId,
+        app_name: 'Ezri Session',
+        window_title: 'AI Therapy Session',
+        metadata: {
+          type: 'session',
+          status: 'active',
+          device: 'desktop',
+        } as any,
+      },
+    }),
+  ]);
+
+  return message;
 }
 
 export async function getSessionTranscript(userId: string, sessionId: string) {

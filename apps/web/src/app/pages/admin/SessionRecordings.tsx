@@ -37,6 +37,13 @@ interface SessionRecording {
   reviewNotes?: string;
 }
 
+interface TranscriptMessage {
+  id: string;
+  role: string;
+  content: string;
+  created_at: string;
+}
+
 export function SessionRecordings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -45,6 +52,9 @@ export function SessionRecordings() {
   const [isMuted, setIsMuted] = useState(false);
   const [recordings, setRecordings] = useState<SessionRecording[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [transcripts, setTranscripts] = useState<Record<string, TranscriptMessage[]>>({});
+  const [transcriptLoadingId, setTranscriptLoadingId] = useState<string | null>(null);
+  const [transcriptErrorId, setTranscriptErrorId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRecordings = async () => {
@@ -121,7 +131,46 @@ export function SessionRecordings() {
     totalRecordings: recordings.length,
     flaggedSessions: recordings.filter(r => r.status === "flagged").length,
     escalatedSessions: recordings.filter(r => r.status === "escalated").length,
-    avgQualityScore: Math.round(recordings.reduce((sum, r) => sum + r.qualityScore, 0) / recordings.length)
+    avgQualityScore:
+      recordings.length === 0
+        ? 0
+        : Math.round(recordings.reduce((sum, r) => sum + r.qualityScore, 0) / recordings.length)
+  };
+
+  const loadTranscript = (recording: SessionRecording) => {
+    if (transcripts[recording.id] || transcriptLoadingId === recording.id) return;
+    setTranscriptLoadingId(recording.id);
+    setTranscriptErrorId(null);
+    api.admin
+      .getSessionRecordingTranscript(recording.id)
+      .then((data: any[]) => {
+        const mapped: TranscriptMessage[] = data.map((m: any) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          created_at: m.created_at
+        }));
+        setTranscripts(prev => ({ ...prev, [recording.id]: mapped }));
+      })
+      .catch((error) => {
+        console.error("Failed to fetch session transcript:", error);
+        setTranscriptErrorId(recording.id);
+      })
+      .finally(() => {
+        setTranscriptLoadingId(null);
+      });
+  };
+
+  const handleToggleRecording = (recording: SessionRecording) => {
+    const isCurrentlySelected = selectedRecording?.id === recording.id;
+    if (isCurrentlySelected) {
+      setSelectedRecording(null);
+      return;
+    }
+    setSelectedRecording(recording);
+    if (recording.transcriptAvailable) {
+      loadTranscript(recording);
+    }
   };
 
   return (
@@ -261,7 +310,7 @@ export function SessionRecordings() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6 + index * 0.05 }}
-                  onClick={() => setSelectedRecording(selectedRecording?.id === recording.id ? null : recording)}
+                  onClick={() => handleToggleRecording(recording)}
                   className={`border-2 rounded-xl p-5 cursor-pointer transition-all ${
                     selectedRecording?.id === recording.id
                       ? "border-blue-500 bg-blue-50 shadow-md"
@@ -293,7 +342,7 @@ export function SessionRecordings() {
                       <div className="flex items-center gap-4 mb-3 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                           <User className="w-4 h-4" />
-                          {recording.aiTherapist}
+                          {recording.aiCompanion}
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
@@ -405,17 +454,37 @@ export function SessionRecordings() {
                           {recording.transcriptAvailable && (
                             <div className="bg-gray-50 rounded-lg p-4 mb-4">
                               <h4 className="font-bold text-gray-900 mb-2 text-sm">Transcript Preview:</h4>
-                              <div className="space-y-2 text-sm">
-                                <div className="flex gap-2">
-                                  <span className="font-medium text-blue-600">{recording.aiCompanion}:</span>
-                                  <span className="text-gray-700">Hello {recording.userName.split(" ")[0]}, how are you feeling today?</span>
-                                </div>
-                                <div className="flex gap-2">
-                                  <span className="font-medium text-purple-600">{recording.userName}:</span>
-                                  <span className="text-gray-700">I've been struggling with anxiety lately...</span>
-                                </div>
-                                <p className="text-xs text-gray-500 italic mt-2">Full transcript available for download</p>
-                              </div>
+                              {transcriptLoadingId === recording.id && (
+                                <p className="text-xs text-gray-500">Loading transcript...</p>
+                              )}
+                              {transcriptErrorId === recording.id && (
+                                <p className="text-xs text-red-600">Failed to load transcript.</p>
+                              )}
+                              {!transcriptLoadingId &&
+                                transcripts[recording.id] &&
+                                transcripts[recording.id].length > 0 && (
+                                  <div className="space-y-2 text-sm">
+                                    {transcripts[recording.id].slice(0, 4).map((msg) => {
+                                      const isUser = msg.role === 'user';
+                                      const sender = isUser ? recording.userName : recording.aiCompanion;
+                                      const colorClass = isUser ? 'text-purple-600' : 'text-blue-600';
+                                      return (
+                                        <div key={msg.id} className="flex gap-2">
+                                          <span className={`font-medium ${colorClass}`}>{sender}:</span>
+                                          <span className="text-gray-700">{msg.content}</span>
+                                        </div>
+                                      );
+                                    })}
+                                    <p className="text-xs text-gray-500 italic mt-2">
+                                      Full transcript available for review
+                                    </p>
+                                  </div>
+                                )}
+                              {!transcriptLoadingId &&
+                                transcripts[recording.id] &&
+                                transcripts[recording.id].length === 0 && (
+                                  <p className="text-xs text-gray-500">No transcript messages found for this session.</p>
+                                )}
                             </div>
                           )}
                         </motion.div>
@@ -428,7 +497,12 @@ export function SessionRecordings() {
                           whileTap={{ scale: 0.98 }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedRecording(recording);
+                            if (selectedRecording?.id !== recording.id) {
+                              setSelectedRecording(recording);
+                            }
+                            if (recording.transcriptAvailable) {
+                              loadTranscript(recording);
+                            }
                           }}
                           className="flex-1 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium flex items-center justify-center gap-1"
                         >
@@ -440,6 +514,13 @@ export function SessionRecordings() {
                           <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (selectedRecording?.id !== recording.id) {
+                                setSelectedRecording(recording);
+                              }
+                              loadTranscript(recording);
+                            }}
                             className="flex-1 px-3 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium flex items-center justify-center gap-1"
                           >
                             <MessageSquare className="w-4 h-4" />

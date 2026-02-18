@@ -8,7 +8,7 @@ import {
   getPushCampaigns, createPushCampaign,
   getSupportTickets, updateSupportTicket,
   getCommunityStats, getCommunityGroups,
-  getLiveSessions, getActivityLogs, getSessionRecordings, getErrorLogs,
+  getLiveSessions, getActivityLogs, getSessionRecordings, getErrorLogs, getSessionRecordingTranscript,
   getCrisisEvents, getCrisisEvent, updateCrisisEventStatus
 } from './admin.service';
 import { updateUserSchema } from './admin.schema';
@@ -355,6 +355,19 @@ export async function getSessionRecordingsHandler(request: FastifyRequest, reply
   } catch (error) {
     request.log.error(error);
     return reply.code(500).send({ message: 'Failed to fetch recordings' });
+  }
+}
+
+export async function getSessionRecordingTranscriptHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const transcript = await getSessionRecordingTranscript(request.params.id);
+    return reply.code(200).send(transcript);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch session transcript' });
   }
 }
 

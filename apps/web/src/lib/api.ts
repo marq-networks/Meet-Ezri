@@ -507,6 +507,11 @@ export const api = {
       const res = await fetch(`${API_URL}/admin/session-recordings`, { method: 'GET', headers });
       return handleResponse(res, 'Failed to fetch recordings');
     },
+    async getSessionRecordingTranscript(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/session-recordings/${id}/transcript`, { method: 'GET', headers });
+      return handleResponse(res, 'Failed to fetch session transcript');
+    },
     async getErrorLogs() {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/admin/error-logs`, { method: 'GET', headers });

@@ -88,16 +88,22 @@ export function LiveSessionsMonitor() {
           userName: s.profiles?.full_name || 'Unknown User',
           avatar: s.profiles?.avatar_url || 'Unknown',
           sessionType: s.type || 'therapy',
-          startTime: new Date(s.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          duration: s.duration_minutes ? `${s.duration_minutes} min` : 'Just started',
-          messageCount: Math.floor(Math.random() * 50) + 5, // Mocking real-time message count
-          sentiment: (['positive', 'neutral', 'negative', 'critical'][Math.floor(Math.random() * 4)]) as any, // Mocking sentiment
+          startTime: s.started_at
+            ? new Date(s.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Unknown',
+          duration: s.started_at
+            ? `${Math.max(1, Math.floor((Date.now() - new Date(s.started_at).getTime()) / 60000))} min`
+            : s.duration_minutes
+            ? `${s.duration_minutes} min`
+            : 'Just started',
+          messageCount: s._count?.session_messages ?? 0,
+          sentiment: (s.config?.sentiment || 'neutral') as any,
           status: 'active',
-          riskLevel: (['low', 'medium', 'high', 'critical'][Math.floor(Math.random() * 4)]) as any, // Mocking risk
-          location: 'Unknown', // Need IP geo data
-          device: 'Unknown',
-          connectionQuality: 'good',
-          aiConfidence: 85 + Math.floor(Math.random() * 10),
+          riskLevel: (s.config?.risk_level || 'low') as any,
+          location: s.config?.location || 'Unknown',
+          device: s.config?.device || 'Unknown',
+          connectionQuality: (s.config?.connection_quality || 'good') as any,
+          aiConfidence: typeof s.config?.ai_confidence === 'number' ? s.config.ai_confidence : 0,
         }));
         setLiveSessions(mappedSessions);
       } catch (error) {

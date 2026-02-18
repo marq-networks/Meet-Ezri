@@ -41,8 +41,12 @@ export function ActivityMonitor() {
     const fetchActivities = async () => {
       if (!isLive) return;
       try {
-        const data = await api.admin.getActivityLogs();
-        const mappedActivities: ActivityLog[] = data.map((log: any) => ({
+        const [logs, liveSessions] = await Promise.all([
+          api.admin.getActivityLogs(),
+          api.admin.getLiveSessions(),
+        ]);
+
+        const mappedActivities: ActivityLog[] = logs.map((log: any) => ({
           id: log.id,
           userId: log.user_id,
           userName: log.profiles?.full_name || 'Unknown',
@@ -55,7 +59,28 @@ export function ActivityMonitor() {
           duration: log.metadata?.duration,
           status: (log.metadata?.status || 'completed') as any
         }));
-        setActivities(mappedActivities);
+
+        const liveSessionActivities: ActivityLog[] = (liveSessions || []).map((s: any) => ({
+          id: `live-${s.id}`,
+          userId: s.user_id,
+          userName: s.profiles?.full_name || 'Unknown',
+          userAvatar: (s.profiles?.full_name || 'U').split(' ').map((n: string) => n[0]).join('').substring(0, 2),
+          action: s.title || 'Live AI Session',
+          type: 'session',
+          timestamp: s.started_at ? new Date(s.started_at) : new Date(s.created_at),
+          device: (s.config?.device || 'desktop') as any,
+          location: s.config?.location || 'Unknown',
+          duration: s.started_at
+            ? Math.max(1, Math.floor((Date.now() - new Date(s.started_at).getTime()) / 60000))
+            : s.duration_minutes || undefined,
+          status: 'active',
+        }));
+
+        const combined = [...mappedActivities, ...liveSessionActivities].sort(
+          (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+        );
+
+        setActivities(combined);
         setIsLoading(false);
       } catch (error) {
         console.error("Failed to fetch activity logs:", error);
@@ -125,8 +150,13 @@ export function ActivityMonitor() {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  const activeUsers = activities.filter(a => a.status === "active").length;
-  const activeSessions = activities.filter(a => a.type === "session" && a.status === "active").length;
+  const liveEntries = activities.filter(a => a.id.startsWith("live-"));
+
+  const activeUsers = new Set(
+    liveEntries.map(a => a.userId)
+  ).size;
+
+  const activeSessions = liveEntries.length;
 
   return (
     <AdminLayoutNew>

@@ -725,20 +725,28 @@ export async function getCommunityGroups() {
 
 // 7. Live Sessions
 export async function getLiveSessions() {
+  const cutoff = new Date(Date.now() - 4 * 60 * 60 * 1000);
+
   return prisma.app_sessions.findMany({
     where: {
-      started_at: { not: null },
+      started_at: {
+        not: null,
+        gte: cutoff
+      },
       ended_at: null
     },
     include: {
       profiles: {
         select: { full_name: true, email: true, avatar_url: true }
+      },
+      _count: {
+        select: { session_messages: true }
       }
     },
     orderBy: { started_at: 'desc' }
   });
 }
-
+//
 // 8. Activity Logs
 export async function getActivityLogs() {
   return prisma.activity_events.findMany({
@@ -763,11 +771,21 @@ export async function getSessionRecordings() {
     include: {
       profiles: {
         select: { full_name: true, email: true }
+      },
+      _count: {
+        select: { session_messages: true }
       }
     }
   });
 }
-
+//
+export async function getSessionRecordingTranscript(sessionId: string) {
+  return prisma.session_messages.findMany({
+    where: { session_id: sessionId },
+    orderBy: { created_at: 'asc' }
+  });
+}
+//
 // 10. Error Logs
 export async function getErrorLogs() {
   return prisma.error_logs.findMany({
