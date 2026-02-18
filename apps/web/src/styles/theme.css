@@ -78,6 +78,47 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
+.high-contrast {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #000000;
+  --card-foreground: #ffffff;
+  --popover: #000000;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #ffffff;
+  --secondary-foreground: #000000;
+  --muted: #111827;
+  --muted-foreground: #f9fafb;
+  --accent: #ffffff;
+  --accent-foreground: #000000;
+  --destructive: #ff0000;
+  --destructive-foreground: #ffffff;
+  --border: #ffffff;
+  --input: #000000;
+  --input-background: #000000;
+  --switch-background: #ffffff;
+}
+
+.reduced-motion * {
+  scroll-behavior: auto !important;
+  animation-duration: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0ms !important;
+}
+
+.focus-indicators *:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 3px;
+}
+
+.large-click-targets button,
+.large-click-targets a {
+  min-height: 44px;
+  padding-inline: 1rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

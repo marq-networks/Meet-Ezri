@@ -32,8 +32,11 @@ export function AccessibilitySettings() {
   });
 
   const [settings, setSettings] = useState(() => {
-    const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-    const saved = isBrowser ? window.localStorage.getItem("ezri_accessibility_settings") : null;
+    const isBrowser =
+      typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+    const saved = isBrowser
+      ? window.localStorage.getItem("ezri_accessibility_settings")
+      : null;
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -80,6 +83,46 @@ export function AccessibilitySettings() {
         : "16px";
     root.style.setProperty("--font-size", fontSizePx);
   }, [settings.fontSize]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (settings.highContrast) {
+      root.classList.add("high-contrast");
+    } else {
+      root.classList.remove("high-contrast");
+    }
+  }, [settings.highContrast]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (settings.reducedMotion) {
+      root.classList.add("reduced-motion");
+    } else {
+      root.classList.remove("reduced-motion");
+    }
+  }, [settings.reducedMotion]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (settings.focusIndicators) {
+      root.classList.add("focus-indicators");
+    } else {
+      root.classList.remove("focus-indicators");
+    }
+  }, [settings.focusIndicators]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (settings.largeClickTargets) {
+      root.classList.add("large-click-targets");
+    } else {
+      root.classList.remove("large-click-targets");
+    }
+  }, [settings.largeClickTargets]);
 
   const fontSizes = [
     { value: "small", label: "Small", size: "text-sm" },
@@ -424,7 +467,7 @@ export function AccessibilitySettings() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-full shadow-md"
+              className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-full shadow-md"
             >
               Accessibility settings saved
             </motion.div>
