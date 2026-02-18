@@ -194,6 +194,7 @@ export async function createCreditPurchaseSession(userId: string, email: string,
       userId,
       type: 'credits',
       credits: data.credits.toString(),
+      planType,
     },
     success_url: `${CLIENT_URL}/app/billing?success=true&credits=${data.credits}`,
     cancel_url: `${CLIENT_URL}/app/billing?canceled=true`,
@@ -368,6 +369,91 @@ export async function getAllInvoices() {
       user_id: profile?.id || null,
       user_email: profile?.email || null,
       user_name: profile?.full_name || null,
+      metadata: invoice.metadata || {},
+    };
+  });
+}
+
+export async function getAllPaygTransactions() {
+  const invoices = await stripe.invoices.list({
+    limit: 100,
+  });
+
+  const paygInvoices = invoices.data.filter((invoice) => {
+    const isCreditsInvoice = invoice.lines.data.some((line) =>
+      line.price?.metadata?.type === 'credits' || line.metadata?.type === 'credits'
+    );
+    const isCreditsMetadata = invoice.metadata?.type === 'credits';
+    return isCreditsInvoice || isCreditsMetadata;
+  });
+
+  const customerIds = Array.from(
+    new Set(
+      paygInvoices
+        .map((invoice) => invoice.customer)
+        .filter((id): id is string => typeof id === 'string')
+    )
+  );
+
+  const profiles = await prisma.profiles.findMany({
+    where: {
+      stripe_customer_id: {
+        in: customerIds,
+      },
+    },
+    select: {
+      id: true,
+      email: true,
+      full_name: true,
+      stripe_customer_id: true,
+    },
+  });
+
+  const profileByCustomerId = new Map<string, (typeof profiles)[number]>();
+  for (const profile of profiles) {
+    if (profile.stripe_customer_id) {
+      profileByCustomerId.set(profile.stripe_customer_id, profile);
+    }
+  }
+
+  return paygInvoices.map((invoice) => {
+    const customerId = typeof invoice.customer === 'string' ? invoice.customer : null;
+    const profile = customerId ? profileByCustomerId.get(customerId) : undefined;
+
+    const creditsFromMetadata = invoice.metadata?.credits
+      ? parseInt(invoice.metadata.credits, 10)
+      : undefined;
+
+    const creditsFromLines = invoice.lines.data.reduce((sum, line) => {
+      const value = line.metadata?.credits
+        ? parseInt(line.metadata.credits, 10)
+        : 0;
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+
+    const totalCredits =
+      (Number.isFinite(creditsFromMetadata || NaN) ? creditsFromMetadata || 0 : 0) +
+      creditsFromLines;
+
+    const planTypeFromMetadata =
+      (invoice.metadata?.planType as string | undefined) ||
+      (invoice.metadata?.plan_type as string | undefined) ||
+      invoice.lines.data
+        .map((line) => (line.metadata?.planType as string | undefined) || (line.metadata?.plan_type as string | undefined))
+        .find((value) => !!value);
+
+    return {
+      id: invoice.id,
+      status: invoice.status,
+      amount: (invoice.amount_paid || invoice.amount_due || 0) / 100,
+      currency: invoice.currency,
+      created: new Date(invoice.created * 1000).toISOString(),
+      user_id: profile?.id || null,
+      user_email: profile?.email || null,
+      user_name: profile?.full_name || null,
+      minutes_purchased: totalCredits > 0 ? totalCredits : null,
+      payment_method: invoice.payment_intent ? 'Card' : null,
+      plan_type: planTypeFromMetadata || null,
     };
   });
 }

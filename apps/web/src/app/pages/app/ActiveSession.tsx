@@ -26,7 +26,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/app/components/ui/button";
-const avatarImage = "https://placehold.co/400";
+const avatarImage = "/Male.png";
 import { useSafety } from "@/app/contexts/SafetyContext";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";

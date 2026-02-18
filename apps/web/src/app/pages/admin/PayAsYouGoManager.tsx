@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { 
@@ -20,134 +20,21 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { SUBSCRIPTION_PLANS } from "../../utils/subscriptionPlans";
-import type { PlanTier, PayAsYouGoPurchase } from "../../utils/subscriptionPlans";
+import type { PlanTier } from "../../utils/subscriptionPlans";
+import { api } from "../../../lib/api";
 
-// Mock PAYG transaction data
-const MOCK_PAYG_TRANSACTIONS: PayAsYouGoPurchase[] = [
-  {
-    id: "payg-001",
-    userId: "user-123",
-    planId: "core",
-    minutesPurchased: 100,
-    ratePerMinute: 0.25,
-    totalCost: 25.00,
-    purchaseDate: "2026-01-23T14:32:00Z",
-    paymentMethod: "Visa •••• 4242",
-    status: "completed"
-  },
-  {
-    id: "payg-002",
-    userId: "user-456",
-    planId: "pro",
-    minutesPurchased: 200,
-    ratePerMinute: 0.15,
-    totalCost: 30.00,
-    purchaseDate: "2026-01-23T10:15:00Z",
-    paymentMethod: "Mastercard •••• 5555",
-    status: "completed"
-  },
-  {
-    id: "payg-003",
-    userId: "user-789",
-    planId: "core",
-    minutesPurchased: 50,
-    ratePerMinute: 0.25,
-    totalCost: 12.50,
-    purchaseDate: "2026-01-22T16:45:00Z",
-    paymentMethod: "Visa •••• 1234",
-    status: "completed"
-  },
-  {
-    id: "payg-004",
-    userId: "user-234",
-    planId: "pro",
-    minutesPurchased: 300,
-    ratePerMinute: 0.10,
-    totalCost: 30.00,
-    purchaseDate: "2026-01-22T09:20:00Z",
-    paymentMethod: "Amex •••• 9876",
-    status: "completed"
-  },
-  {
-    id: "payg-005",
-    userId: "user-567",
-    planId: "pro",
-    minutesPurchased: 150,
-    ratePerMinute: 0.15,
-    totalCost: 22.50,
-    purchaseDate: "2026-01-21T18:30:00Z",
-    paymentMethod: "Visa •••• 8888",
-    status: "completed"
-  },
-  {
-    id: "payg-006",
-    userId: "user-890",
-    planId: "core",
-    minutesPurchased: 75,
-    ratePerMinute: 0.25,
-    totalCost: 18.75,
-    purchaseDate: "2026-01-21T13:10:00Z",
-    paymentMethod: "Mastercard •••• 3333",
-    status: "completed"
-  },
-  {
-    id: "payg-007",
-    userId: "user-345",
-    planId: "pro",
-    minutesPurchased: 100,
-    ratePerMinute: 0.15,
-    totalCost: 15.00,
-    purchaseDate: "2026-01-20T11:25:00Z",
-    paymentMethod: "Visa •••• 6789",
-    status: "completed"
-  },
-  {
-    id: "payg-008",
-    userId: "user-678",
-    planId: "pro",
-    minutesPurchased: 500,
-    ratePerMinute: 0.10,
-    totalCost: 50.00,
-    purchaseDate: "2026-01-20T08:45:00Z",
-    paymentMethod: "Amex •••• 2468",
-    status: "completed"
-  },
-  {
-    id: "payg-009",
-    userId: "user-901",
-    planId: "core",
-    minutesPurchased: 60,
-    ratePerMinute: 0.25,
-    totalCost: 15.00,
-    purchaseDate: "2026-01-19T15:50:00Z",
-    paymentMethod: "Visa •••• 1357",
-    status: "completed"
-  },
-  {
-    id: "payg-010",
-    userId: "user-432",
-    planId: "pro",
-    minutesPurchased: 250,
-    ratePerMinute: 0.15,
-    totalCost: 37.50,
-    purchaseDate: "2026-01-19T12:30:00Z",
-    paymentMethod: "Mastercard •••• 7890",
-    status: "completed"
-  }
-];
-
-// Mock user data (in real app, join with users table)
-const MOCK_USERS: Record<string, { name: string; email: string }> = {
-  "user-123": { name: "Sarah Johnson", email: "sarah.j@email.com" },
-  "user-456": { name: "Michael Chen", email: "michael.c@email.com" },
-  "user-789": { name: "Emma Davis", email: "emma.d@email.com" },
-  "user-234": { name: "James Wilson", email: "james.w@email.com" },
-  "user-567": { name: "Olivia Brown", email: "olivia.b@email.com" },
-  "user-890": { name: "Noah Garcia", email: "noah.g@email.com" },
-  "user-345": { name: "Ava Martinez", email: "ava.m@email.com" },
-  "user-678": { name: "William Lee", email: "william.l@email.com" },
-  "user-901": { name: "Sophia Rodriguez", email: "sophia.r@email.com" },
-  "user-432": { name: "Liam Anderson", email: "liam.a@email.com" }
+type AdminPaygTransaction = {
+  id: string;
+  status: string | null;
+  amount: number;
+  currency: string | null;
+  created: string;
+  user_id?: string | null;
+  user_email?: string | null;
+  user_name?: string | null;
+  minutes_purchased?: number | null;
+  payment_method?: string | null;
+  plan_type?: string | null;
 };
 
 type TimeFilter = "today" | "week" | "month" | "all";
@@ -156,38 +43,55 @@ export function PayAsYouGoManager() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanTier | "all">("all");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("month");
+  const [transactions, setTransactions] = useState<AdminPaygTransaction[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await api.billing.getAdminPaygTransactions();
+        setTransactions(data || []);
+      } catch (error) {
+        console.error("Failed to load PAYG transactions:", error);
+      }
+    };
+    load();
+  }, []);
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
-    let filtered = [...MOCK_PAYG_TRANSACTIONS];
+    let filtered = [...transactions];
 
     // Time filter
     const now = new Date();
     if (timeFilter === "today") {
       filtered = filtered.filter(t => {
-        const date = new Date(t.purchaseDate);
+        const date = new Date(t.created);
         return date.toDateString() === now.toDateString();
       });
     } else if (timeFilter === "week") {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(t => new Date(t.purchaseDate) >= weekAgo);
+      filtered = filtered.filter(t => new Date(t.created) >= weekAgo);
     } else if (timeFilter === "month") {
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(t => new Date(t.purchaseDate) >= monthAgo);
+      filtered = filtered.filter(t => new Date(t.created) >= monthAgo);
     }
 
     // Plan filter
     if (selectedPlan !== "all") {
-      filtered = filtered.filter(t => t.planId === selectedPlan);
+      filtered = filtered.filter(t => {
+        const planType = t.plan_type as PlanTier | null | undefined;
+        return planType === selectedPlan;
+      });
     }
 
     // Search filter
     if (searchQuery) {
       filtered = filtered.filter(t => {
-        const user = MOCK_USERS[t.userId];
+        const name = t.user_name || "";
+        const email = t.user_email || "";
         return (
-          user?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user?.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          email.toLowerCase().includes(searchQuery.toLowerCase()) ||
           t.id.toLowerCase().includes(searchQuery.toLowerCase())
         );
       });
@@ -198,14 +102,16 @@ export function PayAsYouGoManager() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.totalCost, 0);
-    const totalMinutes = filteredTransactions.reduce((sum, t) => sum + t.minutesPurchased, 0);
-    const uniqueCustomers = new Set(filteredTransactions.map(t => t.userId)).size;
+    const totalRevenue = filteredTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalMinutes = filteredTransactions.reduce((sum, t) => sum + (t.minutes_purchased || 0), 0);
+    const uniqueCustomers = new Set(
+      filteredTransactions.map(t => t.user_id || t.user_email || t.id)
+    ).size;
     const avgPurchase = totalRevenue / (filteredTransactions.length || 1);
 
     // Calculate growth (compare current period to previous period)
-    const prevPeriodTransactions = MOCK_PAYG_TRANSACTIONS.filter(t => {
-      const date = new Date(t.purchaseDate);
+    const prevPeriodTransactions = transactions.filter(t => {
+      const date = new Date(t.created);
       const now = new Date();
       if (timeFilter === "month") {
         const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
@@ -214,7 +120,7 @@ export function PayAsYouGoManager() {
       }
       return false;
     });
-    const prevRevenue = prevPeriodTransactions.reduce((sum, t) => sum + t.totalCost, 0);
+    const prevRevenue = prevPeriodTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
     const growth = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
 
     return {
@@ -236,11 +142,11 @@ export function PayAsYouGoManager() {
     };
 
     filteredTransactions.forEach(t => {
-      // Ensure the planId exists in breakdown to avoid runtime errors
-      if (breakdown[t.planId]) {
-        breakdown[t.planId].count++;
-        breakdown[t.planId].revenue += t.totalCost;
-        breakdown[t.planId].minutes += t.minutesPurchased;
+      const planType = t.plan_type as PlanTier | null | undefined;
+      if (planType && breakdown[planType]) {
+        breakdown[planType].count++;
+        breakdown[planType].revenue += t.amount || 0;
+        breakdown[planType].minutes += t.minutes_purchased || 0;
       }
     });
 
@@ -442,18 +348,19 @@ export function PayAsYouGoManager() {
               const customerStats = new Map<string, { name: string; email: string; totalSpent: number; transactions: number; minutesPurchased: number }>();
               
               filteredTransactions.forEach(t => {
-                const existing = customerStats.get(t.userId) || { 
-                  name: MOCK_USERS[t.userId]?.name || "Unknown", 
-                  email: MOCK_USERS[t.userId]?.email || "",
+                const key = t.user_id || t.user_email || t.id;
+                const existing = customerStats.get(key) || { 
+                  name: t.user_name || "Unknown", 
+                  email: t.user_email || "",
                   totalSpent: 0, 
                   transactions: 0,
                   minutesPurchased: 0
                 };
-                customerStats.set(t.userId, {
+                customerStats.set(key, {
                   ...existing,
-                  totalSpent: existing.totalSpent + t.totalCost,
+                  totalSpent: existing.totalSpent + (t.amount || 0),
                   transactions: existing.transactions + 1,
-                  minutesPurchased: existing.minutesPurchased + t.minutesPurchased
+                  minutesPurchased: existing.minutesPurchased + (t.minutes_purchased || 0)
                 });
               });
 
@@ -461,9 +368,9 @@ export function PayAsYouGoManager() {
                 .sort((a, b) => b[1].totalSpent - a[1].totalSpent)
                 .slice(0, 6);
 
-              return topCustomers.map(([userId, stats], index) => (
+              return topCustomers.map(([key, stats], index) => (
                 <div 
-                  key={userId}
+                  key={key}
                   className="p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -566,9 +473,13 @@ export function PayAsYouGoManager() {
                   </tr>
                 ) : (
                   filteredTransactions.map((transaction) => {
-                    const user = MOCK_USERS[transaction.userId];
-                    const plan = SUBSCRIPTION_PLANS[transaction.planId];
-                    const date = new Date(transaction.purchaseDate);
+                    const planType = (transaction.plan_type as PlanTier | null | undefined) || "core";
+                    const plan = SUBSCRIPTION_PLANS[planType];
+                    const date = new Date(transaction.created);
+
+                    const minutes = transaction.minutes_purchased || 0;
+                    const amount = transaction.amount || 0;
+                    const ratePerMinute = minutes > 0 ? amount / minutes : 0;
 
                     return (
                       <motion.tr
@@ -584,8 +495,8 @@ export function PayAsYouGoManager() {
                         </td>
                         <td className="px-6 py-4">
                           <div>
-                            <p className="font-medium">{user?.name || "Unknown User"}</p>
-                            <p className="text-sm text-muted-foreground">{user?.email}</p>
+                            <p className="font-medium">{transaction.user_name || "Unknown User"}</p>
+                            <p className="text-sm text-muted-foreground">{transaction.user_email}</p>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -599,23 +510,23 @@ export function PayAsYouGoManager() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-semibold">{transaction.minutesPurchased}</span>
+                            <span className="font-semibold">{transaction.minutes_purchased || 0}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className="text-sm text-muted-foreground">
-                            ${transaction.ratePerMinute.toFixed(2)}/min
+                            ${ratePerMinute.toFixed(2)}/min
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           <span className="font-bold text-green-600">
-                            ${transaction.totalCost.toFixed(2)}
+                            ${amount.toFixed(2)}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <CreditCard className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm">{transaction.paymentMethod}</span>
+                            <span className="text-sm">{transaction.payment_method || "Card"}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">

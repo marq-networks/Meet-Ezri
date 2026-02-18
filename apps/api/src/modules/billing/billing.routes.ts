@@ -1,11 +1,12 @@
 import { FastifyInstance } from 'fastify';
-import {
-  createSubscriptionSchema,
-  subscriptionResponseSchema,
+import { 
+  createSubscriptionSchema, 
+  createCreditPurchaseSchema, 
   updateSubscriptionSchema,
-  createCreditPurchaseSchema,
+  subscriptionResponseSchema,
   invoiceResponseSchema,
   adminInvoiceResponseSchema,
+  paygTransactionResponseSchema
 } from './billing.schema';
 import * as billingController from './billing.controller';
 import { stripeWebhookHandler } from './billing.webhook';
@@ -170,6 +171,19 @@ export async function billingRoutes(app: FastifyInstance) {
       preHandler: [app.authenticate, app.authorize(['super_admin', 'org_admin'])],
     },
     billingController.getAllInvoicesHandler
+  );
+
+  app.get(
+    '/admin/payg-transactions',
+    {
+      schema: {
+        response: {
+          200: z.array(paygTransactionResponseSchema),
+        },
+      },
+      preHandler: [app.authenticate, app.authorize(['super_admin', 'org_admin'])],
+    },
+    billingController.getAllPaygTransactionsHandler
   );
 
   app.get(

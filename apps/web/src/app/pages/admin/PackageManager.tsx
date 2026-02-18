@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { 
@@ -21,25 +21,69 @@ import { Card } from "../../components/ui/card";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { SUBSCRIPTION_PLANS } from "../../utils/subscriptionPlans";
 import type { PlanTier, SubscriptionPlan } from "../../utils/subscriptionPlans";
+import { api } from "../../../lib/api";
 
 export function PackageManager() {
   const [plans, setPlans] = useState<Record<PlanTier, SubscriptionPlan>>(SUBSCRIPTION_PLANS);
   const [editingPlan, setEditingPlan] = useState<PlanTier | null>(null);
   const [editForm, setEditForm] = useState<Partial<SubscriptionPlan>>({});
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
 
-  // Mock statistics (in real app, fetch from backend)
-  const stats = {
-    totalSubscribers: 12543,
-    monthlyRevenue: 428650,
-    averagePerUser: 34.15,
-    growth: 12.5
-  };
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await api.billing.getAllSubscriptions();
+        setSubscriptions(data || []);
+      } catch (error) {
+        console.error("Failed to load subscription stats:", error);
+      }
+    };
+    load();
+  }, []);
 
-  const planStats: Record<PlanTier, { users: number; revenue: number }> = {
-    trial: { users: 4523, revenue: 0 },
-    core: { users: 5234, revenue: 130850 },
-    pro: { users: 2486, revenue: 146694 },
-  };
+  const stats = useMemo(() => {
+    if (!subscriptions.length) {
+      return {
+        totalSubscribers: 0,
+        monthlyRevenue: 0,
+        averagePerUser: 0,
+        growth: 0,
+      };
+    }
+
+    const activeSubs = subscriptions.filter((s) => s.status === "active");
+    const totalSubscribers = activeSubs.length;
+    const monthlyRevenue = activeSubs.reduce(
+      (sum, s) => sum + (s.amount || 0),
+      0
+    );
+    const averagePerUser =
+      totalSubscribers > 0 ? monthlyRevenue / totalSubscribers : 0;
+
+    return {
+      totalSubscribers,
+      monthlyRevenue,
+      averagePerUser,
+      growth: 0,
+    };
+  }, [subscriptions]);
+
+  const planStats = useMemo(() => {
+    const base: Record<PlanTier, { users: number; revenue: number }> = {
+      trial: { users: 0, revenue: 0 },
+      core: { users: 0, revenue: 0 },
+      pro: { users: 0, revenue: 0 },
+    };
+
+    subscriptions.forEach((s) => {
+      const planType = s.plan_type as PlanTier | undefined;
+      if (!planType || !base[planType]) return;
+      base[planType].users += 1;
+      base[planType].revenue += s.amount || 0;
+    });
+
+    return base;
+  }, [subscriptions]);
 
   const handleEdit = (planId: PlanTier) => {
     setEditingPlan(planId);
@@ -56,8 +100,6 @@ export function PackageManager() {
         ...editForm
       }
     });
-    
-    // In real app: save to backend
     alert(`Saved changes to ${plans[editingPlan].displayName}`);
     setEditingPlan(null);
     setEditForm({});

@@ -726,6 +726,16 @@ export const api = {
       return handleResponse(res, 'Failed to fetch invoices');
     },
 
+    async getAdminPaygTransactions() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/admin/payg-transactions`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch PAYG transactions');
+    },
+
     async updateSubscriptionById(id: string, data: { plan_type?: 'trial' | 'core' | 'pro'; billing_cycle?: 'monthly' | 'yearly'; status?: string }) { // Admin only
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/billing/admin/subscriptions/${id}`, {

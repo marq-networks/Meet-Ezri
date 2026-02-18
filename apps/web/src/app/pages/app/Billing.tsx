@@ -180,6 +180,22 @@ export function Billing() {
      }
   };
 
+  const handleCancelSubscription = async () => {
+    if (userSubscription.planId === 'trial') return;
+    const confirmed = window.confirm("Are you sure you want to cancel your subscription? You will keep access until the end of the current billing period.");
+    if (!confirmed) return;
+    setIsProcessing(true);
+    try {
+      await api.billing.cancelSubscription();
+      alert("Your subscription has been cancelled. It will remain active until the end of the current billing period.");
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to cancel subscription:', error);
+      alert('Failed to cancel subscription. Please try again.');
+      setIsProcessing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -273,14 +289,24 @@ export function Billing() {
                 </div>
               </div>
               {userSubscription.planId !== 'trial' && (
-                <Button 
-                  onClick={handleManageBilling}
-                  disabled={isProcessing}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Manage Billing
-                </Button>
+                <div className="flex flex-col gap-2 items-end">
+                  <Button 
+                    onClick={handleManageBilling}
+                    disabled={isProcessing}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Manage Billing
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelSubscription}
+                    disabled={isProcessing}
+                    className="border-red-200 text-red-600 hover:bg-red-400"
+                  >
+                    Cancel Plan
+                  </Button>
+                </div>
               )}
             </div>
 

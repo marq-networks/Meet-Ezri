@@ -11,6 +11,7 @@ import {
   syncSubscriptionWithStripe,
   getInvoicesForUser,
   getAllInvoices,
+  getAllPaygTransactions,
 } from './billing.service';
 import { CreateSubscriptionInput, UpdateSubscriptionInput, CreateCreditPurchaseInput } from './billing.schema';
 
@@ -133,6 +134,14 @@ export async function getAllInvoicesHandler(
 ) {
   const invoices = await getAllInvoices();
   return reply.send(invoices);
+}
+
+export async function getAllPaygTransactionsHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const transactions = await getAllPaygTransactions();
+  return reply.send(transactions);
 }
 
 export async function adminUpdateSubscriptionHandler(

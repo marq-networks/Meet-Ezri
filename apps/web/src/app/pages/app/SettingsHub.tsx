@@ -26,7 +26,8 @@ import {
   AlertCircle,
   BarChart3,
   History,
-  Wind
+  Wind,
+  CreditCard
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -144,6 +145,14 @@ export function SettingsHub() {
       icon: User,
       color: "from-blue-500 to-indigo-600",
       route: "/app/settings/account"
+    },
+    {
+      id: "billing",
+      title: "Billing & Subscription",
+      description: "Manage your plan, invoices, and payments",
+      icon: CreditCard,
+      color: "from-emerald-500 to-teal-600",
+      route: "/app/billing"
     },
     {
       id: "privacy",

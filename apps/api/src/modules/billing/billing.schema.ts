@@ -46,7 +46,24 @@ export const adminInvoiceResponseSchema = invoiceResponseSchema.extend({
   user_id: z.string().nullable().optional(),
   user_email: z.string().nullable().optional(),
   user_name: z.string().nullable().optional(),
+  metadata: z.record(z.any()).optional(),
 });
+
+export const paygTransactionResponseSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  amount: z.number(),
+  currency: z.string(),
+  created: z.string().datetime(),
+  user_id: z.string().nullable().optional(),
+  user_email: z.string().nullable().optional(),
+  user_name: z.string().nullable().optional(),
+  minutes_purchased: z.number().nullable().optional(),
+  payment_method: z.string().nullable().optional(),
+   plan_type: z.string().nullable().optional(),
+});
+
+export type PaygTransactionResponse = z.infer<typeof paygTransactionResponseSchema>;
 
 export type CreateSubscriptionInput = z.infer<typeof createSubscriptionSchema>;
 export type CreateCreditPurchaseInput = z.infer<typeof createCreditPurchaseSchema>;

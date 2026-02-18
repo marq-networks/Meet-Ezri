@@ -13,7 +13,8 @@ import {
   Search
 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "../../../lib/api";
 
 interface Transaction {
   id: string;
@@ -28,9 +29,155 @@ interface Transaction {
 export function Billing() {
   const [timeRange, setTimeRange] = useState("30d");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [subs, invs] = await Promise.all([
+          api.billing.getAllSubscriptions(),
+          api.billing.getAdminInvoices()
+        ]);
+        setSubscriptions(subs || []);
+        setInvoices(invs || []);
+      } catch (error) {
+        console.error("Failed to load billing overview data:", error);
+      }
+    };
+    load();
+  }, []);
+
+  const mapInvoiceStatusToTransactionStatus = (status: string): Transaction["status"] => {
+    if (status === "paid") return "completed";
+    if (status === "open" || status === "draft") return "pending";
+    if (status === "uncollectible") return "failed";
+    if (status === "void" || status === "refunded") return "refunded";
+    return "completed";
+  };
+
+  const transactions: Transaction[] = invoices.map((inv: any) => ({
+    id: inv.id,
+    user: inv.user_name || inv.user_email || "Unknown User",
+    plan: inv.description || "Subscription",
+    amount: typeof inv.amount_due === "number" ? inv.amount_due : Number(inv.amount_due || 0),
+    status: mapInvoiceStatusToTransactionStatus(inv.status),
+    date: inv.created ? new Date(inv.created) : new Date(),
+    method: "Card"
+  }));
+
+  const filteredTransactions = transactions.filter(t => 
+    filterStatus === "all" || t.status === filterStatus
+  );
+
+  const rangeDays = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : timeRange === "90d" ? 90 : 365;
+  const now = new Date();
+  const cutoff = new Date();
+  cutoff.setDate(now.getDate() - rangeDays);
+
+  const invoicesInRange = invoices.filter((inv: any) => {
+    if (!inv.created) return false;
+    const d = new Date(inv.created);
+    return d >= cutoff && d <= now;
+  });
+
+  const totalRevenue = invoicesInRange.reduce((sum: number, inv: any) => {
+    const amount = typeof inv.amount_due === "number" ? inv.amount_due : Number(inv.amount_due || 0);
+    return sum + amount;
+  }, 0);
+
+  const prevStart = new Date(cutoff);
+  prevStart.setDate(cutoff.getDate() - rangeDays);
+
+  const invoicesPrev = invoices.filter((inv: any) => {
+    if (!inv.created) return false;
+    const d = new Date(inv.created);
+    return d >= prevStart && d < cutoff;
+  });
+
+  const prevRevenue = invoicesPrev.reduce((sum: number, inv: any) => {
+    const amount = typeof inv.amount_due === "number" ? inv.amount_due : Number(inv.amount_due || 0);
+    return sum + amount;
+  }, 0);
+
+  const revenueGrowth = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+
+  const activeSubscriptions = subscriptions.filter((sub: any) =>
+    sub.status === "active" || sub.status === "trial" || sub.status === "past_due"
+  ).length;
+
+  const canceledSubscriptions = subscriptions.filter((sub: any) =>
+    sub.status === "canceled" || sub.status === "cancelled"
+  ).length;
+
+  const subscriptionBase = activeSubscriptions + canceledSubscriptions;
+  const churnRate = subscriptionBase > 0 ? (canceledSubscriptions / subscriptionBase) * 100 : 0;
+
+  const averageRevenue = activeSubscriptions > 0 ? totalRevenue / activeSubscriptions : 0;
+
+  const revenueByMonth: Record<string, { date: Date; revenue: number; count: number }> = {};
+  invoices.forEach((inv: any) => {
+    if (!inv.created) return;
+    const d = new Date(inv.created);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const amount = typeof inv.amount_due === "number" ? inv.amount_due : Number(inv.amount_due || 0);
+    if (!revenueByMonth[key]) {
+      revenueByMonth[key] = { date: new Date(d.getFullYear(), d.getMonth(), 1), revenue: 0, count: 0 };
+    }
+    revenueByMonth[key].revenue += amount;
+    revenueByMonth[key].count += 1;
+  });
+
+  const monthlyEntries = Object.values(revenueByMonth).sort((a, b) => a.date.getTime() - b.date.getTime());
+  const lastSixMonths = monthlyEntries.slice(-6);
+
+  const revenueData = lastSixMonths.map(entry => ({
+    month: entry.date.toLocaleString(undefined, { month: "short" }),
+    revenue: Number(entry.revenue.toFixed(2)),
+    subscriptions: entry.count,
+    oneTime: 0
+  }));
+
+  const dailyTotals: Record<string, number> = {};
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 6);
+
+  invoices.forEach((inv: any) => {
+    if (!inv.created) return;
+    const d = new Date(inv.created);
+    if (d < sevenDaysAgo || d > now) return;
+    const dayLabel = d.toLocaleDateString(undefined, { weekday: "short" });
+    const amount = typeof inv.amount_due === "number" ? inv.amount_due : Number(inv.amount_due || 0);
+    dailyTotals[dayLabel] = (dailyTotals[dayLabel] || 0) + amount;
+  });
+
+  const dailyRevenueData = Object.entries(dailyTotals).map(([day, amount]) => ({
+    day,
+    amount
+  }));
+
+  const planCounts: Record<string, number> = {};
+  subscriptions.forEach((sub: any) => {
+    const key = sub.plan_type || "trial";
+    planCounts[key] = (planCounts[key] || 0) + 1;
+  });
+
+  const planDistribution = Object.entries(planCounts).map(([key, value]) => ({
+    name: key === "pro" ? "Pro" : key === "core" ? "Core" : key === "trial" ? "Trial" : key,
+    value,
+    color: key === "pro" ? "#3b82f6" : key === "core" ? "#10b981" : key === "trial" ? "#f59e0b" : "#8b5cf6"
+  }));
+
+  const stats = {
+    monthlyRevenue: Number(totalRevenue.toFixed(2)),
+    revenueGrowth: Number(revenueGrowth.toFixed(1)),
+    activeSubscriptions,
+    subscriptionGrowth: 0,
+    averageRevenue: Number(averageRevenue.toFixed(2)),
+    churnRate: Number(churnRate.toFixed(1))
+  };
 
   const handleExport = () => {
-    // Create CSV content
     const headers = ["Transaction ID", "User", "Plan", "Amount", "Status", "Date", "Payment Method"];
     const csvContent = [
       headers.join(","),
@@ -45,7 +192,6 @@ export function Billing() {
       ].join(","))
     ].join("\n");
 
-    // Create and download file
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -55,103 +201,6 @@ export function Billing() {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  };
-
-  // Mock revenue data
-  const revenueData = [
-    { month: "Jan", revenue: 12500, subscriptions: 145, oneTime: 2300 },
-    { month: "Feb", revenue: 15800, subscriptions: 178, oneTime: 2700 },
-    { month: "Mar", revenue: 18900, subscriptions: 212, oneTime: 3100 },
-    { month: "Apr", revenue: 22400, subscriptions: 245, oneTime: 3500 },
-    { month: "May", revenue: 26700, subscriptions: 289, oneTime: 4200 },
-    { month: "Jun", revenue: 31200, subscriptions: 334, oneTime: 4400 }
-  ];
-
-  const dailyRevenueData = [
-    { day: "Mon", amount: 4200 },
-    { day: "Tue", amount: 3800 },
-    { day: "Wed", amount: 5100 },
-    { day: "Thu", amount: 4500 },
-    { day: "Fri", amount: 4800 },
-    { day: "Sat", amount: 3200 },
-    { day: "Sun", amount: 2900 }
-  ];
-
-  const planDistribution = [
-    { name: "Pro Monthly", value: 145, color: "#3b82f6" },
-    { name: "Pro Yearly", value: 189, color: "#8b5cf6" },
-    { name: "Core", value: 658, color: "#10b981" },
-    { name: "Trial", value: 123, color: "#f59e0b" }
-  ];
-
-  const transactions: Transaction[] = [
-    {
-      id: "txn001",
-      user: "Sarah Johnson",
-      plan: "Premium Monthly",
-      amount: 29.99,
-      status: "completed",
-      date: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      method: "Credit Card"
-    },
-    {
-      id: "txn002",
-      user: "Michael Chen",
-      plan: "Premium Yearly",
-      amount: 299.99,
-      status: "completed",
-      date: new Date(Date.now() - 5 * 60 * 60 * 1000),
-      method: "PayPal"
-    },
-    {
-      id: "txn003",
-      user: "Emily Rodriguez",
-      plan: "Premium Monthly",
-      amount: 29.99,
-      status: "pending",
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      method: "Credit Card"
-    },
-    {
-      id: "txn004",
-      user: "David Kim",
-      plan: "Premium Yearly",
-      amount: 299.99,
-      status: "failed",
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      method: "Credit Card"
-    },
-    {
-      id: "txn005",
-      user: "Jessica Martinez",
-      plan: "Premium Monthly",
-      amount: 29.99,
-      status: "completed",
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      method: "Apple Pay"
-    },
-    {
-      id: "txn006",
-      user: "Alex Thompson",
-      plan: "Premium Monthly",
-      amount: 29.99,
-      status: "refunded",
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      method: "Credit Card"
-    }
-  ];
-
-  const filteredTransactions = transactions.filter(t => 
-    filterStatus === "all" || t.status === filterStatus
-  );
-
-  const stats = {
-    monthlyRevenue: 31200,
-    revenueGrowth: 23.5,
-    activeSubscriptions: 334,
-    subscriptionGrowth: 15.6,
-    averageRevenue: 93.41,
-    churnRate: 2.8
   };
 
   const getStatusColor = (status: string) => {
