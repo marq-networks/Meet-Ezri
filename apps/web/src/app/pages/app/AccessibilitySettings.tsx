@@ -14,11 +14,11 @@ import {
   CheckCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppLayout } from "@/app/components/AppLayout";
 
 export function AccessibilitySettings() {
-  const [settings, setSettings] = useState({
+  const getDefaultSettings = () => ({
     fontSize: "medium",
     textSpacing: "normal",
     highContrast: false,
@@ -31,12 +31,55 @@ export function AccessibilitySettings() {
     largeClickTargets: false
   });
 
+  const [settings, setSettings] = useState(() => {
+    const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+    const saved = isBrowser ? window.localStorage.getItem("ezri_accessibility_settings") : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...getDefaultSettings(),
+          ...parsed
+        };
+      } catch {
+        return getDefaultSettings();
+      }
+    }
+    return getDefaultSettings();
+  });
+
+  const [showSavedMessage, setShowSavedMessage] = useState(false);
+
   const toggleSetting = (key: keyof typeof settings) => {
     setSettings(prev => ({
       ...prev,
       [key]: !prev[key]
     }));
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.localStorage === "undefined") return;
+    window.localStorage.setItem("ezri_accessibility_settings", JSON.stringify(settings));
+    setShowSavedMessage(true);
+    const timer = setTimeout(() => {
+      setShowSavedMessage(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [settings]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const fontSizePx =
+      settings.fontSize === "small"
+        ? "14px"
+        : settings.fontSize === "large"
+        ? "18px"
+        : settings.fontSize === "xlarge"
+        ? "20px"
+        : "16px";
+    root.style.setProperty("--font-size", fontSizePx);
+  }, [settings.fontSize]);
 
   const fontSizes = [
     { value: "small", label: "Small", size: "text-sm" },
@@ -45,9 +88,27 @@ export function AccessibilitySettings() {
     { value: "xlarge", label: "Extra Large", size: "text-xl" }
   ];
 
+  const containerFontSize =
+    settings.fontSize === "small"
+      ? "text-sm"
+      : settings.fontSize === "large"
+      ? "text-lg"
+      : settings.fontSize === "xlarge"
+      ? "text-xl"
+      : "text-base";
+
+  const containerTextSpacing =
+    settings.textSpacing === "compact"
+      ? "leading-tight"
+      : settings.textSpacing === "relaxed"
+      ? "leading-relaxed"
+      : settings.textSpacing === "loose"
+      ? "leading-loose"
+      : "";
+
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className={`min-h-screen bg-gray-50 ${containerFontSize} ${containerTextSpacing}`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div
@@ -357,6 +418,17 @@ export function AccessibilitySettings() {
               </div>
             </div>
           </motion.div>
+
+          {showSavedMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-full shadow-md"
+            >
+              Accessibility settings saved
+            </motion.div>
+          )}
         </div>
       </div>
     </AppLayout>
