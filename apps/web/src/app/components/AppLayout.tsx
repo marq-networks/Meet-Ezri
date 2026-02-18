@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { 
@@ -31,6 +31,54 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { signOut, user } = useAuth();
   const { unreadCount } = useNotifications();
 
+  const [appearance, setAppearance] = useState<{
+    backgroundStyle: string;
+    compactMode: boolean;
+  }>({
+    backgroundStyle: "gradient",
+    compactMode: false
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+      return;
+    }
+    const saved = window.localStorage.getItem("ezri_appearance_settings");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setAppearance({
+          backgroundStyle: parsed.backgroundStyle || "gradient",
+          compactMode: Boolean(parsed.compactMode)
+        });
+      } catch {
+        setAppearance({
+          backgroundStyle: "gradient",
+          compactMode: false
+        });
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<any>;
+      const detail = custom.detail || {};
+      setAppearance({
+        backgroundStyle: detail.backgroundStyle || "gradient",
+        compactMode: Boolean(detail.compactMode)
+      });
+    };
+
+    window.addEventListener("ezri-appearance-change", handler as EventListener);
+
+    return () => {
+      window.removeEventListener("ezri-appearance-change", handler as EventListener);
+    };
+  }, []);
+
   const navItems = [
     { path: "/app/dashboard", icon: Home, label: "Home" },
     { path: "/app/session-lobby", icon: Video, label: "Session" },
@@ -41,18 +89,29 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const backgroundClass =
+    appearance.backgroundStyle === "solid"
+      ? "bg-gray-50 dark:bg-slate-950"
+      : appearance.backgroundStyle === "pattern"
+      ? "bg-gray-50 dark:bg-slate-950"
+      : "bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950";
+
+  const mainPaddingClass = appearance.compactMode
+    ? "pb-12 sm:pb-4 sm:pl-64"
+    : "pb-20 sm:pb-6 sm:pl-72";
+
   const handleLogout = async () => {
     await signOut();
     navigate("/login");
   };
 
   return (
-    <div className="h-screen overflow-auto bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col">
+    <div className={`h-screen overflow-auto ${backgroundClass} flex flex-col`}>
       {/* Header */}
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-40 shadow-sm"
+        className="bg-white/80 dark:bg-slate-900/90 backdrop-blur-lg border-b border-gray-200 dark:border-slate-700 sticky top-0 z-40 shadow-sm"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -66,11 +125,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                 repeat: Infinity,
                 repeatDelay: 5
               }}
-              className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white font-bold"
+              className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-bold"
             >
               E
             </motion.div>
-            <h1 className="font-bold text-xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <h1 className="font-bold text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Ezri
             </h1>
           </div>
@@ -80,7 +139,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors relative"
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors relative"
               >
                 <Bell className="w-5 h-5 text-gray-600" />
                 {unreadCount > 0 && (
@@ -95,7 +154,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 whileTap={{ scale: 0.9 }}
                 className="p-2 rounded-full hover:bg-gray-100 transition-colors"
               >
-                <Settings className="w-5 h-5 text-gray-600" />
+                <Settings className="w-5 h-5 text-gray-600 dark:text-gray-300" />
               </motion.button>
             </Link>
 
@@ -103,7 +162,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleLogout}
-              className="p-2 rounded-full hover:bg-red-50 transition-colors"
+              className="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/40 transition-colors"
               title="Logout"
             >
               <LogOut className="w-5 h-5 text-red-600" />
@@ -113,7 +172,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       </motion.header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-20 sm:pb-6 sm:pl-72">
+      <main className={`flex-1 overflow-y-auto ${mainPaddingClass}`}>
         {children}
       </main>
 
@@ -121,7 +180,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <MobileBottomNav />
 
       {/* Desktop Sidebar - Hidden on mobile */}
-      <div className="hidden sm:block fixed left-0 top-16 bottom-0 w-64 bg-white/80 backdrop-blur-lg border-r border-gray-200 z-30">
+      <div className="hidden sm:block fixed left-0 top-16 bottom-0 w-64 bg-white/80 dark:bg-slate-900/90 backdrop-blur-lg border-r border-gray-200 dark:border-slate-700 z-30">
         <nav className="p-4 space-y-2">
           {navItems.map((item, index) => {
             const Icon = item.icon;
@@ -138,7 +197,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     active
                       ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg"
-                      : "hover:bg-gray-100 text-gray-700"
+                      : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200"
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -149,11 +208,11 @@ export function AppLayout({ children }: AppLayoutProps) {
           })}
 
           {/* Additional Desktop Nav Items */}
-          <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
+          <div className="border-t border-gray-200 dark:border-slate-700 pt-4 mt-4 space-y-2">
             <Link to="/app/session-history">
               <motion.div
                 whileHover={{ scale: 1.02, x: 5 }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 text-gray-700 transition-all"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 transition-all"
               >
                 <Clock className="w-5 h-5" />
                 <span className="font-medium">Session History</span>
@@ -163,7 +222,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Link to="/app/wellness-tools">
               <motion.div
                 whileHover={{ scale: 1.02, x: 5 }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 text-gray-700 transition-all"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 transition-all"
               >
                 <Sparkles className="w-5 h-5" />
                 <span className="font-medium">Wellness Tools</span>
@@ -173,7 +232,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Link to="/app/progress">
               <motion.div
                 whileHover={{ scale: 1.02, x: 5 }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 text-gray-700 transition-all"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 transition-all"
               >
                 <TrendingUp className="w-5 h-5" />
                 <span className="font-medium">Progress</span>
@@ -183,7 +242,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Link to="/app/sleep-tracker">
               <motion.div
                 whileHover={{ scale: 1.02, x: 5 }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 text-gray-700 transition-all"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 transition-all"
               >
                 <Moon className="w-5 h-5" />
                 <span className="font-medium">Sleep Tracker</span>
@@ -193,7 +252,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Link to="/app/billing">
               <motion.div
                 whileHover={{ scale: 1.02, x: 5 }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 text-gray-700 hover:text-green-700 transition-all border border-transparent hover:border-green-200"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 dark:hover:from-emerald-900 dark:hover:to-emerald-800 text-gray-700 dark:text-gray-200 hover:text-green-700 transition-all border border-transparent hover:border-green-200 dark:hover:border-emerald-600"
               >
                 <CreditCard className="w-5 h-5" />
                 <span className="font-medium">Billing & Credits</span>
@@ -203,7 +262,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Link to="/app/habit-tracker">
               <motion.div
                 whileHover={{ scale: 1.02, x: 5 }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 text-gray-700 transition-all"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 transition-all"
               >
                 <Target className="w-5 h-5" />
                 <span className="font-medium">Habit Tracker</span>
@@ -213,7 +272,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <motion.button
               onClick={handleLogout}
               whileHover={{ scale: 1.02, x: 5 }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 transition-all"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/40 text-red-600 transition-all"
             >
               <LogOut className="w-5 h-5" />
               <span className="font-medium">Logout</span>

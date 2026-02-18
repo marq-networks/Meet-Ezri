@@ -15,36 +15,46 @@ import { useState, useEffect } from "react";
 import { AppLayout } from "@/app/components/AppLayout";
 
 export function AppearanceSettings() {
-  // Load settings from localStorage or use defaults
+  const getDefaultSettings = () => ({
+    theme: "dark",
+    accentColor: "pink",
+    backgroundStyle: "gradient",
+    animations: true,
+    compactMode: false,
+    showAvatars: true
+  });
+
   const [settings, setSettings] = useState(() => {
-    const savedSettings = localStorage.getItem('ezri_appearance_settings');
+    const isBrowser =
+      typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+    const savedSettings = isBrowser
+      ? window.localStorage.getItem("ezri_appearance_settings")
+      : null;
+
     if (savedSettings) {
-      return JSON.parse(savedSettings);
+      try {
+        const parsed = JSON.parse(savedSettings);
+        return {
+          ...getDefaultSettings(),
+          ...parsed
+        };
+      } catch {
+        return getDefaultSettings();
+      }
     }
-    return {
-      theme: "dark",
-      accentColor: "pink",
-      backgroundStyle: "gradient",
-      animations: true,
-      compactMode: false,
-      showAvatars: true
-    };
+
+    return getDefaultSettings();
   });
 
   const [showSavedMessage, setShowSavedMessage] = useState(false);
 
-  // Save settings to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('ezri_appearance_settings', JSON.stringify(settings));
-    
-    // Apply theme to document
-    if (settings.theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+      return;
     }
 
-    // Show saved message
+    window.localStorage.setItem("ezri_appearance_settings", JSON.stringify(settings));
+
     setShowSavedMessage(true);
     const timer = setTimeout(() => {
       setShowSavedMessage(false);
@@ -53,8 +63,75 @@ export function AppearanceSettings() {
     return () => clearTimeout(timer);
   }, [settings]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const root = document.documentElement;
+
+    if (settings.theme === "auto") {
+      if (typeof window === "undefined" || !window.matchMedia) {
+        root.classList.remove("dark");
+        return;
+      }
+
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+      const applyTheme = (isDark: boolean) => {
+        if (isDark) {
+          root.classList.add("dark");
+        } else {
+          root.classList.remove("dark");
+        }
+      };
+
+      applyTheme(mediaQuery.matches);
+
+      const listener = (event: MediaQueryListEvent) => {
+        applyTheme(event.matches);
+      };
+
+      mediaQuery.addEventListener("change", listener);
+
+      return () => {
+        mediaQuery.removeEventListener("change", listener);
+      };
+    }
+
+    if (settings.theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [settings.theme]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const root = document.documentElement;
+
+    const accentMap: Record<string, string> = {
+      blue: "#3b82f6",
+      purple: "#a855f7",
+      pink: "#ec4899",
+      green: "#22c55e",
+      orange: "#f97316",
+      teal: "#14b8a6"
+    };
+
+    const accent = accentMap[settings.accentColor] || accentMap.pink;
+
+    root.style.setProperty("--accent", accent);
+  }, [settings.accentColor]);
+
   const updateSetting = (key: string, value: any) => {
-    setSettings({ ...settings, [key]: value });
+    const nextSettings = { ...settings, [key]: value };
+    setSettings(nextSettings);
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("ezri-appearance-change", { detail: nextSettings })
+      );
+    }
   };
 
   const themes = [
@@ -80,7 +157,7 @@ export function AppearanceSettings() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div
@@ -88,9 +165,9 @@ export function AppearanceSettings() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <Link 
-              to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 transition-colors font-medium"
+            <Link
+              to="/app/settings"
+              className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors font-medium"
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Settings
@@ -101,8 +178,8 @@ export function AppearanceSettings() {
                 <Palette className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Appearance</h1>
-                <p className="text-gray-600">Customize your visual experience</p>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Appearance</h1>
+                <p className="text-gray-600 dark:text-gray-400">Customize your visual experience</p>
               </div>
             </div>
           </motion.div>
@@ -112,9 +189,9 @@ export function AppearanceSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-700 mb-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Theme</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">Theme</h2>
 
             <div className="grid grid-cols-3 gap-4">
               {themes.map((theme) => {
@@ -127,14 +204,14 @@ export function AppearanceSettings() {
                     onClick={() => updateSetting('theme', theme.value)}
                     className={`relative p-6 rounded-xl border-2 transition-all ${
                       settings.theme === theme.value
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                        ? "border-blue-500 bg-blue-50 dark:bg-slate-800"
+                        : "border-gray-200 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-500"
                     }`}
                   >
                     <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${theme.color} flex items-center justify-center mx-auto mb-3`}>
                       <Icon className="w-6 h-6 text-white" />
                     </div>
-                    <p className="font-medium text-gray-900">{theme.label}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{theme.label}</p>
                     {settings.theme === theme.value && (
                       <motion.div
                         initial={{ scale: 0 }}
@@ -155,9 +232,9 @@ export function AppearanceSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-700 mb-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Accent Color</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">Accent Color</h2>
 
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
               {accentColors.map((color) => (
@@ -171,7 +248,7 @@ export function AppearanceSettings() {
                   <div className={`w-full aspect-square rounded-xl ${color.color} ${
                     settings.accentColor === color.value ? "ring-4 ring-offset-2 ring-gray-900" : ""
                   }`} />
-                  <p className="text-xs text-gray-600 mt-2 text-center">{color.label}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 text-center">{color.label}</p>
                   {settings.accentColor === color.value && (
                     <motion.div
                       initial={{ scale: 0 }}
@@ -191,9 +268,9 @@ export function AppearanceSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-700 mb-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Background Style</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">Background Style</h2>
 
             <div className="grid grid-cols-3 gap-4">
               {backgroundStyles.map((style) => (
@@ -204,12 +281,12 @@ export function AppearanceSettings() {
                   onClick={() => updateSetting('backgroundStyle', style.value)}
                   className={`relative p-4 rounded-xl border-2 transition-all ${
                     settings.backgroundStyle === style.value
-                      ? "border-pink-500 bg-pink-50"
-                      : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                      ? "border-pink-500 bg-pink-50 dark:bg-slate-800"
+                      : "border-gray-200 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-500"
                   }`}
                 >
-                  <div className={`w-full h-20 rounded-lg ${style.preview} mb-3 border border-gray-200`} />
-                  <p className="font-medium text-gray-900 text-sm">{style.label}</p>
+                  <div className={`w-full h-20 rounded-lg ${style.preview} mb-3 border border-gray-200 dark:border-slate-700`} />
+                  <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{style.label}</p>
                   {settings.backgroundStyle === style.value && (
                     <motion.div
                       initial={{ scale: 0 }}
@@ -229,18 +306,18 @@ export function AppearanceSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-700 mb-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Visual Preferences</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">Visual Preferences</h2>
 
             <div className="space-y-4">
               {/* Animations */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
                   <Sparkles className="w-5 h-5 text-purple-600" />
                   <div>
-                    <p className="font-medium text-gray-900">Smooth Animations</p>
-                    <p className="text-sm text-gray-600">Enable fluid transitions and effects</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Smooth Animations</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Enable fluid transitions and effects</p>
                   </div>
                 </div>
                 <motion.button
@@ -258,12 +335,12 @@ export function AppearanceSettings() {
               </div>
 
               {/* Compact Mode */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
                   <Layout className="w-5 h-5 text-blue-600" />
                   <div>
-                    <p className="font-medium text-gray-900">Compact Mode</p>
-                    <p className="text-sm text-gray-600">Reduce spacing for more content</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Compact Mode</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Reduce spacing for more content</p>
                   </div>
                 </div>
                 <motion.button
@@ -281,12 +358,12 @@ export function AppearanceSettings() {
               </div>
 
               {/* Show Avatars */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
                   <ImageIcon className="w-5 h-5 text-green-600" />
                   <div>
-                    <p className="font-medium text-gray-900">Show Avatars</p>
-                    <p className="text-sm text-gray-600">Display profile pictures and avatars</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Show Avatars</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Display profile pictures and avatars</p>
                   </div>
                 </div>
                 <motion.button
@@ -310,18 +387,18 @@ export function AppearanceSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="bg-gradient-to-br from-pink-50 to-rose-50 border-2 border-pink-200 rounded-2xl p-6"
+            className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950 dark:to-rose-900 border-2 border-pink-200 dark:border-pink-700 rounded-2xl p-6"
           >
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-white rounded-xl shadow-md">
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-md">
                 <Sparkles className="w-6 h-6 text-pink-600" />
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-pink-900 mb-2">Live Preview</h3>
-                <p className="text-sm text-pink-700 mb-4">
+                <h3 className="font-bold text-pink-900 dark:text-pink-200 mb-2">Live Preview</h3>
+                <p className="text-sm text-pink-700 dark:text-pink-300 mb-4">
                   Your changes are applied instantly. The app will remember your preferences across sessions.
                 </p>
-                <div className={`p-4 rounded-xl bg-white border-2 ${
+                <div className={`p-4 rounded-xl bg-white dark:bg-slate-900 border-2 ${
                   settings.accentColor === 'blue' ? 'border-blue-200' :
                   settings.accentColor === 'purple' ? 'border-purple-200' :
                   settings.accentColor === 'pink' ? 'border-pink-200' :
@@ -341,11 +418,11 @@ export function AppearanceSettings() {
                       }`} />
                     )}
                     <div>
-                      <p className="font-bold text-gray-900">Sample Card</p>
-                      <p className="text-sm text-gray-600">This is how content will look</p>
+                      <p className="font-bold text-gray-900 dark:text-gray-100">Sample Card</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">This is how content will look</p>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
                     Your selected theme and accent color are applied here.
                   </p>
                 </div>

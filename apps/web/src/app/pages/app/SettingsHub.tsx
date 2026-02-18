@@ -101,6 +101,10 @@ export function SettingsHub() {
             } else {
                 document.documentElement.classList.remove('dark');
             }
+
+            window.dispatchEvent(
+              new CustomEvent("ezri-appearance-change", { detail: newSettings })
+            );
             toast.success(`Dark mode ${newTheme === 'dark' ? 'enabled' : 'disabled'}`);
         } else {
             // Handle Notification Preferences
@@ -291,7 +295,7 @@ export function SettingsHub() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div
@@ -299,9 +303,9 @@ export function SettingsHub() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <Link 
-              to="/app/dashboard" 
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+            <Link
+              to="/app/dashboard"
+              className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Dashboard
@@ -316,8 +320,8 @@ export function SettingsHub() {
                 <Zap className="w-8 h-8 text-white" />
               </motion.div>
               <div>
-                <h1 className="text-4xl font-bold text-gray-900">Settings</h1>
-                <p className="text-gray-600">Customize your Ezri experience</p>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
+                <p className="text-gray-600 dark:text-gray-400">Customize your Ezri experience</p>
               </div>
             </div>
           </motion.div>
@@ -327,9 +331,9 @@ export function SettingsHub() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-700 mb-6"
           >
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Settings</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Quick Settings</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {quickSettings.map((setting, index) => {
                 const Icon = setting.icon;
@@ -343,16 +347,16 @@ export function SettingsHub() {
                     whileTap={{ scale: 0.95 }}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       setting.enabled
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 bg-gray-50"
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                        : "border-gray-200 bg-gray-50 dark:bg-slate-800 dark:border-slate-700"
                     }`}
                     onClick={() => toggleQuickSetting(setting.key)}
                   >
                     <Icon className={`w-6 h-6 mx-auto mb-2 ${
-                      setting.enabled ? "text-blue-600" : "text-gray-400"
+                      setting.enabled ? "text-blue-600 dark:text-blue-400" : "text-gray-400"
                     }`} />
                     <p className={`text-xs font-medium ${
-                      setting.enabled ? "text-blue-900" : "text-gray-600"
+                      setting.enabled ? "text-blue-900 dark:text-blue-100" : "text-gray-600 dark:text-gray-400"
                     }`}>
                       {setting.label}
                     </p>
@@ -377,7 +381,7 @@ export function SettingsHub() {
                 >
                   <Link
                     to={section.route}
-                    className="block bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all"
+                    className="block bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-700 hover:shadow-xl transition-all"
                   >
                     <div className="flex items-center gap-4">
                       <div className={`p-3 rounded-xl bg-gradient-to-br ${section.color}`}>
@@ -386,14 +390,14 @@ export function SettingsHub() {
 
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-bold text-gray-900">{section.title}</h3>
+                          <h3 className="font-bold text-gray-900 dark:text-gray-100">{section.title}</h3>
                           {section.badge && (
                             <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
                               {section.badge}
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600">{section.description}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{section.description}</p>
                       </div>
 
                       <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -416,8 +420,8 @@ export function SettingsHub() {
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Safety & Support</h2>
-                <p className="text-sm text-gray-600">Your wellbeing is our priority</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Safety & Support</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Your wellbeing is our priority</p>
               </div>
             </div>
 
@@ -433,10 +437,10 @@ export function SettingsHub() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <Link
-                      to={section.route}
-                      className="block bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all"
-                    >
+                <Link
+                  to={section.route}
+                  className="block bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-700 hover:shadow-xl transition-all"
+                >
                       <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-xl bg-gradient-to-br ${section.color}`}>
                           <Icon className="w-6 h-6 text-white" />
@@ -444,14 +448,14 @@ export function SettingsHub() {
 
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-gray-900">{section.title}</h3>
+                            <h3 className="font-bold text-gray-900 dark:text-gray-100">{section.title}</h3>
                             {section.badge && (
                               <span className="px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full">
                                 {section.badge}
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">{section.description}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{section.description}</p>
                         </div>
 
                         <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -472,12 +476,12 @@ export function SettingsHub() {
           >
             <Link
               to="/app/settings/help-support"
-              className="block bg-white rounded-xl p-4 shadow-md border border-gray-100 hover:shadow-lg transition-all"
+              className="block bg-white dark:bg-slate-900 rounded-xl p-4 shadow-md border border-gray-100 dark:border-slate-700 hover:shadow-lg transition-all"
             >
               <div className="flex items-center gap-3">
                 <HelpCircle className="w-5 h-5 text-blue-600" />
-                <span className="font-medium text-gray-900">Help & Support</span>
-                <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
+                <span className="font-medium text-gray-900 dark:text-gray-100">Help & Support</span>
+                <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-auto" />
               </div>
             </Link>
 
@@ -499,11 +503,11 @@ export function SettingsHub() {
             transition={{ delay: 0.7 }}
             className="mt-8 text-center"
           >
-            <div className="flex items-center justify-center gap-2 text-gray-500 text-sm mb-2">
+            <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm mb-2">
               <Heart className="w-4 h-4" />
               <span>Made with care for your wellbeing</span>
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-400 dark:text-gray-500">
               Ezri v1.0.0 • © 2024 • <Link to="/privacy" className="underline">Privacy</Link> • <Link to="/terms" className="underline">Terms</Link>
             </p>
           </motion.div>
@@ -520,14 +524,14 @@ export function SettingsHub() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+                className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
               >
                 <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
                     <LogOut className="w-8 h-8 text-red-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Log Out?</h3>
-                  <p className="text-gray-600">Are you sure you want to log out of your account?</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Log Out?</h3>
+                  <p className="text-gray-600 dark:text-gray-400">Are you sure you want to log out of your account?</p>
                 </div>
 
                 <div className="flex gap-3">
@@ -535,7 +539,7 @@ export function SettingsHub() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowLogoutModal(false)}
-                    className="flex-1 px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
+                    className="flex-1 px-4 py-3 rounded-xl bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-100 font-medium"
                   >
                     Cancel
                   </motion.button>

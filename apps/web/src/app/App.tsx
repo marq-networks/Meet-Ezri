@@ -201,6 +201,59 @@ function NetworkWatcher() {
 }
 
 export default function App() {
+  useEffect(() => {
+    let theme = "dark";
+    let accentKey = "pink";
+
+    if (typeof window !== "undefined" && typeof window.localStorage !== "undefined") {
+      const saved = window.localStorage.getItem("ezri_appearance_settings");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.theme) {
+            theme = parsed.theme;
+          }
+          if (parsed.accentColor) {
+            accentKey = parsed.accentColor;
+          }
+        } catch {
+        }
+      }
+    }
+
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+
+    if (theme === "auto") {
+      if (typeof window !== "undefined" && window.matchMedia) {
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        if (mediaQuery.matches) {
+          root.classList.add("dark");
+        } else {
+          root.classList.remove("dark");
+        }
+      } else {
+        root.classList.remove("dark");
+      }
+    } else if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+
+    const accentMap: Record<string, string> = {
+      blue: "#3b82f6",
+      purple: "#a855f7",
+      pink: "#ec4899",
+      green: "#22c55e",
+      orange: "#f97316",
+      teal: "#14b8a6"
+    };
+
+    const accent = accentMap[accentKey] || accentMap.pink;
+    root.style.setProperty("--accent", accent);
+  }, []);
+
   return (
     <AuthProvider>
       <NotificationsProvider>
