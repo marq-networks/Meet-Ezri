@@ -459,9 +459,13 @@ export function Billing() {
               </div>
             )}
 
-            {invoices.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Stripe invoices</h4>
+            <div>
+              <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Stripe invoices</h4>
+              {invoices.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  You don’t have any invoices yet. Once a payment is processed, your invoices will appear here with links to view and download them.
+                </p>
+              ) : (
                 <div className="space-y-3">
                   {invoices.map((invoice) => (
                     <div
@@ -488,42 +492,38 @@ export function Billing() {
                         </div>
                         {invoice.hosted_invoice_url && (
                           <Button
-                            asChild
                             size="sm"
                             variant="outline"
+                            onClick={() => {
+                              if (invoice.hosted_invoice_url) {
+                                window.location.href = invoice.hosted_invoice_url;
+                              }
+                            }}
+                            className="flex items-center gap-2"
                           >
-                            <a
-                              href={invoice.hosted_invoice_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex items-center gap-2"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                              View
-                            </a>
+                            <ExternalLink className="w-4 h-4" />
+                            View
                           </Button>
                         )}
                         {invoice.invoice_pdf && (
                           <Button
-                            asChild
                             size="icon"
                             variant="ghost"
+                            onClick={() => {
+                              if (invoice.invoice_pdf) {
+                                window.location.href = invoice.invoice_pdf;
+                              }
+                            }}
                           >
-                            <a
-                              href={invoice.invoice_pdf}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <Download className="w-4 h-4" />
-                            </a>
+                            <Download className="w-4 h-4" />
                           </Button>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </Card>
         )}
 
