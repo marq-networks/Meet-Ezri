@@ -31,6 +31,23 @@ export const subscriptionResponseSchema = z.object({
   payment_method: z.string().nullable(),
 });
 
+export const invoiceResponseSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  amount_due: z.number(),
+  currency: z.string(),
+  created: z.string().datetime(),
+  hosted_invoice_url: z.string().nullable(),
+  invoice_pdf: z.string().nullable(),
+  description: z.string().nullable(),
+});
+
+export const adminInvoiceResponseSchema = invoiceResponseSchema.extend({
+  user_id: z.string().nullable().optional(),
+  user_email: z.string().nullable().optional(),
+  user_name: z.string().nullable().optional(),
+});
+
 export type CreateSubscriptionInput = z.infer<typeof createSubscriptionSchema>;
 export type CreateCreditPurchaseInput = z.infer<typeof createCreditPurchaseSchema>;
 export type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>;

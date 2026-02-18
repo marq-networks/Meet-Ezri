@@ -59,6 +59,7 @@ export function BillingSubscriptions() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [invoices, setInvoices] = useState<any[]>([]);
 
   // Edit states
   const [editPlan, setEditPlan] = useState<"trial" | "core" | "pro">("trial");
@@ -67,6 +68,7 @@ export function BillingSubscriptions() {
 
   useEffect(() => {
     fetchSubscriptions();
+    fetchInvoices();
   }, []);
 
   const fetchSubscriptions = async () => {
@@ -101,6 +103,15 @@ export function BillingSubscriptions() {
       console.error("Failed to fetch subscriptions:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      const data = await api.billing.getAdminInvoices();
+      setInvoices(data);
+    } catch (error) {
+      console.error("Failed to fetch invoices:", error);
     }
   };
   
@@ -187,15 +198,21 @@ export function BillingSubscriptions() {
     window.URL.revokeObjectURL(url);
   };
 
-  // Derived from subscriptions for now
-  const transactions: Transaction[] = subscriptions.map((sub, index) => ({
-    id: `txn-${sub.id}-${index}`,
-    date: sub.startDate,
-    organization: sub.organization,
-    amount: sub.mrr,
-    status: "paid",
-    invoice: `INV-${new Date().getFullYear()}-${index + 1000}`
-  }));
+  const transactions: Transaction[] = invoices.map((inv) => {
+    let status: Transaction["status"] = "paid";
+    if (inv.status === "open" || inv.status === "draft") status = "pending";
+    if (inv.status === "uncollectible") status = "failed";
+    if (inv.status === "void" || inv.status === "refunded") status = "refunded";
+
+    return {
+      id: inv.id,
+      date: inv.created ? new Date(inv.created).toISOString().split("T")[0] : "",
+      organization: inv.user_name || inv.user_email || "Unknown User",
+      amount: inv.amount_due,
+      status,
+      invoice: inv.id,
+    };
+  });
 
   const filteredSubscriptions = subscriptions.filter((sub) => {
     const matchesSearch = sub.organization.toLowerCase().includes(searchQuery.toLowerCase());

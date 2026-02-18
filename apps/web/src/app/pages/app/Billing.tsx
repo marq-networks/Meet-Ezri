@@ -27,13 +27,15 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { AppLayout } from "../../components/AppLayout";
 import { Skeleton } from "../../components/ui/skeleton";
-import { SUBSCRIPTION_PLANS, formatMinutes } from "../../utils/subscriptionPlans";
+import { SUBSCRIPTION_PLANS } from "../../utils/subscriptionPlans";
 import type { PlanTier, UserSubscription, UsageRecord } from "../../utils/subscriptionPlans";
 
 export function Billing() {
   const { session, profile, refreshProfile } = useAuth();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
+  const [billingHistory, setBillingHistory] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [userSubscription, setUserSubscription] = useState<UserSubscription>({
     userId: "",
     planId: "trial",
@@ -57,12 +59,13 @@ export function Billing() {
       if (!session?.user) return;
       
       try {
-        // Refresh profile to get latest credits
         await refreshProfile();
 
-        const [subData, sessionsData] = await Promise.all([
+        const [subData, sessionsData, historyData, invoiceData] = await Promise.all([
           api.billing.getSubscription(),
-          api.sessions.list()
+          api.sessions.list(),
+          api.billing.getHistory(),
+          api.billing.getInvoices()
         ]);
 
         const rawPlanId = subData.plan_type;
@@ -107,6 +110,8 @@ export function Billing() {
         };
 
         setUserSubscription(subscription);
+        setBillingHistory(historyData || []);
+        setInvoices(invoiceData || []);
       } catch (error) {
         console.error('Failed to fetch billing data:', error);
       } finally {
@@ -343,7 +348,6 @@ export function Billing() {
           </Card>
         </div>
 
-        {/* Pay-As-You-Go Section */}
         {currentPlan.payAsYouGoRate && (
           <Card className="p-6 mb-8 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200">
             <div className="flex items-start justify-between">
@@ -389,7 +393,114 @@ export function Billing() {
           </Card>
         )}
 
-        {/* Usage History */}
+        {(billingHistory.length > 0 || invoices.length > 0) && (
+          <Card className="p-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-purple-600" />
+                <h3 className="text-xl font-bold">Billing History & Invoices</h3>
+              </div>
+            </div>
+
+            {billingHistory.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Subscription history</h4>
+                <div className="space-y-3">
+                  {billingHistory.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border"
+                    >
+                      <div>
+                        <p className="font-medium capitalize">
+                          {entry.plan_type || 'trial'} plan
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {entry.start_date ? new Date(entry.start_date).toLocaleDateString() : ''}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm capitalize">{entry.status}</p>
+                        {entry.amount != null && (
+                          <p className="text-xs text-muted-foreground">
+                            ${Number(entry.amount).toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {invoices.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold mb-3 text-muted-foreground">Stripe invoices</h4>
+                <div className="space-y-3">
+                  {invoices.map((invoice) => (
+                    <div
+                      key={invoice.id}
+                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {invoice.description || 'Subscription invoice'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {invoice.created ? new Date(invoice.created).toLocaleDateString() : ''} •{" "}
+                          <span className="capitalize">{invoice.status}</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="font-semibold">
+                            ${Number(invoice.amount_due).toFixed(2)}
+                          </p>
+                          <p className="text-xs text-muted-foreground uppercase">
+                            {invoice.currency}
+                          </p>
+                        </div>
+                        {invoice.hosted_invoice_url && (
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="outline"
+                          >
+                            <a
+                              href={invoice.hosted_invoice_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              View
+                            </a>
+                          </Button>
+                        )}
+                        {invoice.invoice_pdf && (
+                          <Button
+                            asChild
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <a
+                              href={invoice.invoice_pdf}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+
         <Card className="p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">

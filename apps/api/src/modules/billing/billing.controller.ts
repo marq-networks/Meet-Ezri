@@ -1,5 +1,17 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createSubscription, cancelSubscription, getBillingHistory, getSubscription, updateSubscription, getAllSubscriptions, updateSubscriptionById, createCreditPurchaseSession, syncSubscriptionWithStripe } from './billing.service';
+import {
+  createSubscription,
+  cancelSubscription,
+  getBillingHistory,
+  getSubscription,
+  updateSubscription,
+  getAllSubscriptions,
+  updateSubscriptionById,
+  createCreditPurchaseSession,
+  syncSubscriptionWithStripe,
+  getInvoicesForUser,
+  getAllInvoices,
+} from './billing.service';
 import { CreateSubscriptionInput, UpdateSubscriptionInput, CreateCreditPurchaseInput } from './billing.schema';
 
 interface UserPayload {
@@ -16,7 +28,6 @@ export async function getSubscriptionHandler(
   const subscription = await getSubscription(user.sub);
   
   if (!subscription) {
-    // Return a default trial plan structure if no subscription exists
     return reply.send({
       id: 'default',
       user_id: user.sub,
@@ -39,22 +50,7 @@ export async function createSubscriptionHandler(
   reply: FastifyReply
 ) {
   const user = request.user as UserPayload;
-  // We need email to create Stripe Customer if not exists
-  // Assuming email is in the JWT or we need to fetch it.
-  // The UserPayload interface defined above has email as optional.
-  // Let's assume it's there or fetch from DB if critical, but for now let's try to use what we have.
-  // Ideally, we should fetch the user profile to be sure.
-  
-  // Since we modified the service to fetch profile for stripe_customer_id, we can pass just the ID
-  // but the service function signature I created asks for email too: createCheckoutSession(userId, email, data)
-  
-  // Let's rely on the service to handle the email fetching if missing from payload, 
-  // OR update the service to fetch the email from the profile if not provided.
-  // Actually, let's update the controller to just pass the user.sub and let the service fetch the email if needed.
-  // Wait, I defined `createCheckoutSession(userId: string, email: string, ...)`
-  
-  // Let's pass a placeholder if email is missing, but better to fix the service call.
-  const result = await import('./billing.service').then(m => 
+  const result = await import('./billing.service').then(m =>
     m.createCheckoutSession(user.sub, user.email || '', request.body)
   );
   
@@ -114,13 +110,29 @@ export async function getBillingHistoryHandler(
   return reply.send(history);
 }
 
+export async function getInvoicesHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const user = request.user as UserPayload;
+  const invoices = await getInvoicesForUser(user.sub);
+  return reply.send(invoices);
+}
+
 export async function getAllSubscriptionsHandler(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  // In a real app, check for admin role here if not done in preHandler
   const subscriptions = await getAllSubscriptions();
   return reply.send(subscriptions);
+}
+
+export async function getAllInvoicesHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const invoices = await getAllInvoices();
+  return reply.send(invoices);
 }
 
 export async function adminUpdateSubscriptionHandler(
@@ -143,7 +155,6 @@ export async function getSubscriptionByUserIdHandler(
   const subscription = await getSubscription(userId);
   
   if (!subscription) {
-    // Return a default trial plan structure if no subscription exists
     return reply.send({
       id: 'default',
       user_id: userId,

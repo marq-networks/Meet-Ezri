@@ -696,6 +696,16 @@ export const api = {
       return handleResponse(res, 'Failed to fetch billing history');
     },
 
+    async getInvoices() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/invoices`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch invoices');
+    },
+
     async getAllSubscriptions() { // Admin only
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/billing/admin/subscriptions`, {
@@ -704,6 +714,16 @@ export const api = {
         cache: 'no-store',
       });
       return handleResponse(res, 'Failed to fetch all subscriptions');
+    },
+
+    async getAdminInvoices() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/admin/invoices`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      return handleResponse(res, 'Failed to fetch invoices');
     },
 
     async updateSubscriptionById(id: string, data: { plan_type?: 'trial' | 'core' | 'pro'; billing_cycle?: 'monthly' | 'yearly'; status?: string }) { // Admin only
