@@ -53,7 +53,7 @@ export function ActiveSession() {
   const [isSoundOff, setIsSoundOff] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
   const [isEzriSpeaking, setIsEzriSpeaking] = useState(false);
-  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor'>('excellent');
+  const [connectionQuality, setConnectionQuality] = useState<"excellent" | "good" | "poor">("excellent");
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showPermissionRequest, setShowPermissionRequest] = useState(true);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
@@ -189,6 +189,7 @@ export function ActiveSession() {
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
   const [showLowMinutesModal, setShowLowMinutesModal] = useState(false);
   const [hasShownLowMinutesModal, setHasShownLowMinutesModal] = useState(false);
+  const previousConnectionQuality = useRef(connectionQuality);
 
   useEffect(() => {
     const loadCredits = async () => {
@@ -302,6 +303,23 @@ export function ActiveSession() {
       setHasShownLowMinutesModal(true);
     }
   }, [creditsRemaining, showLowCreditsWarning, showOutOfCredits, hasShownLowMinutesModal]);
+
+  useEffect(() => {
+    const previous = previousConnectionQuality.current;
+    if (previous === connectionQuality) {
+      return;
+    }
+
+    if ((previous === "excellent" || previous === "good") && connectionQuality === "poor") {
+      toast.info("Your connection seems unstable. Video quality may be affected.");
+    }
+
+    if (previous === "poor" && (connectionQuality === "good" || connectionQuality === "excellent")) {
+      toast.success("Connection improved. You are back to a stable connection.");
+    }
+
+    previousConnectionQuality.current = connectionQuality;
+  }, [connectionQuality]);
 
   // Simulate Ezri speaking animation - alternates between speaking and listening
   useEffect(() => {
