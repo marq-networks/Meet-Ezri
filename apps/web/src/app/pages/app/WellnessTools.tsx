@@ -25,6 +25,7 @@ import { useState, useEffect } from "react";
 import { api } from "../../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Skeleton } from "../../components/ui/skeleton";
 
 export function WellnessTools() {
   const { profile } = useAuth();
@@ -227,10 +228,45 @@ export function WellnessTools() {
     }
   }, [isPlaying, activeExerciseData, timer, breathPhase, phaseTimer]);
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="p-4 text-center">
+                <Skeleton className="w-6 h-6 rounded-full mx-auto mb-2" />
+                <Skeleton className="h-5 w-16 mx-auto mb-1" />
+                <Skeleton className="h-3 w-24 mx-auto" />
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {[0, 1, 2, 3].map((i) => (
+              <Card key={i} className="p-4">
+                <div className="flex gap-3">
+                  <Skeleton className="w-12 h-12 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -245,7 +281,6 @@ export function WellnessTools() {
           </p>
         </motion.div>
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {stats.map((stat, index) => {
             const Icon = stat.icon;

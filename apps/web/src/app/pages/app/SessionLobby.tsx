@@ -21,6 +21,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { Skeleton } from "../../components/ui/skeleton";
 
 export function SessionLobby() {
   const { profile } = useAuth();
@@ -40,6 +41,7 @@ export function SessionLobby() {
   const [scheduleTime, setScheduleTime] = useState("");
   const [isStarting, setIsStarting] = useState(false);
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
 
   useEffect(() => {
     if (profile?.selected_avatar) {
@@ -66,10 +68,13 @@ export function SessionLobby() {
 
   const loadUpcomingSessions = async () => {
     try {
+      setIsLoadingSessions(true);
       const sessions = await api.sessions.list({ status: 'scheduled' });
       setUpcomingSessions(sessions);
     } catch (err) {
       console.error("Failed to load sessions:", err);
+    } finally {
+      setIsLoadingSessions(false);
     }
   };
 
@@ -171,6 +176,81 @@ export function SessionLobby() {
     newItems[index].checked = !newItems[index].checked;
     setChecklistItems(newItems);
   };
+
+  if (isLoadingSessions) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="p-6 shadow-xl">
+                <Skeleton className="h-5 w-40 mb-4" />
+                <div className="grid grid-cols-2 gap-4">
+                  {[0, 1].map((i) => (
+                    <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                  ))}
+                </div>
+              </Card>
+              <Card className="p-6 shadow-xl">
+                <Skeleton className="h-5 w-44 mb-4" />
+                <div className="grid grid-cols-4 gap-3">
+                  {[0, 1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                  ))}
+                </div>
+              </Card>
+              <Card className="p-6 shadow-xl">
+                <Skeleton className="h-5 w-40 mb-4" />
+                <Skeleton className="h-10 w-full mb-3 rounded-lg" />
+                <Skeleton className="h-24 w-full rounded-lg" />
+              </Card>
+            </div>
+            <div className="space-y-6">
+              <Card className="p-6 shadow-xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <Skeleton className="w-12 h-12 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+                <Skeleton className="h-10 w-full mb-4 rounded-lg" />
+                <div className="space-y-2">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Skeleton className="w-4 h-4 rounded" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              <Card className="p-6 shadow-xl">
+                <Skeleton className="h-5 w-40 mb-4" />
+                <div className="space-y-3">
+                  {[0, 1].map((i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="w-10 h-10 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-3 w-32" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-8 w-24 rounded-lg" />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

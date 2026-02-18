@@ -20,9 +20,10 @@ import { AppLayout } from "@/app/components/AppLayout";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { Skeleton } from "@/app/components/ui/skeleton";
 
 export function NotificationSettings() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, isLoading } = useAuth();
   const [notificationSettings, setNotificationSettings] = useState({
     pushEnabled: true,
     emailEnabled: true,
@@ -157,6 +158,33 @@ export function NotificationSettings() {
       color: "text-red-600"
     }
   ];
+
+  if (isLoading && !profile) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mb-8">
+              <Skeleton className="h-5 w-32 mb-4" />
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-12 h-12 rounded-xl" />
+                <div className="space-y-2">
+                  <Skeleton className="h-7 w-48" />
+                  <Skeleton className="h-4 w-64" />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full rounded-2xl" />
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-2xl" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

@@ -25,6 +25,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { api } from "../../../lib/api";
+import { Skeleton } from "../../components/ui/skeleton";
 
 interface SessionData {
   id: string;
@@ -243,6 +244,47 @@ export function SessionHistory() {
     return acc + minutes;
   }, 0);
   const totalHours = (totalDurationMinutes / 60).toFixed(1);
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+            {[0, 1, 2, 3].map((i) => (
+              <Card key={i} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-5 w-12" />
+                  </div>
+                  <Skeleton className="w-8 h-8 rounded-lg" />
+                </div>
+              </Card>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="p-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Skeleton className="w-full sm:w-48 h-32 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

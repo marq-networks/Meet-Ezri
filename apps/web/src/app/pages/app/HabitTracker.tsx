@@ -1,6 +1,7 @@
 import { AppLayout } from "../../components/AppLayout";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { Skeleton } from "../../components/ui/skeleton";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Target,
@@ -267,11 +268,56 @@ export function HabitTracker() {
   const longestStreak = Math.max(...habits.map(h => h.currentStreak));
 
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
+  
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-56 mb-2" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            {[0, 1, 2, 3].map((i) => (
+              <Card key={i} className="p-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-10 h-10 rounded-xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+          <div className="space-y-3 mb-8">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="p-4">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="w-12 h-12 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                  <Skeleton className="w-16 h-8 rounded-lg" />
+                </div>
+              </Card>
+            ))}
+          </div>
+          <Card className="p-6">
+            <Skeleton className="h-5 w-48 mb-3" />
+            <Skeleton className="h-3 w-full mb-2" />
+            <Skeleton className="h-3 w-5/6" />
+          </Card>
+        </div>
+      </AppLayout>
+    );
+  }
+  
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -296,7 +342,6 @@ export function HabitTracker() {
             </Button>
           </div>
 
-          {/* Stats Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Card className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50">
               <div className="flex items-center gap-3">

@@ -38,6 +38,7 @@ import {
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { Skeleton } from "../../components/ui/skeleton";
 
 import { useNavigate } from "react-router-dom";
 
@@ -210,6 +211,39 @@ export function Progress() {
       bgColor: "bg-orange-50"
     }
   ];
+
+  if (isLoadingWellness) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[0, 1, 2, 3].map((i) => (
+              <Card key={i} className="p-5">
+                <div className="space-y-3">
+                  <Skeleton className="w-7 h-7 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="p-6">
+                <Skeleton className="h-5 w-40 mb-4" />
+                <Skeleton className="h-64 w-full" />
+              </Card>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

@@ -21,6 +21,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { Skeleton } from "../../components/ui/skeleton";
 
 interface JournalEntry {
   id: string;
@@ -295,6 +296,39 @@ export function Journal() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 7;
   }).length;
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="p-4">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-6 w-16 mb-1" />
+                <Skeleton className="h-3 w-20" />
+              </Card>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="p-5">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

@@ -36,6 +36,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { Skeleton } from "../../components/ui/skeleton";
 
 export function UserProfile() {
   const navigate = useNavigate();
@@ -256,10 +257,87 @@ export function UserProfile() {
     }
   ];
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="space-y-6">
+              <Card className="p-6">
+                <div className="flex flex-col items-center mb-6">
+                  <Skeleton className="w-32 h-32 rounded-full mb-4" />
+                  <Skeleton className="h-5 w-40 mb-1" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="text-center space-y-2">
+                      <Skeleton className="h-4 w-4 mx-auto" />
+                      <Skeleton className="h-5 w-10 mx-auto" />
+                      <Skeleton className="h-3 w-16 mx-auto" />
+                    </div>
+                  ))}
+                </div>
+                <Skeleton className="h-10 w-full" />
+              </Card>
+              <Card className="p-6">
+                <Skeleton className="h-5 w-40 mb-4" />
+                <div className="space-y-3">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-40" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="p-6">
+                <Skeleton className="h-5 w-48 mb-4" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              <Card className="p-6">
+                <Skeleton className="h-5 w-40 mb-4" />
+                <div className="space-y-3">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-40" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-4 w-4" />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

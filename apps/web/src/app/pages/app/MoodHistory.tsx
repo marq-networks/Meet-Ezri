@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Loader2,
   Lock
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
@@ -28,6 +27,7 @@ import {
 } from "recharts";
 import { api } from "../../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { Skeleton } from "../../components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, isSameDay, subMonths, addMonths, subWeeks, addWeeks, subYears, addYears } from "date-fns";
 
@@ -373,8 +373,45 @@ export function MoodHistory() {
         </motion.div>
 
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[0, 1, 2, 3].map((i) => (
+                <Card key={i} className="p-4 shadow-lg">
+                  <div className="space-y-3">
+                    <Skeleton className="w-8 h-8 rounded-full" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="p-6 shadow-xl">
+                <Skeleton className="h-5 w-40 mb-4" />
+                <Skeleton className="h-64 w-full" />
+              </Card>
+              <Card className="p-6 shadow-xl">
+                <Skeleton className="h-5 w-40 mb-4" />
+                <div className="flex gap-4">
+                  <div className="w-1/2">
+                    <Skeleton className="h-64 w-full" />
+                  </div>
+                  <div className="w-1/2 space-y-3">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="w-3 h-3 rounded-full" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                        <Skeleton className="h-3 w-8" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
         ) : (
           <>

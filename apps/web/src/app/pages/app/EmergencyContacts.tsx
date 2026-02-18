@@ -22,6 +22,7 @@ import {
 import { useState, useEffect } from "react";
 import { api } from "../../../lib/api";
 import { toast } from "sonner";
+import { Skeleton } from "../../components/ui/skeleton";
 
 interface EmergencyContact {
   id: string;
@@ -177,8 +178,53 @@ export function EmergencyContacts() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-4 w-24 mb-4" />
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-4 w-80" />
+              </div>
+              <Skeleton className="h-10 w-32 rounded-lg" />
+            </div>
+          </div>
+          <div className="space-y-4 mb-6">
+            <Card className="p-4">
+              <div className="flex items-start gap-3">
+                <Skeleton className="w-5 h-5 rounded-full mt-1" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-5/6" />
+                </div>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-56" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-3/4" />
+              </div>
+            </Card>
+          </div>
+          <div className="space-y-3">
+            {[0, 1].map((i) => (
+              <Card key={i} className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
       </AppLayout>
     );
@@ -187,7 +233,6 @@ export function EmergencyContacts() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -225,7 +270,6 @@ export function EmergencyContacts() {
           </div>
         </motion.div>
 
-        {/* Info Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -244,7 +288,6 @@ export function EmergencyContacts() {
             </div>
           </Card>
 
-          {/* Trusted Contact Info */}
           <Card className="p-4 bg-purple-50 border-purple-200">
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />

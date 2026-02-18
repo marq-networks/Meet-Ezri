@@ -26,6 +26,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { AppLayout } from "../../components/AppLayout";
+import { Skeleton } from "../../components/ui/skeleton";
 import { SUBSCRIPTION_PLANS, formatMinutes } from "../../utils/subscriptionPlans";
 import type { PlanTier, UserSubscription, UsageRecord } from "../../utils/subscriptionPlans";
 
@@ -174,10 +175,65 @@ export function Billing() {
      }
   };
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <Card className="p-6 md:col-span-2 border-2">
+              <div className="flex items-start justify-between mb-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-8 w-32" />
+                </div>
+                <Skeleton className="h-10 w-32 rounded-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </Card>
+            <Card className="p-6 border-2">
+              <Skeleton className="h-4 w-40 mb-4" />
+              <Skeleton className="h-10 w-32 mb-2" />
+              <Skeleton className="h-3 w-24 mb-4" />
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-5/6" />
+              </div>
+            </Card>
+          </div>
+          <div className="grid lg:grid-cols-3 gap-6">
+            <Card className="p-6 lg:col-span-2">
+              <Skeleton className="h-5 w-40 mb-4" />
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card className="p-6">
+              <Skeleton className="h-5 w-32 mb-4" />
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-5/6" />
+                <Skeleton className="h-10 w-full mt-2" />
+              </div>
+            </Card>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Billing & Subscription</h1>
           <p className="text-muted-foreground">
@@ -191,9 +247,7 @@ export function Billing() {
           )}
         </div>
 
-        {/* Current Plan Overview */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {/* Current Plan Card */}
           <Card className="p-6 md:col-span-2 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
             <div className="flex items-start justify-between mb-4">
               <div>

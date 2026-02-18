@@ -22,6 +22,7 @@ import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { api } from "../../../lib/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { format, differenceInMinutes, parseISO } from "date-fns";
+import { Skeleton } from "../../components/ui/skeleton";
 
 export function SleepTracker() {
   const { session } = useAuth();
@@ -145,6 +146,40 @@ export function SleepTracker() {
       quality: entry.quality_rating
     };
   });
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+            {[0, 1, 2, 3].map((i) => (
+              <Card key={i} className="p-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-10 h-10 rounded-xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[0, 1].map((i) => (
+              <Card key={i} className="p-6">
+                <Skeleton className="h-5 w-40 mb-4" />
+                <Skeleton className="h-64 w-full" />
+              </Card>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

@@ -13,6 +13,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
+import { Skeleton } from "@/app/components/ui/skeleton";
 import { useNotifications } from "@/app/contexts/NotificationsContext";
 import { formatDistanceToNow } from "date-fns";
 
@@ -41,10 +42,41 @@ export function Notifications() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+          <div className="mb-6">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-12 h-12 rounded-2xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-7 w-40" />
+                <Skeleton className="h-4 w-56" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-gray-200">
+                <div className="flex gap-4">
+                  <Skeleton className="w-12 h-12 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -86,11 +118,8 @@ export function Notifications() {
           )}
         </motion.div>
 
-        {/* Notifications List */}
         <div className="space-y-3">
-          {isLoading ? (
-             <div className="text-center py-12">Loading notifications...</div>
-          ) : notifications.length === 0 ? (
+          {notifications.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
