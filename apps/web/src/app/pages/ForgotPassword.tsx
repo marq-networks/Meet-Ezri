@@ -2,7 +2,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router-dom";
 import { KeyRound } from "lucide-react";
 import { PublicNav } from "../components/PublicNav";
 import { useState } from "react";
@@ -10,6 +10,10 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 export function ForgotPassword() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const isAdminReset = params.get("context") === "admin";
+
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -19,8 +23,12 @@ export function ForgotPassword() {
     setIsLoading(true);
 
     try {
+      const redirectTo = isAdminReset
+        ? `${window.location.origin}/reset-password?context=admin`
+        : `${window.location.origin}/reset-password`;
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo,
       });
 
       if (error) {
@@ -46,9 +54,13 @@ export function ForgotPassword() {
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <KeyRound className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Reset Your Password</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {isAdminReset ? "Reset Admin Password" : "Reset Your Password"}
+          </h1>
           <p className="text-muted-foreground">
-            Enter your email and we'll send you a reset link
+            {isAdminReset
+              ? "Enter your admin email and we'll send you a secure reset link"
+              : "Enter your email and we'll send you a reset link"}
           </p>
         </div>
         

@@ -392,6 +392,20 @@ export function AdminLogin() {
                   />
                 </motion.div>
 
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.65 }}
+                className="flex justify-end"
+              >
+                <Link
+                  to="/forgot-password?context=admin"
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot admin password?
+                </Link>
+              </motion.div>
+
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
