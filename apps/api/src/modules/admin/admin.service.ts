@@ -356,9 +356,32 @@ export async function getUserById(id: string) {
 }
 
 export async function updateUser(id: string, data: { status?: string; role?: string }) {
+  const existing = await prisma.profiles.findUnique({
+    where: { id },
+    select: {
+      role: true,
+    },
+  });
+
+  if (!existing) {
+    throw new Error('User not found');
+  }
+
+  const adminRoles = ['super_admin', 'org_admin', 'team_admin'];
+
   const updateData: any = {};
+
   if (data.role) {
     updateData.role = data.role;
+  }
+
+  if (data.status && !adminRoles.includes(existing.role || '')) {
+    if (data.status === 'suspended') {
+      updateData.role = 'suspended';
+    }
+    if (data.status === 'active' && existing.role === 'suspended') {
+      updateData.role = 'user';
+    }
   }
 
   const user = await prisma.profiles.update({
@@ -375,10 +398,17 @@ export async function updateUser(id: string, data: { status?: string; role?: str
     }
   });
 
+  let status = 'inactive';
+  if (user.role === 'suspended') {
+    status = 'suspended';
+  } else {
+    status = data.status || 'active';
+  }
+
   return {
     ...user,
     email: user.email || '',
-    status: data.status || 'active'
+    status
   };
 }
 
