@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 // Contexts
 import { AuthProvider } from '@/app/contexts/AuthContext';
@@ -166,12 +167,46 @@ import { NoDeviceAccess } from '@/app/pages/errors/NoDeviceAccess';
 // Demo Page
 import { Phase1Demo } from '@/app/pages/Phase1Demo';
 
+function NetworkWatcher() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleOnline = () => {
+      if (location.pathname === '/error/offline') {
+        navigate('/app/dashboard');
+      }
+    };
+
+    const handleOffline = () => {
+      if (location.pathname !== '/error/offline') {
+        navigate('/error/offline');
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (!navigator.onLine && location.pathname !== '/error/offline') {
+      navigate('/error/offline');
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [location.pathname, navigate]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <NotificationsProvider>
       <SafetyProvider>
         <BrowserRouter>
+        <NetworkWatcher />
         <MobileMetaTags />
         <Toaster />
         <Routes>

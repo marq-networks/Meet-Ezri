@@ -36,6 +36,7 @@ import { SafetyStateIndicator } from "@/app/components/safety/SafetyStateIndicat
 import { SafetyBoundaryMessage } from "@/app/components/safety/SafetyBoundaryMessage";
 import { SafetyResourceCard } from "@/app/components/safety/SafetyResourceCard";
 import { getSafetyResources } from "@/app/utils/safetyResources";
+import { LowMinutesWarning } from "@/app/components/modals/LowMinutesWarning";
 
 export function ActiveSession() {
   const navigate = useNavigate();
@@ -186,6 +187,8 @@ export function ActiveSession() {
   const [creditsRemaining, setCreditsRemaining] = useState(duration || 0);
   const [showLowCreditsWarning, setShowLowCreditsWarning] = useState(false);
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
+  const [showLowMinutesModal, setShowLowMinutesModal] = useState(false);
+  const [hasShownLowMinutesModal, setHasShownLowMinutesModal] = useState(false);
 
   useEffect(() => {
     const loadCredits = async () => {
@@ -293,7 +296,12 @@ export function ActiveSession() {
     if (creditsRemaining === 0 && !showOutOfCredits) {
       setShowOutOfCredits(true);
     }
-  }, [creditsRemaining, showLowCreditsWarning, showOutOfCredits]);
+
+    if (creditsRemaining > 0 && creditsRemaining <= 3 && !hasShownLowMinutesModal) {
+      setShowLowMinutesModal(true);
+      setHasShownLowMinutesModal(true);
+    }
+  }, [creditsRemaining, showLowCreditsWarning, showOutOfCredits, hasShownLowMinutesModal]);
 
   // Simulate Ezri speaking animation - alternates between speaking and listening
   useEffect(() => {
@@ -999,6 +1007,12 @@ export function ActiveSession() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <LowMinutesWarning
+        isOpen={showLowMinutesModal}
+        onClose={() => setShowLowMinutesModal(false)}
+        minutesRemaining={creditsRemaining}
+      />
 
       {/* End Session Confirmation Modal */}
       <AnimatePresence>

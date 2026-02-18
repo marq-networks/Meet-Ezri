@@ -84,7 +84,7 @@ export function SessionLobby() {
           avatar: selectedAvatar
         }
       });
-      
+
       navigate("/app/active-session", { 
         state: { 
           sessionId: session.id,
@@ -93,7 +93,17 @@ export function SessionLobby() {
         } 
       });
     } catch (err: any) {
-      toast.error(err.message || "Failed to start session");
+      const message = err?.message || "Failed to start session";
+      if (message.includes("trial has expired")) {
+        navigate("/error/trial-expired");
+        return;
+      }
+      if (message.toLowerCase().includes("insufficient credits")) {
+        toast.error(message);
+        navigate("/app/billing");
+        return;
+      }
+      toast.error(message);
     } finally {
       setIsStarting(false);
     }
@@ -119,7 +129,17 @@ export function SessionLobby() {
       setShowScheduleModal(false);
       loadUpcomingSessions();
     } catch (err: any) {
-      toast.error(err.message || "Failed to schedule session");
+      const message = err?.message || "Failed to schedule session";
+      if (message.includes("trial has expired")) {
+        navigate("/error/trial-expired");
+        return;
+      }
+      if (message.toLowerCase().includes("insufficient credits")) {
+        toast.error(message);
+        navigate("/app/billing");
+        return;
+      }
+      toast.error(message);
     }
   };
 
