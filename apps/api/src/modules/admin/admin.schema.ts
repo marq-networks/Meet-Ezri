@@ -55,6 +55,11 @@ export const userSchema = z.object({
   // Add derived fields or extra profile fields
   status: z.string().optional().default('active'), // Mocking status if not in DB
   role: z.string().optional().default('user'),
+  subscription: z.string().optional(),
+  session_count: z.number().optional(),
+  last_active: z.date().nullable().optional(),
+  risk_level: z.string().optional(),
+  organization: z.string().optional(),
 });
 
 export const userListSchema = z.array(userSchema);

@@ -109,11 +109,11 @@ export function UserManagement() {
         email: u.email,
         status: u.status || 'active',
         joinDate: u.created_at,
-        sessions: 0, // TODO: Fetch from backend
-        lastActive: u.updated_at,
-        riskLevel: 'low', // TODO: Fetch from backend
+        sessions: typeof u.session_count === "number" ? u.session_count : 0,
+        lastActive: u.last_active || u.updated_at,
+        riskLevel: (u.risk_level as User["riskLevel"]) || 'low',
         subscription: u.subscription || 'trial',
-        organization: ''
+        organization: u.organization || ''
       }));
       setUsers(mappedUsers);
     } catch (error) {
@@ -194,8 +194,13 @@ export function UserManagement() {
     let bVal: any = b[sortField];
 
     if (sortField === "joinDate" || sortField === "lastActive") {
-      aVal = new Date(a.joinDate).getTime();
-      bVal = new Date(b.joinDate).getTime();
+      if (sortField === "joinDate") {
+        aVal = new Date(a.joinDate).getTime();
+        bVal = new Date(b.joinDate).getTime();
+      } else {
+        aVal = new Date(a.lastActive).getTime();
+        bVal = new Date(b.lastActive).getTime();
+      }
     }
 
     if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;

@@ -214,34 +214,98 @@ export async function getRecentActivity() {
 }
 
 export async function getAllUsers() {
-  const users = await prisma.profiles.findMany({
-    orderBy: {
-      created_at: 'desc'
-    },
-    select: {
-      id: true,
-      email: true,
-      full_name: true,
-      avatar_url: true,
-      created_at: true,
-      updated_at: true,
-      role: true,
-      subscriptions: {
-        where: { status: 'active' },
-        select: { plan_type: true },
-        take: 1
+  const [users, sessionCounts, lastSessions] = await Promise.all([
+    prisma.profiles.findMany({
+      orderBy: {
+        created_at: 'desc'
+      },
+      select: {
+        id: true,
+        email: true,
+        full_name: true,
+        avatar_url: true,
+        created_at: true,
+        updated_at: true,
+        role: true,
+        subscriptions: {
+          where: { status: 'active' },
+          orderBy: { created_at: 'desc' },
+          select: {
+            plan_type: true
+          },
+          take: 1
+        },
+        mood_entries: {
+          orderBy: { created_at: 'desc' },
+          take: 1
+        },
+        org_members: {
+          include: {
+            organizations: true
+          }
+        }
       }
-    }
+    }),
+    prisma.app_sessions.groupBy({
+      by: ['user_id'],
+      where: {
+        ended_at: { not: null }
+      },
+      _count: {
+        _all: true
+      }
+    }),
+    prisma.app_sessions.groupBy({
+      by: ['user_id'],
+      _max: {
+        started_at: true
+      }
+    })
+  ]);
+
+  const sessionsCountByUser = new Map<string, number>();
+  sessionCounts.forEach((row: any) => {
+    sessionsCountByUser.set(row.user_id, row._count?._all ?? 0);
   });
 
-  return users.map((user: any) => ({
-    ...user,
-    email: user.email || '',
-    created_at: user.created_at,
-    updated_at: user.updated_at,
-    status: 'active', // Defaulting to active as we don't have a status field in profiles yet
-    subscription: user.subscriptions?.[0]?.plan_type || 'trial'
-  }));
+  const lastActiveByUser = new Map<string, Date | null>();
+  lastSessions.forEach((row: any) => {
+    lastActiveByUser.set(row.user_id, row._max?.started_at ?? null);
+  });
+
+  return users.map((user: any) => {
+    const sessionCount = sessionsCountByUser.get(user.id) ?? 0;
+    const lastActive = lastActiveByUser.get(user.id) ?? user.updated_at;
+
+    let riskLevel = 'low';
+    const lastMood = user.mood_entries?.[0];
+    if (lastMood && lastMood.mood === 'Sad' && lastMood.intensity > 8) {
+      riskLevel = 'high';
+    } else if (lastMood && lastMood.mood === 'Anxious') {
+      riskLevel = 'medium';
+    }
+
+    let status = 'inactive';
+    if (sessionCount > 0) {
+      status = 'active';
+    }
+
+    const organization =
+      user.org_members?.[0]?.organizations?.name || 'Individual';
+
+    return {
+      ...user,
+      email: user.email || '',
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+      status,
+      subscription: user.subscriptions?.[0]?.plan_type || 'trial',
+      session_count: sessionCount,
+      last_active: lastActive,
+      risk_level: riskLevel,
+      organization
+    };
+  });
 }
 
 export async function getUserById(id: string) {
