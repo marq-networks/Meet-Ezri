@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, isLoading, hasRole } = useAuth();
+  const { user, profile, isLoading, hasRole } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -21,6 +21,21 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (profile && profile.role === 'suspended') {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-red-50 px-4">
+        <div className="max-w-md text-center space-y-4">
+          <h1 className="text-2xl font-bold text-red-600">
+            You are suspended
+          </h1>
+          <p className="text-muted-foreground">
+            Please contact support if you believe this is a mistake.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (allowedRoles && allowedRoles.length > 0 && !hasRole(allowedRoles)) {

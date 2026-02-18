@@ -286,7 +286,9 @@ export async function getAllUsers() {
     }
 
     let status = 'inactive';
-    if (sessionCount > 0) {
+    if (user.role === 'suspended') {
+      status = 'suspended';
+    } else if (sessionCount > 0) {
       status = 'active';
     }
 
@@ -330,12 +332,19 @@ export async function getUserById(id: string) {
 
   if (!user) return null;
 
+  let status = 'inactive';
+  if (user.role === 'suspended') {
+    status = 'suspended';
+  } else if (user._count.app_sessions > 0) {
+    status = 'active';
+  }
+
   return {
     ...user,
     email: user.email || '',
     created_at: user.created_at,
     updated_at: user.updated_at,
-    status: 'active',
+    status,
     // Map additional fields for frontend convenience
     organization: user.org_members[0]?.organizations.name || 'Individual',
     stats: {
@@ -347,18 +356,10 @@ export async function getUserById(id: string) {
 }
 
 export async function updateUser(id: string, data: { status?: string; role?: string }) {
-  // If status is handled (e.g. for suspension), we might need a new field or use metadata. 
-  // For now, we only persist role changes if provided.
-  // We can treat 'suspended' status as a role or a specific flag if we add it to schema later.
-  
   const updateData: any = {};
   if (data.role) {
     updateData.role = data.role;
   }
-  
-  // Note: 'status' is not yet in the profiles schema, so we are ignoring it for persistence 
-  // but simpler implementation might map 'suspended' to a role or specific field.
-  // For this task, we will just update the role.
 
   const user = await prisma.profiles.update({
     where: { id },
