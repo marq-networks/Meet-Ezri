@@ -9,7 +9,8 @@ import {
   getSupportTickets, updateSupportTicket,
   getCommunityStats, getCommunityGroups,
   getLiveSessions, getActivityLogs, getSessionRecordings, getErrorLogs, getSessionRecordingTranscript,
-  getCrisisEvents, getCrisisEvent, updateCrisisEventStatus
+  getCrisisEvents, getCrisisEvent, updateCrisisEventStatus,
+  endLiveSessionByAdmin, flagSessionForReview
 } from './admin.service';
 import { updateUserSchema } from './admin.schema';
 import { z } from 'zod';
@@ -335,6 +336,38 @@ export async function getLiveSessionsHandler(request: FastifyRequest, reply: Fas
   } catch (error) {
     request.log.error(error);
     return reply.code(500).send({ message: 'Failed to fetch live sessions' });
+  }
+}
+
+export async function endLiveSessionHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const session = await endLiveSessionByAdmin(request.params.id);
+    return reply.code(200).send(session);
+  } catch (error: any) {
+    if (error?.message === 'Session not found') {
+      return reply.code(404).send({ message: 'Session not found' });
+    }
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to end session' });
+  }
+}
+
+export async function flagSessionForReviewHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const session = await flagSessionForReview(request.params.id);
+    return reply.code(200).send(session);
+  } catch (error: any) {
+    if (error?.message === 'Session not found') {
+      return reply.code(404).send({ message: 'Session not found' });
+    }
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to flag session' });
   }
 }
 

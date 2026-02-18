@@ -1,6 +1,7 @@
 
 import prisma from '../../lib/prisma';
 import { DashboardStats } from './admin.schema';
+import { endSession } from '../sessions/sessions.service';
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [
@@ -746,6 +747,45 @@ export async function getLiveSessions() {
     orderBy: { started_at: 'desc' }
   });
 }
+
+export async function endLiveSessionByAdmin(sessionId: string) {
+  const session = await prisma.app_sessions.findUnique({
+    where: { id: sessionId }
+  });
+
+  if (!session) {
+    throw new Error('Session not found');
+  }
+
+  if (session.ended_at) {
+    return session;
+  }
+
+  return endSession(session.user_id, session.id);
+}
+
+export async function flagSessionForReview(sessionId: string) {
+  const session = await prisma.app_sessions.findUnique({
+    where: { id: sessionId }
+  });
+
+  if (!session) {
+    throw new Error('Session not found');
+  }
+
+  const currentConfig = (session.config || {}) as any;
+  const updatedConfig = {
+    ...currentConfig,
+    admin_flagged: true
+  };
+
+  return prisma.app_sessions.update({
+    where: { id: sessionId },
+    data: {
+      config: updatedConfig
+    }
+  });
+}
 //
 // 8. Activity Logs
 export async function getActivityLogs() {
@@ -760,14 +800,15 @@ export async function getActivityLogs() {
   });
 }
 
-// 9. Session Recordings
+// 9. Session Recordings / History
 export async function getSessionRecordings() {
   return prisma.app_sessions.findMany({
     where: {
-      recording_url: { not: null }
+      started_at: { not: null },
+      ended_at: { not: null }
     },
     orderBy: { created_at: 'desc' },
-    take: 50,
+    take: 100,
     include: {
       profiles: {
         select: { full_name: true, email: true }

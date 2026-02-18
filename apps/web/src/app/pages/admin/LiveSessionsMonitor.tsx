@@ -215,19 +215,68 @@ export function LiveSessionsMonitor() {
     setInterveningSession(null);
   };
 
-  const handleEndSession = (session: LiveSession) => {
-    alert(`✅ Session ended successfully!\n\nUser: ${session.userName}\nSession ID: ${session.id}\n\nThe session has been terminated and the user has been notified.`);
-    setMenuOpenSession(null);
+  const handleEndSession = async (session: LiveSession) => {
+    const confirmed = window.confirm(
+      `End this session?\n\nUser: ${session.userName}\nSession ID: ${session.id}`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await api.admin.endLiveSession(session.id);
+      setLiveSessions((prev) => prev.filter((s) => s.id !== session.id));
+    } catch (error) {
+      console.error("Failed to end session:", error);
+      alert("Failed to end session. Please try again.");
+    } finally {
+      setMenuOpenSession(null);
+    }
   };
 
   const handleExportSession = (session: LiveSession) => {
-    alert(`✅ Session data exported!\n\nUser: ${session.userName}\nSession ID: ${session.id}\n\nA detailed report has been generated and will be downloaded shortly.`);
+    const lines = [
+      "Live Session Report",
+      "===================",
+      `Session ID: ${session.id}`,
+      `User: ${session.userName} (${session.userId})`,
+      `Type: ${session.sessionType}`,
+      `Started at: ${session.startTime}`,
+      `Duration: ${session.duration}`,
+      `Messages: ${session.messageCount}`,
+      `Sentiment: ${session.sentiment}`,
+      `Risk Level: ${session.riskLevel}`,
+      `Location: ${session.location}`,
+      `Device: ${session.device}`,
+      `Connection Quality: ${session.connectionQuality}`,
+      `AI Confidence: ${session.aiConfidence}`,
+    ];
+
+    const blob = new Blob([lines.join("\n")], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `live-session-${session.id}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
     setMenuOpenSession(null);
   };
 
-  const handleFlagSession = (session: LiveSession) => {
-    alert(`✅ Session flagged for review!\n\nUser: ${session.userName}\nSession ID: ${session.id}\n\nThe session has been flagged and the review team has been notified.`);
-    setMenuOpenSession(null);
+  const handleFlagSession = async (session: LiveSession) => {
+    try {
+      await api.admin.flagLiveSession(session.id);
+      alert(`Session flagged for review for user ${session.userName}.`);
+    } catch (error) {
+      console.error("Failed to flag session:", error);
+      alert("Failed to flag session. Please try again.");
+    } finally {
+      setMenuOpenSession(null);
+    }
   };
 
   return (

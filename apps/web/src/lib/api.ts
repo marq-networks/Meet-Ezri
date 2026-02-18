@@ -497,6 +497,16 @@ export const api = {
       const res = await fetch(`${API_URL}/admin/live-sessions`, { method: 'GET', headers });
       return handleResponse(res, 'Failed to fetch live sessions');
     },
+    async endLiveSession(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/live-sessions/${id}/end`, { method: 'POST', headers });
+      return handleResponse(res, 'Failed to end session');
+    },
+    async flagLiveSession(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/live-sessions/${id}/flag`, { method: 'POST', headers });
+      return handleResponse(res, 'Failed to flag session');
+    },
     async getActivityLogs() {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/admin/activity-logs`, { method: 'GET', headers });

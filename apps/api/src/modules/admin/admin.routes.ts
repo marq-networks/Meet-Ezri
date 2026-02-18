@@ -8,7 +8,7 @@ import {
   getPushCampaignsHandler, createPushCampaignHandler,
   getSupportTicketsHandler, updateSupportTicketHandler,
   getCommunityStatsHandler, getCommunityGroupsHandler,
-  getLiveSessionsHandler, getActivityLogsHandler, getSessionRecordingsHandler, getErrorLogsHandler, getSessionRecordingTranscriptHandler,
+  getLiveSessionsHandler, endLiveSessionHandler, flagSessionForReviewHandler, getActivityLogsHandler, getSessionRecordingsHandler, getErrorLogsHandler, getSessionRecordingTranscriptHandler,
   getCrisisEventsHandler, getCrisisEventHandler, updateCrisisEventStatusHandler
 } from './admin.controller';
 import { dashboardStatsSchema, userListSchema, userSchema, updateUserSchema } from './admin.schema';
@@ -124,6 +124,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // Monitoring
   fastify.get('/live-sessions', { preHandler: [fastify.authenticate] }, getLiveSessionsHandler);
+  fastify.post('/live-sessions/:id/end', { preHandler: [fastify.authenticate] }, endLiveSessionHandler);
+  fastify.post('/live-sessions/:id/flag', { preHandler: [fastify.authenticate] }, flagSessionForReviewHandler);
   fastify.get('/activity-logs', { preHandler: [fastify.authenticate] }, getActivityLogsHandler);
   fastify.get('/session-recordings', { preHandler: [fastify.authenticate] }, getSessionRecordingsHandler);
   fastify.get('/session-recordings/:id/transcript', { preHandler: [fastify.authenticate] }, getSessionRecordingTranscriptHandler);

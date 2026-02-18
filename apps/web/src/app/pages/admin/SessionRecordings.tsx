@@ -11,10 +11,6 @@ import {
   Calendar,
   Clock,
   MessageSquare,
-  Pause,
-  Play,
-  VolumeX,
-  Volume2,
   Download,
   CheckCircle,
   Search,
@@ -48,8 +44,6 @@ export function SessionRecordings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedRecording, setSelectedRecording] = useState<SessionRecording | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [recordings, setRecordings] = useState<SessionRecording[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [transcripts, setTranscripts] = useState<Record<string, TranscriptMessage[]>>({});
@@ -60,22 +54,37 @@ export function SessionRecordings() {
     const fetchRecordings = async () => {
       try {
         const data = await api.admin.getSessionRecordings();
-        const mappedRecordings: SessionRecording[] = data.map((session: any) => ({
-          id: session.id,
-          userId: session.user_id,
-          userName: session.profiles?.full_name || 'Unknown User',
-          sessionDate: new Date(session.started_at || session.created_at),
-          duration: session.duration_minutes || 0,
-          status: (session.config?.status || 'completed') as any,
-          aiCompanion: session.config?.ai_name || 'AI Assistant',
-          topics: session.config?.topics || ['General'],
-          sentiment: (session.config?.sentiment || 'neutral') as any,
-          flaggedIssues: session.config?.flagged_issues,
-          qualityScore: session.config?.quality_score || 85,
-          transcriptAvailable: true,
-          reviewedBy: session.config?.reviewed_by,
-          reviewNotes: session.config?.review_notes
-        }));
+        const mappedRecordings: SessionRecording[] = data.map((session: any) => {
+          const config = session.config || {};
+
+          let status: SessionRecording["status"] = "completed";
+          if (config.admin_flagged) {
+            status = "flagged";
+          } else if (config.status && ["completed", "flagged", "reviewed", "escalated"].includes(config.status)) {
+            status = config.status;
+          }
+
+          const topics = Array.isArray(config.topics) ? config.topics : [];
+          const qualityScore = typeof config.quality_score === "number" ? config.quality_score : 0;
+          const transcriptCount = session._count?.session_messages ?? 0;
+
+          return {
+            id: session.id,
+            userId: session.user_id,
+            userName: session.profiles?.full_name || "Unknown User",
+            sessionDate: new Date(session.started_at || session.created_at),
+            duration: session.duration_minutes || 0,
+            status,
+            aiCompanion: config.ai_name || "AI Assistant",
+            topics,
+            sentiment: (config.sentiment || "neutral") as any,
+            flaggedIssues: config.flagged_issues,
+            qualityScore,
+            transcriptAvailable: transcriptCount > 0,
+            reviewedBy: config.reviewed_by,
+            reviewNotes: config.review_notes,
+          };
+        });
         setRecordings(mappedRecordings);
       } catch (error) {
         console.error("Failed to fetch session recordings:", error);
@@ -395,95 +404,57 @@ export function SessionRecordings() {
                         </div>
                       )}
 
-                      {/* Expanded Player */}
+                      {/* Expanded Transcript */}
                       {selectedRecording?.id === recording.id && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           className="mt-4 pt-4 border-t border-gray-300"
                         >
-                          {/* Mock Audio Player */}
-                          <div className="bg-gray-100 rounded-xl p-4 mb-4">
-                            <div className="flex items-center gap-4 mb-3">
-                              <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setIsPlaying(!isPlaying);
-                                }}
-                                className="p-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
-                              >
-                                {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-                              </motion.button>
-
-                              {/* Progress Bar */}
-                              <div className="flex-1">
-                                <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
-                                  <motion.div
-                                    animate={{ width: isPlaying ? "100%" : "0%" }}
-                                    transition={{ duration: recording.duration * 60, ease: "linear" }}
-                                    className="h-full bg-blue-500"
-                                  />
-                                </div>
-                                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                                  <span>0:00</span>
-                                  <span>{recording.duration}:00</span>
-                                </div>
-                              </div>
-
-                              <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setIsMuted(!isMuted);
-                                }}
-                                className="p-2 rounded-lg hover:bg-gray-200"
-                              >
-                                {isMuted ? <VolumeX className="w-5 h-5 text-gray-600" /> : <Volume2 className="w-5 h-5 text-gray-600" />}
-                              </motion.button>
-                            </div>
-
-                            <p className="text-xs text-gray-600 text-center">
-                              Audio playback simulation • Actual recordings require secure access
-                            </p>
-                          </div>
-
-                          {/* Transcript Preview */}
                           {recording.transcriptAvailable && (
-                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                              <h4 className="font-bold text-gray-900 mb-2 text-sm">Transcript Preview:</h4>
+                            <div className="bg-gray-50 rounded-lg p-4 mb-4 max-h-80 overflow-y-auto">
+                              <h4 className="font-bold text-gray-900 mb-2 text-sm">
+                                Session Transcript
+                              </h4>
                               {transcriptLoadingId === recording.id && (
                                 <p className="text-xs text-gray-500">Loading transcript...</p>
                               )}
                               {transcriptErrorId === recording.id && (
-                                <p className="text-xs text-red-600">Failed to load transcript.</p>
+                                <p className="text-xs text-red-600">
+                                  Failed to load transcript.
+                                </p>
                               )}
                               {!transcriptLoadingId &&
                                 transcripts[recording.id] &&
                                 transcripts[recording.id].length > 0 && (
-                                  <div className="space-y-2 text-sm">
-                                    {transcripts[recording.id].slice(0, 4).map((msg) => {
-                                      const isUser = msg.role === 'user';
-                                      const sender = isUser ? recording.userName : recording.aiCompanion;
-                                      const colorClass = isUser ? 'text-purple-600' : 'text-blue-600';
+                                  <div className="space-y-3 text-sm">
+                                    {transcripts[recording.id].map((msg) => {
+                                      const isUser = msg.role === "user";
+                                      const sender = isUser
+                                        ? recording.userName
+                                        : recording.aiCompanion;
+                                      const colorClass = isUser
+                                        ? "text-purple-600"
+                                        : "text-blue-600";
                                       return (
                                         <div key={msg.id} className="flex gap-2">
-                                          <span className={`font-medium ${colorClass}`}>{sender}:</span>
-                                          <span className="text-gray-700">{msg.content}</span>
+                                          <span className={`font-medium ${colorClass}`}>
+                                            {sender}:
+                                          </span>
+                                          <span className="text-gray-700">
+                                            {msg.content}
+                                          </span>
                                         </div>
                                       );
                                     })}
-                                    <p className="text-xs text-gray-500 italic mt-2">
-                                      Full transcript available for review
-                                    </p>
                                   </div>
                                 )}
                               {!transcriptLoadingId &&
                                 transcripts[recording.id] &&
                                 transcripts[recording.id].length === 0 && (
-                                  <p className="text-xs text-gray-500">No transcript messages found for this session.</p>
+                                  <p className="text-xs text-gray-500">
+                                    No transcript messages found for this session.
+                                  </p>
                                 )}
                             </div>
                           )}
@@ -506,27 +477,9 @@ export function SessionRecordings() {
                           }}
                           className="flex-1 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium flex items-center justify-center gap-1"
                         >
-                          <Play className="w-4 h-4" />
-                          {selectedRecording?.id === recording.id ? "Playing" : "Play"}
+                          <MessageSquare className="w-4 h-4" />
+                          {selectedRecording?.id === recording.id ? "Hide Transcript" : "View Transcript"}
                         </motion.button>
-
-                        {recording.transcriptAvailable && (
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (selectedRecording?.id !== recording.id) {
-                                setSelectedRecording(recording);
-                              }
-                              loadTranscript(recording);
-                            }}
-                            className="flex-1 px-3 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium flex items-center justify-center gap-1"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                            Transcript
-                          </motion.button>
-                        )}
 
                         <motion.button
                           whileHover={{ scale: 1.02 }}
