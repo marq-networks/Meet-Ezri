@@ -5,8 +5,8 @@ export class EmailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.example.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
+      host: process.env.SMTP_HOST || 'mail.marqnetworks.com',
+      port: parseInt(process.env.SMTP_PORT || '465'),
       secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
       name: process.env.SMTP_EHLO_DOMAIN, // Optional: useful for EHLO/HELO
       auth: {
