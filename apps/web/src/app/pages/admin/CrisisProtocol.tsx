@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import {
@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import { Button } from "../../components/ui/button";
+import { api } from "../../../lib/api";
 
 interface CrisisCase {
   id: string;
@@ -40,6 +41,94 @@ interface CrisisCase {
   notes: string[];
 }
 
+function mapStatusToProtocolStatus(status: string): CrisisCase["status"] {
+  switch (status) {
+    case "resolved":
+      return "resolved";
+    case "contacted":
+      return "monitoring";
+    case "in-progress":
+      return "active";
+    default:
+      return "active";
+  }
+}
+
+function mapRiskToSeverity(risk: string | null | undefined): CrisisCase["severity"] {
+  switch (risk) {
+    case "critical":
+      return "critical";
+    case "high":
+      return "high";
+    default:
+      return "medium";
+  }
+}
+
+function mapEventTypeToCaseType(eventType: string | null | undefined): CrisisCase["type"] {
+  const value = (eventType || "").toLowerCase();
+  if (value.includes("suicid")) return "suicidal";
+  if (value.includes("violence") || value.includes("harm") || value.includes("homicid")) return "violence";
+  if (value.includes("abuse") || value.includes("assault")) return "abuse";
+  if (value.includes("medical")) return "medical";
+  return "other";
+}
+
+function mapApiCrisisEventToCrisisCase(event: any): CrisisCase {
+  const createdAt = event.created_at ? new Date(event.created_at) : new Date();
+  const resolvedAt = event.resolved_at ? new Date(event.resolved_at) : undefined;
+  const userName =
+    event.profiles?.full_name ||
+    event.profiles?.email ||
+    "Unknown user";
+  const assignedTo =
+    event.assigned_profile?.full_name ||
+    event.assigned_profile?.email ||
+    undefined;
+
+  const rawNotes = typeof event.notes === "string" ? event.notes : "";
+  const notes: string[] = rawNotes
+    .split(/\r?\n/)
+    .map((line: string) => line.trim())
+    .filter((line: string) => line.length > 0);
+
+  if (!notes.length) {
+    notes.push("No notes recorded yet");
+  }
+
+  return {
+    id: event.id,
+    userId: event.user_id,
+    userName,
+    severity: mapRiskToSeverity(event.risk_level),
+    type: mapEventTypeToCaseType(event.event_type),
+    status: mapStatusToProtocolStatus(event.status || "pending"),
+    reportedAt: createdAt,
+    assignedTo,
+    location: undefined,
+    contactAttempts: 0,
+    lastContact: resolvedAt,
+    notes,
+  };
+}
+
+function getAverageResponseTime(cases: CrisisCase[]): string {
+  let totalMinutes = 0;
+  let count = 0;
+
+  cases.forEach((c) => {
+    if (!c.reportedAt || !c.lastContact) return;
+    const diffMinutes = (c.lastContact.getTime() - c.reportedAt.getTime()) / 60000;
+    if (diffMinutes <= 0) return;
+    totalMinutes += diffMinutes;
+    count += 1;
+  });
+
+  if (!count) return "N/A";
+  const avg = totalMinutes / count;
+  return `${avg.toFixed(1)} min`;
+}
+
 export function CrisisProtocol() {
   const [selectedCase, setSelectedCase] = useState<CrisisCase | null>(null);
   const [activeStep, setActiveStep] = useState(1);
@@ -48,64 +137,68 @@ export function CrisisProtocol() {
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [contactNotes, setContactNotes] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
+  const [crisisCases, setCrisisCases] = useState<CrisisCase[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock crisis cases
-  const crisisCases: CrisisCase[] = [
-    {
-      id: "crisis001",
-      userId: "u789",
-      userName: "Anonymous User #789",
-      severity: "critical",
-      type: "suicidal",
-      status: "active",
-      reportedAt: new Date(Date.now() - 15 * 60 * 1000),
-      assignedTo: "Crisis Team Lead",
-      location: "Seattle, WA",
-      contactAttempts: 2,
-      lastContact: new Date(Date.now() - 5 * 60 * 1000),
-      notes: [
-        "AI detected suicidal ideation in journal entry",
-        "Emergency contact attempted - no response",
-        "Escalated to crisis hotline - awaiting callback"
-      ]
-    },
-    {
-      id: "crisis002",
-      userId: "u456",
-      userName: "Sarah J.",
-      severity: "high",
-      type: "violence",
-      status: "monitoring",
-      reportedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      assignedTo: "Crisis Specialist #2",
-      location: "Austin, TX",
-      contactAttempts: 1,
-      lastContact: new Date(Date.now() - 30 * 60 * 1000),
-      notes: [
-        "Threat of violence detected in session",
-        "User contacted - expressed frustration but denies intent",
-        "Monitoring for 24 hours"
-      ]
-    },
-    {
-      id: "crisis003",
-      userId: "u234",
-      userName: "Michael C.",
-      severity: "medium",
-      type: "abuse",
-      status: "monitoring",
-      reportedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      assignedTo: "Crisis Specialist #1",
-      location: "Miami, FL",
-      contactAttempts: 1,
-      lastContact: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      notes: [
-        "Domestic abuse indicators detected",
-        "Resources provided to user",
-        "Follow-up scheduled for tomorrow"
-      ]
+  const loadCases = async () => {
+    try {
+      setError(null);
+      const data = await api.admin.getCrisisEvents();
+      const items = Array.isArray(data) ? data : [];
+      setCrisisCases(items.map(mapApiCrisisEventToCrisisCase));
+    } catch (err) {
+      console.error("Failed to fetch crisis events", err);
+      setError("Failed to load crisis cases");
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    loadCases();
+  }, []);
+
+  const now = Date.now();
+  const stats = {
+    active: crisisCases.filter((c) => c.status === "active").length,
+    monitoring: crisisCases.filter((c) => c.status === "monitoring").length,
+    resolved24h: crisisCases.filter(
+      (c) =>
+        c.status === "resolved" &&
+        c.lastContact &&
+        now - c.lastContact.getTime() <= 24 * 60 * 60 * 1000
+    ).length,
+    responseTime: getAverageResponseTime(crisisCases),
+  };
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <p className="text-red-600 font-medium">{error}</p>
+          <Button
+            onClick={() => {
+              setIsLoading(true);
+              loadCases();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   // Crisis Response Protocol Steps
   const protocolSteps = [
@@ -221,13 +314,6 @@ export function CrisisProtocol() {
       case "medical": return Activity;
       default: return AlertTriangle;
     }
-  };
-
-  const stats = {
-    active: crisisCases.filter(c => c.status === "active").length,
-    monitoring: crisisCases.filter(c => c.status === "monitoring").length,
-    resolved24h: 12, // mock
-    responseTime: "8.5 min" // mock
   };
 
   return (

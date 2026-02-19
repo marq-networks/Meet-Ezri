@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
@@ -27,9 +27,10 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Input } from "../../components/ui/input";
+import { api } from "../../../lib/api";
 
 interface FollowUp {
-  id: number;
+  id: string;
   userId: string;
   userName: string;
   originalIncident: string;
@@ -47,6 +48,126 @@ interface FollowUp {
 type StatusFilter = "all" | "pending" | "completed" | "overdue";
 type PriorityFilter = "all" | "urgent" | "high" | "normal";
 
+function formatDate(date: Date) {
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(date: Date) {
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function inferFollowUpType(riskLevel: string): FollowUp["followUpType"] {
+  switch (riskLevel) {
+    case "critical":
+      return "24-hour";
+    case "high":
+      return "72-hour";
+    default:
+      return "weekly";
+  }
+}
+
+function addHours(date: Date, hours: number) {
+  return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
+function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function getDueDate(createdAt: Date, followUpType: FollowUp["followUpType"]) {
+  if (followUpType === "24-hour") return addHours(createdAt, 24);
+  if (followUpType === "72-hour") return addHours(createdAt, 72);
+  if (followUpType === "weekly") return addDays(createdAt, 7);
+  return addDays(createdAt, 3);
+}
+
+function getFollowUpStatus(
+  crisisStatus: string | null | undefined,
+  dueDate: Date,
+  resolvedAt?: Date
+): FollowUp["status"] {
+  if (crisisStatus === "resolved") return "completed";
+  const now = new Date();
+  if (now.getTime() > dueDate.getTime() && !resolvedAt) {
+    return "overdue";
+  }
+  return "pending";
+}
+
+function mapApiCrisisEventToFollowUp(event: any): FollowUp | null {
+  const createdAtStr = event.created_at as string | undefined;
+  if (!createdAtStr) return null;
+  const createdAt = new Date(createdAtStr);
+  if (Number.isNaN(createdAt.getTime())) return null;
+
+  const resolvedAtStr = event.resolved_at as string | undefined;
+  const resolvedAt = resolvedAtStr ? new Date(resolvedAtStr) : undefined;
+
+  const riskLevelRaw = event.risk_level || "medium";
+  const riskLevel = ["critical", "high", "medium", "low"].includes(riskLevelRaw)
+    ? (riskLevelRaw as FollowUp["riskLevel"])
+    : "medium";
+
+  const followUpType = inferFollowUpType(riskLevel);
+  const dueDate = getDueDate(createdAt, followUpType);
+
+  const crisisStatus = event.status || "pending";
+  const status = getFollowUpStatus(crisisStatus, dueDate, resolvedAt);
+
+  const userName =
+    event.profiles?.full_name ||
+    event.profiles?.email ||
+    "Unknown user";
+
+  const assignedTo =
+    event.assigned_profile?.full_name ||
+    event.assigned_profile?.email ||
+    "Unassigned";
+
+  const originalIncident =
+    event.event_type ||
+    (Array.isArray(event.keywords) && event.keywords.length
+      ? event.keywords.join(", ")
+      : "Crisis event");
+
+  const notes =
+    typeof event.notes === "string" && event.notes.trim().length > 0
+      ? event.notes
+      : "No notes recorded yet";
+
+  return {
+    id: event.id as string,
+    userId: event.user_id as string,
+    userName,
+    originalIncident,
+    incidentDate: formatDate(createdAt),
+    followUpType,
+    dueDate: formatDateTime(dueDate),
+    priority:
+      riskLevel === "critical"
+        ? "urgent"
+        : riskLevel === "high"
+        ? "high"
+        : "normal",
+    status,
+    assignedTo,
+    lastContact: resolvedAt ? formatDateTime(resolvedAt) : undefined,
+    notes,
+    riskLevel,
+  };
+}
+
 export function CrisisFollowUpQueue() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -58,98 +179,30 @@ export function CrisisFollowUpQueue() {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [callNotes, setCallNotes] = useState("");
   const [completionNotes, setCompletionNotes] = useState("");
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const followUps: FollowUp[] = [
-    {
-      id: 1,
-      userId: "user_2847",
-      userName: "Sarah M.",
-      originalIncident: "Self-harm indication",
-      incidentDate: "Dec 29, 2024",
-      followUpType: "24-hour",
-      dueDate: "Dec 30, 2024 14:30",
-      priority: "urgent",
-      status: "pending",
-      assignedTo: "Dr. Emily Chen",
-      notes: "Critical case - immediate suicidal ideation. Requires close monitoring.",
-      riskLevel: "critical",
-    },
-    {
-      id: 2,
-      userId: "user_1923",
-      userName: "John D.",
-      originalIncident: "Severe depression",
-      incidentDate: "Dec 28, 2024",
-      followUpType: "72-hour",
-      dueDate: "Dec 31, 2024 10:00",
-      priority: "high",
-      status: "pending",
-      assignedTo: "Dr. Sarah Williams",
-      lastContact: "Yesterday 15:30",
-      notes: "Responded well to initial contact. Scheduled therapy session.",
-      riskLevel: "medium",
-    },
-    {
-      id: 3,
-      userId: "user_3456",
-      userName: "Michael T.",
-      originalIncident: "Suicidal ideation",
-      incidentDate: "Dec 27, 2024",
-      followUpType: "24-hour",
-      dueDate: "Dec 28, 2024 18:00",
-      priority: "urgent",
-      status: "overdue",
-      assignedTo: "Crisis Team Alpha",
-      lastContact: "Dec 28, 16:45",
-      notes: "Multiple attempts to contact. Left voicemail and sent email.",
-      riskLevel: "high",
-    },
-    {
-      id: 4,
-      userId: "user_5621",
-      userName: "Emily R.",
-      originalIncident: "Anxiety spike",
-      incidentDate: "Dec 26, 2024",
-      followUpType: "weekly",
-      dueDate: "Jan 2, 2025 09:00",
-      priority: "normal",
-      status: "pending",
-      assignedTo: "Support Team",
-      lastContact: "Dec 28, 11:20",
-      notes: "Using coping techniques. Scheduled weekly check-in.",
-      riskLevel: "low",
-    },
-    {
-      id: 5,
-      userId: "user_7834",
-      userName: "David W.",
-      originalIncident: "Crisis escalation",
-      incidentDate: "Dec 29, 2024",
-      followUpType: "72-hour",
-      dueDate: "Jan 1, 2025 12:00",
-      priority: "high",
-      status: "pending",
-      assignedTo: "Dr. Emily Chen",
-      lastContact: "Today 09:15",
-      notes: "Connected with family support. Monitoring closely.",
-      riskLevel: "medium",
-    },
-    {
-      id: 6,
-      userId: "user_4512",
-      userName: "Jessica L.",
-      originalIncident: "Self-harm indication",
-      incidentDate: "Dec 25, 2024",
-      followUpType: "weekly",
-      dueDate: "Dec 29, 2024 14:00",
-      priority: "normal",
-      status: "completed",
-      assignedTo: "Dr. Sarah Williams",
-      lastContact: "Dec 29, 13:45",
-      notes: "Follow-up completed. User doing well, continuing regular sessions.",
-      riskLevel: "low",
-    },
-  ];
+  const loadFollowUps = async () => {
+    try {
+      setError(null);
+      const data = await api.admin.getCrisisEvents();
+      const items = Array.isArray(data) ? data : [];
+      const mapped = items
+        .map(mapApiCrisisEventToFollowUp)
+        .filter((f): f is FollowUp => Boolean(f));
+      setFollowUps(mapped);
+    } catch (err) {
+      console.error("Failed to fetch crisis follow-ups", err);
+      setError("Failed to load crisis follow-ups");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFollowUps();
+  }, []);
 
   // Filter follow-ups
   const filteredFollowUps = followUps
@@ -170,7 +223,6 @@ export function CrisisFollowUpQueue() {
       }
     });
 
-  // Stats
   const stats = {
     total: followUps.length,
     pending: followUps.filter((f) => f.status === "pending").length,
@@ -234,6 +286,34 @@ export function CrisisFollowUpQueue() {
         return "text-gray-600";
     }
   };
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+          <p className="text-red-600 font-medium">{error}</p>
+          <Button
+            onClick={() => {
+              setIsLoading(true);
+              loadFollowUps();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
