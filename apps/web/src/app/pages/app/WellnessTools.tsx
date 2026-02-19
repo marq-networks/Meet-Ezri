@@ -80,19 +80,21 @@ export function WellnessTools() {
           api.wellness.getAll(),
           api.wellness.getProgress()
         ]);
-        
-        const mappedTools = toolsRes.map((t: any) => ({
+
+        const publishedTools = toolsRes.filter((t: any) => !t.status || t.status === "published");
+
+        const mappedTools = publishedTools.map((t: any) => ({
           id: t.id,
           category: t.category,
           title: t.title,
-          description: t.description,
+          description: t.description || "",
           duration: t.duration_minutes ? `${t.duration_minutes} min` : "∞",
           difficulty: t.difficulty || "Beginner",
           icon: iconMap[t.icon || "Sparkles"] || Sparkles,
           color: colorMap[t.category] || "from-indigo-400 to-purple-500",
-          favorite: false // TODO: Add favorite logic
+          favorite: false
         }));
-        
+
         setExercises(mappedTools);
         setProgress(progressRes);
       } catch (error) {

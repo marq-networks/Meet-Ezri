@@ -419,147 +419,153 @@ export function WellnessToolsCMS() {
               : "space-y-4"
           }
         >
-          {filteredTools.map((tool, index) => (
-            <motion.div
-              key={tool.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <Card
-                className={`bg-white border border-gray-200 p-6 hover:shadow-lg transition-all ${
-                  selectedTools.includes(tool.id) ? "ring-2 ring-purple-500" : ""
-                }`}
+          {isLoading && filteredTools.length === 0 ? (
+            <div className="col-span-full flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            filteredTools.map((tool, index) => (
+              <motion.div
+                key={tool.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedTools.includes(tool.id)}
-                      onChange={() => handleSelectTool(tool.id)}
-                      className="w-4 h-4 rounded border-gray-300 text-purple-500 focus:ring-purple-500"
-                    />
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center"
-                      style={{ backgroundColor: `${tool.iconColor}20` }}
-                    >
-                      <tool.icon
-                        className="w-6 h-6"
-                        style={{ color: tool.iconColor }}
+                <Card
+                  className={`bg-white border border-gray-200 p-6 hover:shadow-lg transition-all ${
+                    selectedTools.includes(tool.id) ? "ring-2 ring-purple-500" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedTools.includes(tool.id)}
+                        onChange={() => handleSelectTool(tool.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-purple-500 focus:ring-purple-500"
                       />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        tool.status === "published"
-                          ? "bg-green-100 text-green-700"
-                          : tool.status === "draft"
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {tool.status}
-                    </span>
-                    <button className="p-1 hover:bg-gray-100 rounded-lg transition-all">
-                      <MoreVertical className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{tool.title}</h3>
-                <p className="text-sm text-gray-600 mb-4">{tool.description}</p>
-
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div>
-                    <p className="text-xs text-gray-500">Category</p>
-                    <p className="text-sm text-gray-900 font-medium">{tool.category}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Duration</p>
-                    <p className="text-sm text-gray-900 font-medium">
-                      {tool.duration} min
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Difficulty</p>
-                    <p className="text-sm text-gray-900 font-medium">{tool.difficulty}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Usage</p>
-                    <p className="text-sm text-gray-900 font-medium">
-                      {tool.usageCount.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                {tool.status === "published" && (
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Heart
-                          key={i}
-                          className={`w-3 h-3 ${
-                            i < Math.floor(tool.rating)
-                              ? "fill-pink-500 text-pink-500"
-                              : "text-gray-300"
-                          }`}
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center"
+                        style={{ backgroundColor: `${tool.iconColor}20` }}
+                      >
+                        <tool.icon
+                          className="w-6 h-6"
+                          style={{ color: tool.iconColor }}
                         />
-                      ))}
+                      </div>
                     </div>
-                    <span className="text-sm text-gray-600">{tool.rating}</span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          tool.status === "published"
+                            ? "bg-green-100 text-green-700"
+                            : tool.status === "draft"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {tool.status}
+                      </span>
+                      <button className="p-1 hover:bg-gray-100 rounded-lg transition-all">
+                        <MoreVertical className="w-4 h-4 text-gray-600" />
+                      </button>
+                    </div>
                   </div>
-                )}
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  <div>
-                    <p className="text-xs text-gray-500">Last updated</p>
-                    <p className="text-xs text-gray-600">{tool.lastUpdated}</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{tool.title}</h3>
+                  <p className="text-sm text-gray-600 mb-4">{tool.description}</p>
+
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <p className="text-xs text-gray-500">Category</p>
+                      <p className="text-sm text-gray-900 font-medium">{tool.category}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Duration</p>
+                      <p className="text-sm text-gray-900 font-medium">
+                        {tool.duration} min
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Difficulty</p>
+                      <p className="text-sm text-gray-900 font-medium">{tool.difficulty}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Usage</p>
+                      <p className="text-sm text-gray-900 font-medium">
+                        {tool.usageCount.toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleViewTool(tool)}
-                      className="text-gray-600 hover:text-gray-900"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleCopyTool(tool)}
-                      className="text-gray-600 hover:text-gray-900"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() =>
-                        navigate(`/admin/wellness-tool-editor?id=${tool.id}`)
-                      }
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDeleteTool(tool)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+
+                  {tool.status === "published" && (
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Heart
+                            key={i}
+                            className={`w-3 h-3 ${
+                              i < Math.floor(tool.rating)
+                                ? "fill-pink-500 text-pink-500"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-gray-600">{tool.rating}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <div>
+                      <p className="text-xs text-gray-500">Last updated</p>
+                      <p className="text-xs text-gray-600">{tool.lastUpdated}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleViewTool(tool)}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleCopyTool(tool)}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          navigate(`/admin/wellness-tool-editor?id=${tool.id}`)
+                        }
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteTool(tool)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
+                </Card>
+              </motion.div>
+            ))
+          )}
         </div>
 
         {/* Empty State */}
-        {filteredTools.length === 0 && (
+        {filteredTools.length === 0 && !isLoading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

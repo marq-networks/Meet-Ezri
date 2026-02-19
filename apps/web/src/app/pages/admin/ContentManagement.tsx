@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { motion, AnimatePresence } from "motion/react";
+import { api } from "../../../lib/api";
 import {
   Plus,
   Edit,
@@ -16,7 +17,7 @@ import {
 } from "lucide-react";
 
 interface Exercise {
-  id: number;
+  id: string;
   name: string;
   category: string;
   duration: string;
@@ -25,14 +26,14 @@ interface Exercise {
 }
 
 interface Prompt {
-  id: number;
+  id: string;
   text: string;
   category: string;
   uses: number;
 }
 
 interface Resource {
-  id: number;
+  id: string;
   title: string;
   type: string;
   views: number;
@@ -43,79 +44,13 @@ export function ContentManagement() {
   const [activeTab, setActiveTab] = useState<"exercises" | "prompts" | "resources">(
     "exercises"
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // State for content items
-  const [exercises, setExercises] = useState<Exercise[]>([
-    {
-      id: 1,
-      name: "Deep Breathing Exercise",
-      category: "Anxiety Relief",
-      duration: "5 min",
-      uses: 1284,
-      status: "active",
-    },
-    {
-      id: 2,
-      name: "Body Scan Meditation",
-      category: "Mindfulness",
-      duration: "10 min",
-      uses: 892,
-      status: "active",
-    },
-    {
-      id: 3,
-      name: "Progressive Muscle Relaxation",
-      category: "Stress Management",
-      duration: "8 min",
-      uses: 756,
-      status: "active",
-    },
-  ]);
-
-  const [prompts, setPrompts] = useState<Prompt[]>([
-    {
-      id: 1,
-      text: "What are three things you're grateful for today?",
-      category: "Gratitude",
-      uses: 2341,
-    },
-    {
-      id: 2,
-      text: "Describe a recent challenge and how you overcame it",
-      category: "Growth Mindset",
-      uses: 1876,
-    },
-    {
-      id: 3,
-      text: "What self-care activities energize you?",
-      category: "Self-Care",
-      uses: 1543,
-    },
-  ]);
-
-  const [resources, setResources] = useState<Resource[]>([
-    {
-      id: 1,
-      title: "Understanding Anxiety",
-      type: "Article",
-      views: 4521,
-      rating: 4.8,
-    },
-    {
-      id: 2,
-      title: "Sleep Hygiene Guide",
-      type: "PDF",
-      views: 3892,
-      rating: 4.9,
-    },
-    {
-      id: 3,
-      title: "Managing Depression",
-      type: "Video",
-      views: 5234,
-      rating: 4.7,
-    },
-  ]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -140,6 +75,59 @@ export function ContentManagement() {
   const [resourceForm, setResourceForm] = useState({
     title: "",
     type: "Article",
+  });
+
+  const fetchExercises = async () => {
+    try {
+      setIsLoading(true);
+      const [toolsRes, progressRes] = await Promise.all([
+        api.wellness.getAll(),
+        api.wellness.getProgress(),
+      ]);
+      const progressMap = new Map(
+        (progressRes || []).map((p: any) => [p.toolId, p.sessionsCompleted])
+      );
+      const mappedExercises: Exercise[] = toolsRes.map((t: any) => ({
+        id: t.id,
+        name: t.title,
+        category: t.category,
+        duration: t.duration_minutes ? `${t.duration_minutes} min` : "∞",
+        uses: progressMap.get(t.id) ?? 0,
+        status: (t.status as string) || "draft",
+      }));
+      setExercises(mappedExercises);
+    } catch (error) {
+      console.error("Failed to fetch exercises:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExercises();
+  }, []);
+
+  const searchQueryLower = searchQuery.toLowerCase();
+
+  const filteredExercises = exercises.filter((exercise) => {
+    return (
+      exercise.name.toLowerCase().includes(searchQueryLower) ||
+      exercise.category.toLowerCase().includes(searchQueryLower)
+    );
+  });
+
+  const filteredPrompts = prompts.filter((prompt) => {
+    return (
+      prompt.text.toLowerCase().includes(searchQueryLower) ||
+      prompt.category.toLowerCase().includes(searchQueryLower)
+    );
+  });
+
+  const filteredResources = resources.filter((resource) => {
+    return (
+      resource.title.toLowerCase().includes(searchQueryLower) ||
+      resource.type.toLowerCase().includes(searchQueryLower)
+    );
   });
 
   // Handle Add New
@@ -183,20 +171,37 @@ export function ContentManagement() {
   };
 
   // Confirm Add
-  const confirmAdd = () => {
+  const confirmAdd = async () => {
     if (activeTab === "exercises") {
-      const newExercise: Exercise = {
-        id: exercises.length + 1,
-        name: exerciseForm.name,
-        category: exerciseForm.category,
-        duration: exerciseForm.duration,
-        uses: 0,
-        status: "active",
-      };
-      setExercises([...exercises, newExercise]);
+      try {
+        const durationMatch = exerciseForm.duration.match(/\d+/);
+        const durationMinutes = durationMatch ? parseInt(durationMatch[0], 10) : undefined;
+        const payload: any = {
+          title: exerciseForm.name,
+          category: exerciseForm.category,
+          duration_minutes: durationMinutes,
+          description: "",
+          is_premium: false,
+          difficulty: "Beginner",
+          status: "published",
+          icon: "Heart",
+        };
+        const created = await api.wellness.create(payload);
+        const newExercise: Exercise = {
+          id: created.id,
+          name: created.title,
+          category: created.category,
+          duration: created.duration_minutes ? `${created.duration_minutes} min` : exerciseForm.duration || "∞",
+          uses: 0,
+          status: (created.status as string) || "draft",
+        };
+        setExercises([...exercises, newExercise]);
+      } catch (error) {
+        console.error("Failed to create exercise:", error);
+      }
     } else if (activeTab === "prompts") {
       const newPrompt: Prompt = {
-        id: prompts.length + 1,
+        id: String(prompts.length + 1),
         text: promptForm.text,
         category: promptForm.category,
         uses: 0,
@@ -204,7 +209,7 @@ export function ContentManagement() {
       setPrompts([...prompts, newPrompt]);
     } else if (activeTab === "resources") {
       const newResource: Resource = {
-        id: resources.length + 1,
+        id: String(resources.length + 1),
         title: resourceForm.title,
         type: resourceForm.type,
         views: 0,
@@ -216,15 +221,34 @@ export function ContentManagement() {
   };
 
   // Confirm Edit
-  const confirmEdit = () => {
+  const confirmEdit = async () => {
     if (activeTab === "exercises") {
-      setExercises(
-        exercises.map((ex) =>
-          ex.id === selectedItem.id
-            ? { ...ex, ...exerciseForm }
-            : ex
-        )
-      );
+      try {
+        const durationMatch = exerciseForm.duration.match(/\d+/);
+        const durationMinutes = durationMatch ? parseInt(durationMatch[0], 10) : undefined;
+        const payload: any = {
+          title: exerciseForm.name,
+          category: exerciseForm.category,
+          duration_minutes: durationMinutes,
+        };
+        const updated = await api.wellness.update(selectedItem.id, payload);
+        setExercises(
+          exercises.map((ex) =>
+            ex.id === selectedItem.id
+              ? {
+                  id: updated.id,
+                  name: updated.title,
+                  category: updated.category,
+                  duration: updated.duration_minutes ? `${updated.duration_minutes} min` : exerciseForm.duration || "∞",
+                  uses: ex.uses,
+                  status: (updated.status as string) || ex.status,
+                }
+              : ex
+          )
+        );
+      } catch (error) {
+        console.error("Failed to update exercise:", error);
+      }
     } else if (activeTab === "prompts") {
       setPrompts(
         prompts.map((pr) =>
@@ -246,9 +270,14 @@ export function ContentManagement() {
   };
 
   // Confirm Delete
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (activeTab === "exercises") {
-      setExercises(exercises.filter((ex) => ex.id !== selectedItem.id));
+      try {
+        await api.wellness.delete(selectedItem.id);
+        setExercises(exercises.filter((ex) => ex.id !== selectedItem.id));
+      } catch (error) {
+        console.error("Failed to delete exercise:", error);
+      }
     } else if (activeTab === "prompts") {
       setPrompts(prompts.filter((pr) => pr.id !== selectedItem.id));
     } else if (activeTab === "resources") {
@@ -326,7 +355,12 @@ export function ContentManagement() {
             <div className="flex gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Search content..." className="pl-10" />
+                <Input
+                  placeholder="Search content..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
               <Button className="gap-2" onClick={handleAddNew}>
                 <Plus className="w-4 h-4" />
@@ -369,33 +403,53 @@ export function ContentManagement() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {exercises.map((exercise) => (
-                      <tr key={exercise.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium">{exercise.name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {exercise.category}
-                        </td>
-                        <td className="px-6 py-4 text-sm">{exercise.duration}</td>
-                        <td className="px-6 py-4 text-sm font-medium">
-                          {exercise.uses.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                            {exercise.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(exercise)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(exercise)}>
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
+                    {isLoading ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="px-6 py-8 text-center text-sm text-muted-foreground"
+                        >
+                          Loading exercises...
                         </td>
                       </tr>
-                    ))}
+                    ) : filteredExercises.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="px-6 py-8 text-center text-sm text-muted-foreground"
+                        >
+                          No exercises found.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredExercises.map((exercise) => (
+                        <tr key={exercise.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 font-medium">{exercise.name}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {exercise.category}
+                          </td>
+                          <td className="px-6 py-4 text-sm">{exercise.duration}</td>
+                          <td className="px-6 py-4 text-sm font-medium">
+                            {exercise.uses.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                              {exercise.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(exercise)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(exercise)}>
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -403,30 +457,34 @@ export function ContentManagement() {
 
             {activeTab === "prompts" && (
               <div className="p-6 space-y-4">
-                {prompts.map((prompt) => (
-                  <div
-                    key={prompt.id}
-                    className="p-4 border border-gray-200 rounded-lg hover:border-primary transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <p className="font-medium flex-1">{prompt.text}</p>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(prompt)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(prompt)}>
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </Button>
+                {filteredPrompts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No prompts found.</p>
+                ) : (
+                  filteredPrompts.map((prompt) => (
+                    <div
+                      key={prompt.id}
+                      className="p-4 border border-gray-200 rounded-lg hover:border-primary transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="font-medium flex-1">{prompt.text}</p>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(prompt)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(prompt)}>
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+                          {prompt.category}
+                        </span>
+                        <span>{prompt.uses.toLocaleString()} uses</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
-                        {prompt.category}
-                      </span>
-                      <span>{prompt.uses.toLocaleString()} uses</span>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
 
@@ -453,32 +511,43 @@ export function ContentManagement() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {resources.map((resource) => (
-                      <tr key={resource.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium">{resource.title}</td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                            {resource.type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          {resource.views.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 text-sm font-medium">
-                          ⭐ {resource.rating}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(resource)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(resource)}>
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
+                    {filteredResources.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-6 py-8 text-center text-sm text-muted-foreground"
+                        >
+                          No resources found.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredResources.map((resource) => (
+                        <tr key={resource.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 font-medium">{resource.title}</td>
+                          <td className="px-6 py-4 text-sm">
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                              {resource.type}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            {resource.views.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium">
+                            ⭐ {resource.rating}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(resource)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(resource)}>
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
