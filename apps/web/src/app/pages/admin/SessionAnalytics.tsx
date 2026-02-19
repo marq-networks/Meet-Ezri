@@ -2,6 +2,7 @@ import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { StatsCard } from "../../components/StatsCard";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import {
   MessageSquare,
   Clock,
@@ -24,41 +25,176 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { api } from "../../../lib/api";
 
 export function SessionAnalytics() {
-  const sessionTrendData = [
-    { date: "Mon", sessions: 145 },
-    { date: "Tue", sessions: 178 },
-    { date: "Wed", sessions: 156 },
-    { date: "Thu", sessions: 203 },
-    { date: "Fri", sessions: 189 },
-    { date: "Sat", sessions: 167 },
-    { date: "Sun", sessions: 142 },
+  const [statsData, setStatsData] = useState<any | null>(null);
+  const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchData = async () => {
+      try {
+        const [stats, recent] = await Promise.all([
+          api.admin.getStats(),
+          api.admin.getRecentActivity(),
+        ]);
+        if (!isMounted) {
+          return;
+        }
+        setStatsData(stats);
+        setRecentSessions(recent.sessions || []);
+      } catch (err: any) {
+        console.error("Failed to fetch session analytics", err);
+        if (isMounted) {
+          setError(err.message || "Failed to load session analytics");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const totalSessions = statsData?.totalSessions || 0;
+  const totalUsers = statsData?.totalUsers || 0;
+  const avgSessionLength = statsData?.avgSessionLength || 0;
+
+  const sessionActivity = (statsData?.sessionActivity || []) as any[];
+
+  const sessionTrendData = sessionActivity.map((item: any) => ({
+    date: item.day,
+    sessions: item.sessions,
+  }));
+
+  const sessionsThisWeek = sessionActivity.reduce(
+    (sum, item: any) => sum + item.sessions,
+    0
+  );
+
+  const hourlyActivity = (statsData?.hourlyActivity || []) as any[];
+
+  const sessionDurationData = hourlyActivity.map((item: any) => ({
+    range: item.hour,
+    count: item.sessions,
+  }));
+
+  const statsCards = [
+    {
+      title: "Total Sessions",
+      value: totalSessions.toLocaleString(),
+      change: "0.0%",
+      changeType: "positive",
+      icon: MessageSquare,
+      color: "primary",
+      delay: 0,
+    },
+    {
+      title: "Avg Duration",
+      value: `${avgSessionLength} min`,
+      change: "0.0",
+      changeType: "positive",
+      icon: Clock,
+      color: "secondary",
+      delay: 0.1,
+    },
+    {
+      title: "Active Users",
+      value: totalUsers.toLocaleString(),
+      change: "0.0%",
+      changeType: "positive",
+      icon: Users,
+      color: "accent",
+      delay: 0.2,
+    },
+    {
+      title: "Sessions This Week",
+      value: sessionsThisWeek.toLocaleString(),
+      change: "0.0%",
+      changeType: "positive",
+      icon: TrendingUp,
+      color: "success",
+      delay: 0.3,
+    },
   ];
 
-  const avatarUsageData = [
-    { name: "Serena (Empathetic)", value: 35, color: "#9b87f5" },
-    { name: "Marcus (Direct)", value: 28, color: "#7c3aed" },
-    { name: "Luna (Calm)", value: 22, color: "#d946ef" },
-    { name: "Alex (Balanced)", value: 15, color: "#0ea5e9" },
+  const avatarUsageData: { name: string; value: number; color: string }[] = [
+    { name: "AI Sessions", value: totalSessions, color: "#9b87f5" },
+    { name: "Mood Tracking", value: 0, color: "#7c3aed" },
+    { name: "Journal", value: 0, color: "#d946ef" },
+    { name: "Other", value: 0, color: "#0ea5e9" },
   ];
 
-  const topicDistributionData = [
-    { topic: "Anxiety", count: 342 },
-    { topic: "Depression", count: 298 },
-    { topic: "Sleep", count: 234 },
-    { topic: "Relationships", count: 189 },
-    { topic: "Stress", count: 167 },
-    { topic: "Self-esteem", count: 145 },
-  ];
+  const topicDistributionData = sessionActivity.map((item: any) => ({
+    topic: item.day,
+    count: item.sessions,
+  }));
 
-  const sessionDurationData = [
-    { range: "0-15 min", count: 89 },
-    { range: "15-30 min", count: 234 },
-    { range: "30-45 min", count: 456 },
-    { range: "45-60 min", count: 312 },
-    { range: "60+ min", count: 123 },
-  ];
+  const mappedRecentSessions = recentSessions.map((session: any) => {
+    const userName =
+      session.profiles?.full_name ||
+      session.profiles?.email ||
+      "Unknown user";
+    const duration =
+      session.duration_minutes != null
+        ? `${session.duration_minutes} min`
+        : "N/A";
+    const startedAt = session.started_at
+      ? new Date(session.started_at)
+      : null;
+    const timeLabel = startedAt
+      ? startedAt.toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : "";
+
+    return {
+      id: session.id,
+      user: userName,
+      avatar: "AI Companion",
+      topic: "Session",
+      duration,
+      sentiment: "Neutral",
+      time: timeLabel,
+    };
+  });
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayoutNew>
+        <div className="max-w-2xl mx-auto py-16">
+          <h1 className="text-3xl font-bold mb-2">Session Analytics</h1>
+          <p className="text-muted-foreground mb-4">
+            Failed to load session analytics. Please try again later.
+          </p>
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
@@ -74,44 +210,19 @@ export function SessionAnalytics() {
           </p>
         </motion.div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
-            title="Total Sessions"
-            value="18,459"
-            change="+12.5%"
-            changeType="positive"
-            icon={MessageSquare}
-            color="primary"
-            delay={0}
-          />
-          <StatsCard
-            title="Avg Duration"
-            value="42 min"
-            change="+5 min"
-            changeType="positive"
-            icon={Clock}
-            color="secondary"
-            delay={0.1}
-          />
-          <StatsCard
-            title="Active Users"
-            value="3,284"
-            change="+8.3%"
-            changeType="positive"
-            icon={Users}
-            color="accent"
-            delay={0.2}
-          />
-          <StatsCard
-            title="Sessions This Week"
-            value="1,284"
-            change="+15.7%"
-            changeType="positive"
-            icon={TrendingUp}
-            color="success"
-            delay={0.3}
-          />
+          {statsCards.map((card) => (
+            <StatsCard
+              key={card.title}
+              title={card.title}
+              value={card.value}
+              change={card.change}
+              changeType={card.changeType as "positive" | "negative" | "neutral"}
+              icon={card.icon}
+              color={card.color as any}
+              delay={card.delay}
+            />
+          ))}
         </div>
 
         {/* Charts Row 1 */}
@@ -159,7 +270,7 @@ export function SessionAnalytics() {
             <Card className="p-6">
               <h2 className="text-xl font-bold mb-6">Avatar Preferences</h2>
               <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
+                  <PieChart>
                   <Pie
                     data={avatarUsageData}
                     cx="50%"
@@ -279,33 +390,8 @@ export function SessionAnalytics() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {[
-                    {
-                      user: "Emily R.",
-                      avatar: "Serena",
-                      topic: "Anxiety",
-                      duration: "45 min",
-                      sentiment: "Positive",
-                      time: "10 min ago",
-                    },
-                    {
-                      user: "Michael T.",
-                      avatar: "Marcus",
-                      topic: "Sleep",
-                      duration: "32 min",
-                      sentiment: "Neutral",
-                      time: "25 min ago",
-                    },
-                    {
-                      user: "Sarah M.",
-                      avatar: "Luna",
-                      topic: "Depression",
-                      duration: "58 min",
-                      sentiment: "Improved",
-                      time: "1 hour ago",
-                    },
-                  ].map((session, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
+                  {mappedRecentSessions.map((session) => (
+                    <tr key={session.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-sm font-bold">

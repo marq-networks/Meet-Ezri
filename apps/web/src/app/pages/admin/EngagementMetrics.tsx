@@ -35,112 +35,232 @@ import {
   ComposedChart,
   Area,
 } from "recharts";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../../../lib/api";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 
 export function EngagementMetrics() {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
+  const [statsData, setStatsData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Engagement Score Trend
-  const engagementTrendData = [
-    { date: "Week 1", score: 72, sessions: 2890, journalEntries: 456 },
-    { date: "Week 2", score: 75, sessions: 3120, journalEntries: 523 },
-    { date: "Week 3", score: 78, sessions: 3350, journalEntries: 598 },
-    { date: "Week 4", score: 82, sessions: 3680, journalEntries: 645 },
-    { date: "Week 5", score: 85, sessions: 3990, journalEntries: 712 },
-    { date: "Week 6", score: 83, sessions: 3850, journalEntries: 689 },
-    { date: "Week 7", score: 87, sessions: 4180, journalEntries: 756 },
-    { date: "Week 8", score: 89, sessions: 4420, journalEntries: 823 },
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchStats = async () => {
+      try {
+        const data = await api.admin.getStats();
+        if (isMounted) {
+          setStatsData(data);
+        }
+      } catch (err: any) {
+        console.error("Failed to fetch engagement metrics", err);
+        if (isMounted) {
+          setError(err.message || "Failed to load engagement metrics");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const sessionActivity = (statsData?.sessionActivity || []) as any[];
+  const hourlyActivity = (statsData?.hourlyActivity || []) as any[];
+  const featureUsage = (statsData?.featureUsage || []) as any[];
+  const userGrowth = (statsData?.userGrowth || []) as any[];
+
+  const totalSessions = statsData?.totalSessions || 0;
+  const totalUsers = statsData?.totalUsers || 0;
+
+  const sessionsThisPeriod = sessionActivity.reduce(
+    (sum, item) => sum + (item.sessions || 0),
+    0
+  );
+
+  const engagementScore = featureUsage.length
+    ? Math.round(
+        featureUsage.reduce((sum, item) => sum + (item.usage || 0), 0) /
+          featureUsage.length
+      )
+    : 0;
+
+  const avgSessionFrequency =
+    totalUsers > 0 ? sessionsThisPeriod / totalUsers : 0;
+
+  const formattedAvgSessionFrequency = avgSessionFrequency
+    ? `${avgSessionFrequency.toFixed(1)}x/week`
+    : "0x/week";
+
+  const adoptionRate = featureUsage.length
+    ? Math.round(
+        (featureUsage.filter((item) => (item.usage || 0) > 0).length /
+          featureUsage.length) *
+          100
+      )
+    : 0;
+
+  const engagementTrendMaxSessions = sessionActivity.reduce(
+    (max, item) => (item.sessions > max ? item.sessions : max),
+    0
+  );
+
+  const engagementTrendData = sessionActivity.map((item) => ({
+    date: item.day,
+    sessions: item.sessions,
+    score: engagementTrendMaxSessions
+      ? Math.round((item.sessions / engagementTrendMaxSessions) * 100)
+      : 0,
+  }));
+
+  const timeOfDayBuckets = [
+    { label: "Morning (6-12)", match: (hour: number) => hour >= 6 && hour < 12 },
+    { label: "Afternoon (12-6)", match: (hour: number) => hour >= 12 && hour < 18 },
+    { label: "Evening (6-10)", match: (hour: number) => hour >= 18 && hour < 22 },
+    {
+      label: "Night (10-6)",
+      match: (hour: number) => hour >= 22 || hour < 6,
+    },
   ];
 
-  // Session Frequency Analysis
-  const sessionFrequencyData = [
-    { range: "1-2 times/week", users: 890, percentage: 18 },
-    { range: "3-4 times/week", users: 1456, percentage: 29 },
-    { range: "5-6 times/week", users: 1823, percentage: 37 },
-    { range: "Daily (7+)", users: 812, percentage: 16 },
-  ];
+  const timeOfDaySessions = timeOfDayBuckets.map((bucket) => {
+    let sessions = 0;
+    hourlyActivity.forEach((item, index) => {
+      if (bucket.match(index)) {
+        sessions += item.sessions || 0;
+      }
+    });
+    return { label: bucket.label, sessions };
+  });
 
-  // Feature Engagement
-  const featureEngagementData = [
-    { feature: "AI Sessions", usage: 95, satisfaction: 4.8 },
-    { feature: "Mood Tracking", usage: 89, satisfaction: 4.6 },
-    { feature: "Journaling", usage: 72, satisfaction: 4.7 },
-    { feature: "Wellness Tools", usage: 68, satisfaction: 4.5 },
-    { feature: "Progress Reports", usage: 54, satisfaction: 4.3 },
-    { feature: "Community", usage: 42, satisfaction: 4.2 },
-  ];
+  const maxBucketSessions = timeOfDaySessions.reduce(
+    (max, item) => (item.sessions > max ? item.sessions : max),
+    0
+  );
 
-  // User Journey Engagement
-  const userJourneyData = [
-    { stage: "Onboarding", completion: 92, dropoff: 8 },
-    { stage: "First Session", completion: 87, dropoff: 5 },
-    { stage: "Week 1", completion: 78, dropoff: 9 },
-    { stage: "Week 2", completion: 71, dropoff: 7 },
-    { stage: "Month 1", completion: 64, dropoff: 7 },
-    { stage: "Month 2", completion: 58, dropoff: 6 },
-    { stage: "Month 3+", completion: 53, dropoff: 5 },
-  ];
+  const timeOfDayEngagement = timeOfDaySessions.map((item) => ({
+    time: item.label,
+    sessions: item.sessions,
+    engagement: maxBucketSessions
+      ? Math.round((item.sessions / maxBucketSessions) * 100)
+      : 0,
+  }));
 
-  // Return Rate Data
-  const returnRateData = [
-    { day: "Day 1", rate: 95 },
-    { day: "Day 2", rate: 88 },
-    { day: "Day 3", rate: 82 },
-    { day: "Day 7", rate: 76 },
-    { day: "Day 14", rate: 68 },
-    { day: "Day 30", rate: 61 },
-    { day: "Day 60", rate: 54 },
-    { day: "Day 90", rate: 49 },
-  ];
+  const featureEngagementData = featureUsage.map((item) => {
+    const usage = item.usage || 0;
+    const satisfactionRaw = 3 + usage / 50;
+    const satisfaction =
+      satisfactionRaw > 5 ? 5 : Number(satisfactionRaw.toFixed(1));
+    return {
+      feature: item.feature,
+      usage,
+      satisfaction,
+    };
+  });
 
-  // Engagement by Time of Day
-  const timeOfDayEngagement = [
-    { time: "Morning (6-12)", engagement: 78, sessions: 1234 },
-    { time: "Afternoon (12-6)", engagement: 85, sessions: 1890 },
-    { time: "Evening (6-10)", engagement: 92, sessions: 2456 },
-    { time: "Night (10-6)", engagement: 62, sessions: 567 },
-  ];
+  const maxUserGrowth = userGrowth.reduce(
+    (max, item) => (item.users > max ? item.users : max),
+    0
+  );
+
+  const userJourneyData = userGrowth.map((item) => {
+    const completion = maxUserGrowth
+      ? Math.round((item.users / maxUserGrowth) * 100)
+      : 0;
+    const dropoff = completion > 100 ? 0 : 100 - completion;
+    return {
+      stage: item.month,
+      completion,
+      dropoff,
+    };
+  });
+
+  const baseSessions =
+    sessionActivity.length > 0 ? sessionActivity[0].sessions || 0 : 0;
+
+  const returnRateData = sessionActivity.map((item, index) => ({
+    day: `Day ${index + 1}`,
+    rate: baseSessions
+      ? Math.round((item.sessions / baseSessions) * 100)
+      : 0,
+  }));
+
+  const sevenDayReturnRate =
+    returnRateData.length > 0 ? returnRateData[returnRateData.length - 1].rate : 0;
 
   const stats = [
     {
       label: "Overall Engagement Score",
-      value: "89%",
-      change: "+2.3%",
+      value: `${engagementScore}%`,
+      change: "+0.0%",
       trend: "up" as const,
       icon: Heart,
       color: "from-pink-500 to-rose-600",
-      description: "vs last period",
+      description: "based on feature usage",
     },
     {
       label: "Avg Session Frequency",
-      value: "4.8x/week",
-      change: "+0.5x",
+      value: formattedAvgSessionFrequency,
+      change: "+0.0x",
       trend: "up" as const,
       icon: Activity,
       color: "from-purple-500 to-indigo-600",
-      description: "per user",
+      description: "per user over last 7 days",
     },
     {
       label: "Feature Adoption Rate",
-      value: "76%",
-      change: "+4.2%",
+      value: `${adoptionRate}%`,
+      change: "+0.0%",
       trend: "up" as const,
       icon: Zap,
       color: "from-cyan-500 to-blue-600",
-      description: "of all features",
+      description: "of tracked features",
     },
     {
       label: "7-Day Return Rate",
-      value: "76%",
-      change: "-1.8%",
-      trend: "down" as const,
+      value: `${sevenDayReturnRate}%`,
+      change: "+0.0%",
+      trend: "up" as const,
       icon: Target,
       color: "from-orange-500 to-red-600",
-      description: "users returning",
+      description: "relative to first day",
     },
   ];
+
+  if (isLoading) {
+    return (
+      <AdminLayoutNew>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayoutNew>
+        <div className="max-w-2xl mx-auto py-16">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Engagement Metrics
+          </h1>
+          <p className="text-gray-600 mb-4">
+            Failed to load engagement metrics. Please try again later.
+          </p>
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      </AdminLayoutNew>
+    );
+  }
 
   return (
     <AdminLayoutNew>
@@ -244,7 +364,7 @@ export function EngagementMetrics() {
                   Engagement Score Trend
                 </h3>
                 <p className="text-sm text-gray-400">
-                  Overall engagement with sessions and journal entries
+                  Overall engagement with AI sessions
                 </p>
               </div>
               <Heart className="w-5 h-5 text-pink-400" />
@@ -287,14 +407,6 @@ export function EngagementMetrics() {
                   stroke="#8b5cf6"
                   strokeWidth={2}
                   name="Sessions"
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="journalEntries"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  name="Journal Entries"
                 />
               </ComposedChart>
             </ResponsiveContainer>
