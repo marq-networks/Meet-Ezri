@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { 
@@ -31,6 +31,12 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { signOut, user } = useAuth();
   const { unreadCount } = useNotifications();
 
+  const appearanceStorageKey = useMemo(() => {
+    if (typeof window === "undefined") return "ezri_appearance_settings";
+    if (!user?.id) return "ezri_appearance_settings";
+    return `ezri_appearance_settings_${user.id}`;
+  }, [user?.id]);
+
   const [appearance, setAppearance] = useState<{
     backgroundStyle: string;
     compactMode: boolean;
@@ -43,7 +49,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
       return;
     }
-    const saved = window.localStorage.getItem("ezri_appearance_settings");
+    const saved = window.localStorage.getItem(appearanceStorageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -58,7 +64,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         });
       }
     }
-  }, []);
+  }, [appearanceStorageKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

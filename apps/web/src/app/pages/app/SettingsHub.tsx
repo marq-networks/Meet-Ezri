@@ -30,7 +30,7 @@ import {
   CreditCard
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/app/components/AppLayout";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { api } from "@/lib/api";
@@ -48,7 +48,7 @@ interface SettingSection {
 
 export function SettingsHub() {
   const navigate = useNavigate();
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, user } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   
   // Quick Settings State
@@ -59,10 +59,16 @@ export function SettingsHub() {
     { icon: Mail, label: "Email Updates", enabled: false, key: "emailEnabled" }
   ]);
 
+  const appearanceStorageKey = useMemo(() => {
+    if (typeof window === "undefined") return "ezri_appearance_settings";
+    if (!user?.id) return "ezri_appearance_settings";
+    return `ezri_appearance_settings_${user.id}`;
+  }, [user?.id]);
+
   // Sync state from profile and localStorage
   useEffect(() => {
     // 1. Appearance (LocalStorage)
-    const savedAppearance = localStorage.getItem('ezri_appearance_settings');
+    const savedAppearance = localStorage.getItem(appearanceStorageKey);
     const isDarkMode = savedAppearance ? JSON.parse(savedAppearance).theme === 'dark' : false;
 
     // 2. Notifications (Profile)
@@ -75,7 +81,7 @@ export function SettingsHub() {
         if (setting.key === 'emailEnabled') return { ...setting, enabled: prefs.emailEnabled ?? true };
         return setting;
     }));
-  }, [profile]);
+  }, [profile, appearanceStorageKey]);
 
   const toggleQuickSetting = async (key: string) => {
     // Optimistic update
@@ -88,7 +94,7 @@ export function SettingsHub() {
     try {
         if (key === 'darkMode') {
             // Handle Appearance
-            const savedAppearance = localStorage.getItem('ezri_appearance_settings');
+            const savedAppearance = localStorage.getItem(appearanceStorageKey);
             const currentSettings = savedAppearance ? JSON.parse(savedAppearance) : {};
             const newTheme = currentSettings.theme === 'dark' ? 'light' : 'dark';
             

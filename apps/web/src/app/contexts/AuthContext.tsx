@@ -30,6 +30,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile.role === role;
   };
 
+  const applyAppearanceForUser = (targetUser: User | null) => {
+    try {
+      if (typeof window === "undefined" || typeof document === "undefined") return;
+      const root = document.documentElement;
+
+      if (!targetUser?.id) {
+        root.classList.add("dark");
+        root.style.setProperty("--accent", "#ec4899");
+        window.dispatchEvent(
+          new CustomEvent("ezri-appearance-change", {
+            detail: {
+              backgroundStyle: "gradient",
+              compactMode: false
+            }
+          })
+        );
+        return;
+      }
+
+      const storageKey = `ezri_appearance_settings_${targetUser.id}`;
+      const saved = window.localStorage.getItem(storageKey);
+
+      let theme: string = "dark";
+      let accentKey: string = "pink";
+      let backgroundStyle: string = "gradient";
+      let compactMode = false;
+
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.theme) theme = parsed.theme;
+          if (parsed.accentColor) accentKey = parsed.accentColor;
+          if (parsed.backgroundStyle) backgroundStyle = parsed.backgroundStyle;
+          if (typeof parsed.compactMode === "boolean") compactMode = parsed.compactMode;
+        } catch {
+        }
+      }
+
+      if (theme === "auto") {
+        if (typeof window !== "undefined" && window.matchMedia) {
+          const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+          if (mediaQuery.matches) {
+            root.classList.add("dark");
+          } else {
+            root.classList.remove("dark");
+          }
+        } else {
+          root.classList.remove("dark");
+        }
+      } else if (theme === "dark") {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+
+      const accentMap: Record<string, string> = {
+        blue: "#3b82f6",
+        purple: "#a855f7",
+        pink: "#ec4899",
+        green: "#22c55e",
+        orange: "#f97316",
+        teal: "#14b8a6"
+      };
+
+      const accent = accentMap[accentKey] || accentMap.pink;
+      root.style.setProperty("--accent", accent);
+
+      window.dispatchEvent(
+        new CustomEvent("ezri-appearance-change", {
+          detail: {
+            backgroundStyle,
+            compactMode
+          }
+        })
+      );
+    } catch (error) {
+      console.error("Failed to apply appearance settings:", error);
+    }
+  };
+
   useEffect(() => {
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -41,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (window.location.hash && window.location.hash.includes('error=')) {
           window.history.replaceState(null, '', window.location.pathname);
         }
+        applyAppearanceForUser(session.user);
         fetchProfile();
       } else {
         // No session, check for errors in URL
@@ -56,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        applyAppearanceForUser(session.user);
         fetchProfile();
       } else {
         setProfile(null);

@@ -11,10 +11,19 @@ import {
   CheckCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/app/components/AppLayout";
+import { useAuth } from "@/app/contexts/AuthContext";
 
 export function AppearanceSettings() {
+  const { user } = useAuth();
+
+  const storageKey = useMemo(() => {
+    if (typeof window === "undefined") return "ezri_appearance_settings";
+    if (!user?.id) return "ezri_appearance_settings";
+    return `ezri_appearance_settings_${user.id}`;
+  }, [user?.id]);
+
   const getDefaultSettings = () => ({
     theme: "dark",
     accentColor: "pink",
@@ -28,7 +37,7 @@ export function AppearanceSettings() {
     const isBrowser =
       typeof window !== "undefined" && typeof window.localStorage !== "undefined";
     const savedSettings = isBrowser
-      ? window.localStorage.getItem("ezri_appearance_settings")
+      ? window.localStorage.getItem(storageKey)
       : null;
 
     if (savedSettings) {
@@ -53,7 +62,7 @@ export function AppearanceSettings() {
       return;
     }
 
-    window.localStorage.setItem("ezri_appearance_settings", JSON.stringify(settings));
+    window.localStorage.setItem(storageKey, JSON.stringify(settings));
 
     setShowSavedMessage(true);
     const timer = setTimeout(() => {
@@ -61,7 +70,7 @@ export function AppearanceSettings() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [settings]);
+  }, [settings, storageKey]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
