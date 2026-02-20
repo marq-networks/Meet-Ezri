@@ -25,7 +25,7 @@ export function AppearanceSettings() {
   }, [user?.id]);
 
   const getDefaultSettings = () => ({
-    theme: "dark",
+    theme: "light",
     accentColor: "pink",
     backgroundStyle: "gradient",
     animations: true,

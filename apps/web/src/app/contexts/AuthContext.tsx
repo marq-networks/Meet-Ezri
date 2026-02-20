@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const root = document.documentElement;
 
       if (!targetUser?.id) {
-        root.classList.add("dark");
+        root.classList.remove("dark");
         root.style.setProperty("--accent", "#ec4899");
         window.dispatchEvent(
           new CustomEvent("ezri-appearance-change", {
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storageKey = `ezri_appearance_settings_${targetUser.id}`;
       const saved = window.localStorage.getItem(storageKey);
 
-      let theme: string = "dark";
+      let theme: string = "light";
       let accentKey: string = "pink";
       let backgroundStyle: string = "gradient";
       let compactMode = false;

@@ -202,7 +202,7 @@ function NetworkWatcher() {
 
 export default function App() {
   useEffect(() => {
-    let theme = "dark";
+    let theme = "light";
     let accentKey = "pink";
 
     if (typeof window !== "undefined" && typeof window.localStorage !== "undefined") {
