@@ -35,6 +35,11 @@ export async function getSubscription(userId: string) {
   const sub = await prisma.subscriptions.findFirst({
     where: {
       user_id: userId,
+      NOT: {
+        status: {
+          in: ['incomplete', 'incomplete_expired'],
+        },
+      },
     },
     orderBy: {
       created_at: 'desc',
@@ -51,14 +56,6 @@ export async function getSubscription(userId: string) {
     return null;
   }
   
-  // If incomplete_expired, treat as no subscription
-  if (status === 'incomplete_expired') {
-    return null;
-  }
-
-  // Check if the subscription is in a valid state to be considered "current"
-  // We accept active, trialing, past_due. 
-  // We also might want to return canceled if it's the most recent, so the UI can show "Canceled" instead of falling back to a default trial.
   return sub;
 }
 
