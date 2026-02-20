@@ -205,6 +205,15 @@ export async function getCredits(userId: string) {
   return { credits: profile?.credits || 0 };
 }
 
+export async function markPasswordChanged(userId: string) {
+  return prisma.profiles.update({
+    where: { id: userId },
+    data: {
+      password_last_changed_at: new Date(),
+    },
+  });
+}
+
 export async function updateProfile(userId: string, data: UpdateProfileInput) {
   // console.log('Updating profile for user:', userId, 'Data:', data);
 

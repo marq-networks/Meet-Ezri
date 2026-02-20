@@ -25,7 +25,7 @@ import { toast } from "sonner";
 
 export function AccountSettings() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -58,6 +58,7 @@ export function AccountSettings() {
     confirmPassword: ""
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordLastChangedAt, setPasswordLastChangedAt] = useState<string | null>(null);
 
   // 2FA state
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
@@ -66,6 +67,12 @@ export function AccountSettings() {
   const [mfaData, setMfaData] = useState<{ id: string; qr_code: string; secret: string } | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
+
+  useEffect(() => {
+    const anyProfile = profile as any;
+    const value = anyProfile?.password_last_changed_at || null;
+    setPasswordLastChangedAt(value);
+  }, [profile]);
 
   useEffect(() => {
     fetchMfaStatus();
@@ -231,6 +238,10 @@ export function AccountSettings() {
       if (updateError) {
         throw updateError;
       }
+      
+      await api.markPasswordChanged();
+      await refreshProfile();
+      setPasswordLastChangedAt(new Date().toISOString());
 
       toast.success("Password updated successfully");
       setShowPasswordModal(false);
@@ -601,9 +612,9 @@ export function AccountSettings() {
                   <div className="text-left">
                     <p className="font-medium text-gray-900">Change Password</p>
                     <p className="text-sm text-gray-600">
-                      {user?.updated_at 
-                        ? `Last changed ${formatDistanceToNow(new Date(user.updated_at), { addSuffix: true })}`
-                        : 'Never changed'}
+                      {passwordLastChangedAt
+                        ? `Last changed ${formatDistanceToNow(new Date(passwordLastChangedAt), { addSuffix: true })}`
+                        : 'Password change time not recorded yet'}
                     </p>
                   </div>
                 </div>

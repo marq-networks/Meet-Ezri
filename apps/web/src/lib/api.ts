@@ -134,6 +134,20 @@ export const api = {
     return handleResponse(res, 'Failed to fetch credits');
   },
 
+  async markPasswordChanged() {
+    const headers = await getHeaders();
+    const res = await fetch(`${API_URL}/users/me/password-changed`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({}),
+    });
+    if (!res.ok && res.status !== 204) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to record password change');
+    }
+    return;
+  },
+
   async updateSetting(key: string, value: any, description?: string) {
     const headers = await getHeaders();
     const res = await fetch(`${API_URL}/system-settings`, {

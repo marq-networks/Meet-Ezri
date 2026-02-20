@@ -139,6 +139,15 @@ export async function getCreditsHandler(
   return credits;
 }
 
+export async function markPasswordChangedHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const user = request.user as UserPayload;
+  await userService.markPasswordChanged(user.sub);
+  return reply.code(204).send();
+}
+
 export async function updateProfileHandler(
   request: FastifyRequest,
   reply: FastifyReply

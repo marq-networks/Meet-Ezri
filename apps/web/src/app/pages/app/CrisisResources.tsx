@@ -2,6 +2,7 @@ import { AppLayout } from "../../components/AppLayout";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Phone,
@@ -15,11 +16,42 @@ import {
   Shield,
   HeartPulse,
   Users,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from "lucide-react";
+import { api } from "../../../lib/api";
+
+interface EmergencyContact {
+  id: string;
+  name: string;
+  relationship: string | null;
+  phone: string | null;
+  email: string | null;
+  is_trusted: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export function CrisisResources() {
   const navigate = useNavigate();
+
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        const data = await api.emergencyContacts.getAll();
+        setContacts(data);
+      } catch (error) {
+        console.error("Failed to load emergency contacts:", error);
+      } finally {
+        setIsLoadingContacts(false);
+      }
+    };
+
+    loadContacts();
+  }, []);
 
   const emergencyContacts = [
     {
@@ -76,21 +108,6 @@ export function CrisisResources() {
       description: "Online therapy platform",
       url: "betterhelp.com",
       icon: Globe
-    }
-  ];
-
-  const personalContacts = [
-    {
-      name: "Dr. Sarah Johnson",
-      role: "Primary Companion",
-      phone: "(555) 123-4567",
-      available: "Mon-Fri, 9am-5pm"
-    },
-    {
-      name: "Emergency Contact: Mom",
-      role: "Family",
-      phone: "(555) 987-6543",
-      available: "Anytime"
     }
   ];
 
@@ -253,36 +270,65 @@ export function CrisisResources() {
                 <h2 className="text-xl font-bold">Your Emergency Contacts</h2>
               </div>
               <div className="space-y-3">
-                {personalContacts.map((contact, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + index * 0.05 }}
-                    whileHover={{ x: 5 }}
-                    className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-bold">{contact.name}</h3>
-                      <motion.a
-                        href={`tel:${contact.phone.replace(/\D/g, "")}`}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        className="p-2 bg-primary text-white rounded-full hover:bg-primary/90"
-                      >
-                        <Phone className="w-4 h-4" />
-                      </motion.a>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-1">{contact.role}</p>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="font-medium">{contact.phone}</span>
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="w-3 h-3" />
-                        {contact.available}
+                {isLoadingContacts && (
+                  <div className="flex items-center justify-center py-6 text-muted-foreground">
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <span>Loading your emergency contacts…</span>
+                  </div>
+                )}
+
+                {!isLoadingContacts && contacts.length === 0 && (
+                  <div className="p-4 bg-gray-50 rounded-lg text-sm text-muted-foreground">
+                    You haven't added any emergency contacts yet. Add someone you trust so their
+                    real phone number is available here during a crisis.
+                  </div>
+                )}
+
+                {!isLoadingContacts &&
+                  contacts.map((contact, index) => (
+                    <motion.div
+                      key={contact.id ?? index.toString()}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.6 + index * 0.05 }}
+                      whileHover={{ x: 5 }}
+                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h3 className="font-bold">{contact.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {contact.relationship || "Emergency contact"}
+                          </p>
+                        </div>
+                        {contact.phone && (
+                          <motion.a
+                            href={`tel:${contact.phone.replace(/\D/g, "")}`}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className="p-2 bg-primary text-white rounded-full hover:bg-primary/90"
+                          >
+                            <Phone className="w-4 h-4" />
+                          </motion.a>
+                        )}
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="flex items-center gap-4 text-sm">
+                        {contact.phone ? (
+                          <>
+                            <span className="font-medium">{contact.phone}</span>
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              <span>Available as listed</span>
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            No phone number saved for this contact yet.
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
                 <Button
                   variant="outline"
                   className="w-full"

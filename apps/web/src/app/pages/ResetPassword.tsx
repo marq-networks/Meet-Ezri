@@ -8,6 +8,7 @@ import { PublicNav } from "../components/PublicNav";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 export function ResetPassword() {
   const navigate = useNavigate();
@@ -49,6 +50,12 @@ export function ResetPassword() {
 
       if (error) {
         throw error;
+      }
+
+      try {
+        await api.markPasswordChanged();
+      } catch (recordError) {
+        console.error("Failed to record password change:", recordError);
       }
 
       setIsSuccess(true);
