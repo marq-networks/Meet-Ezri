@@ -75,12 +75,16 @@ export function Signup() {
         toast.success("Account created successfully!");
         navigate("/onboarding/welcome");
       } else if (data?.user) {
-        // User created but no session -> email verification required
-        navigate("/verify-email");
+        toast.success("Please check your email to verify your account before logging in.");
       }
     } catch (error: any) {
-      if (error.code === 'over_email_send_rate_limit') {
+      const message = error.message?.toLowerCase?.() || "";
+
+      if (error.code === "over_email_send_rate_limit") {
         toast.error("Too many attempts. Please try again later or use a different email.");
+      } else if (message.includes("user already registered") || message.includes("already exists")) {
+        toast.error("An account with this email already exists. Please log in instead.");
+        navigate("/login");
       } else {
         toast.error(error.message || "Failed to create account");
       }
