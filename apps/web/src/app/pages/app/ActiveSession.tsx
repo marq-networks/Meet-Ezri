@@ -22,12 +22,13 @@ import {
   Pause,
   Play
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/app/components/ui/button";
 const avatarImage = "/Male.png";
 import { useSafety } from "@/app/contexts/SafetyContext";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -41,7 +42,14 @@ import { LowMinutesWarning } from "@/app/components/modals/LowMinutesWarning";
 export function ActiveSession() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const { sessionId: stateSessionId, duration, config } = location.state || {};
+
+  const permissionStorageKey = useMemo(() => {
+    if (typeof window === "undefined") return "ezri_media_permissions";
+    if (!user?.id) return "ezri_media_permissions";
+    return `ezri_media_permissions_${user.id}`;
+  }, [user?.id]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -55,9 +63,39 @@ export function ActiveSession() {
   const [isEzriSpeaking, setIsEzriSpeaking] = useState(false);
   const [connectionQuality, setConnectionQuality] = useState<"excellent" | "good" | "poor">("excellent");
   const [showEndConfirm, setShowEndConfirm] = useState(false);
-  const [showPermissionRequest, setShowPermissionRequest] = useState(true);
+  const [showPermissionRequest, setShowPermissionRequest] = useState(false);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [permissionStateInitialized, setPermissionStateInitialized] = useState(false);
   const [transcript, setTranscript] = useState<{role: string, content: string, timestamp: number}[]>([]);
+
+  useEffect(() => {
+    if (permissionStateInitialized) return;
+
+    if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+      setShowPermissionRequest(true);
+      setPermissionStateInitialized(true);
+      return;
+    }
+
+    try {
+      const stored = window.localStorage.getItem(permissionStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed === true || parsed === "granted") {
+          setPermissionsGranted(true);
+          setShowPermissionRequest(false);
+          setPermissionStateInitialized(true);
+          return;
+        }
+      }
+      setShowPermissionRequest(true);
+    } catch (error) {
+      console.error("Failed to load media permission setting:", error);
+      setShowPermissionRequest(true);
+    } finally {
+      setPermissionStateInitialized(true);
+    }
+  }, [permissionStorageKey, permissionStateInitialized]);
 
   // Speech Recognition
   useEffect(() => {
@@ -153,6 +191,13 @@ export function ActiveSession() {
           toast.error("Failed to access camera/microphone");
           setPermissionsGranted(false);
           setShowPermissionRequest(true);
+          try {
+            if (typeof window !== "undefined" && typeof window.localStorage !== "undefined") {
+              window.localStorage.removeItem(permissionStorageKey);
+            }
+          } catch (error) {
+            console.error("Failed to clear media permission setting:", error);
+          }
         }
       };
       initMedia();
@@ -859,7 +904,7 @@ export function ActiveSession() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {
                     setShowPermissionRequest(false);
-                    navigate('/app/dashboard');
+                    navigate("/app/dashboard");
                   }}
                   className="flex-1 px-6 py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium flex items-center justify-center gap-2 border border-white/10"
                 >
@@ -871,9 +916,15 @@ export function ActiveSession() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {
-                    // Simulate permission grant (in real app, would use navigator.mediaDevices.getUserMedia)
                     setPermissionsGranted(true);
                     setShowPermissionRequest(false);
+                    try {
+                      if (typeof window !== "undefined" && typeof window.localStorage !== "undefined") {
+                        window.localStorage.setItem(permissionStorageKey, JSON.stringify(true));
+                      }
+                    } catch (error) {
+                      console.error("Failed to save media permission setting:", error);
+                    }
                   }}
                   className="flex-1 px-6 py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/50"
                 >
