@@ -67,6 +67,47 @@ export function ActiveSession() {
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [permissionStateInitialized, setPermissionStateInitialized] = useState(false);
   const [transcript, setTranscript] = useState<{role: string, content: string, timestamp: number}[]>([]);
+  const speechTimeoutRef = useRef<number | null>(null);
+
+  const speakAvatar = (text: string) => {
+    if (isSoundOff) return;
+    if (typeof window === "undefined") return;
+    const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
+    if (!synth) return;
+    try {
+      synth.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      synth.speak(utterance);
+    } catch (error) {
+      console.error("Failed to play avatar audio:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
+    if (!synth) return;
+    if (isSoundOff) {
+      try {
+        synth.cancel();
+      } catch {
+      }
+    }
+  }, [isSoundOff]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
+    if (!synth) return;
+    if (!isMuted && !isSoundOff) {
+      try {
+        synth.resume();
+      } catch {
+      }
+    }
+  }, [isMuted, isSoundOff]);
 
   useEffect(() => {
     if (permissionStateInitialized) return;
@@ -97,7 +138,6 @@ export function ActiveSession() {
     }
   }, [permissionStorageKey, permissionStateInitialized]);
 
-  // Speech Recognition
   useEffect(() => {
     if (!permissionsGranted) return;
 
@@ -118,22 +158,41 @@ export function ActiveSession() {
       const transcriptText = event.results[current][0].transcript;
       
       if (transcriptText.trim()) {
-        // Log for debugging
-        console.log("Transcript received:", transcriptText);
-        
+        const trimmed = transcriptText.trim();
+
         setTranscript(prev => {
-          // Avoid duplicates if possible (simple check)
           const lastEntry = prev[prev.length - 1];
-          if (lastEntry && lastEntry.content === transcriptText.trim() && (Date.now() - lastEntry.timestamp < 1000)) {
+          if (lastEntry && lastEntry.content === trimmed && (Date.now() - lastEntry.timestamp < 1000)) {
             return prev;
           }
           
-          return [...prev, {
-            role: 'user',
-            content: transcriptText.trim(),
-            timestamp: Date.now()
-          }];
+          return [
+            ...prev,
+            {
+              role: "user",
+              content: trimmed,
+              timestamp: Date.now(),
+            },
+          ];
         });
+
+        setIsEzriSpeaking(true);
+        if (speechTimeoutRef.current) {
+          window.clearTimeout(speechTimeoutRef.current);
+        }
+        const assistantText = `I heard you say: "${trimmed}"`;
+        speechTimeoutRef.current = window.setTimeout(() => {
+          setTranscript(prev => [
+            ...prev,
+            {
+              role: "assistant",
+              content: assistantText,
+              timestamp: Date.now(),
+            },
+          ]);
+          speakAvatar(assistantText);
+          setIsEzriSpeaking(false);
+        }, 1500);
       }
     };
 
@@ -162,12 +221,10 @@ export function ActiveSession() {
     }
 
     return () => {
-      // Stop the restart loop
       recognition.onend = null; 
       try {
         recognition.stop();
       } catch (e) {
-        // Ignore stop errors
       }
     };
   }, [permissionsGranted]);
@@ -227,7 +284,7 @@ export function ActiveSession() {
   const [showSafetyResources, setShowSafetyResources] = useState(false);
   const [isSessionPaused, setIsSessionPaused] = useState(false);
   const [lastSafetyState, setLastSafetyState] = useState(currentState);
-  
+
   // Credits tracking
   const [creditsRemaining, setCreditsRemaining] = useState(duration || 0);
   const [showLowCreditsWarning, setShowLowCreditsWarning] = useState(false);
@@ -365,14 +422,6 @@ export function ActiveSession() {
 
     previousConnectionQuality.current = connectionQuality;
   }, [connectionQuality]);
-
-  // Simulate Ezri speaking animation - alternates between speaking and listening
-  useEffect(() => {
-    const speakingInterval = setInterval(() => {
-      setIsEzriSpeaking(prev => !prev);
-    }, 4000); // Toggle every 4 seconds
-    return () => clearInterval(speakingInterval);
-  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
