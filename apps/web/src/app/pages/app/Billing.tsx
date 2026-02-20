@@ -59,6 +59,14 @@ export function Billing() {
       if (!session?.user) return;
       
       try {
+        if (searchParams.get('success') === 'true') {
+          try {
+            await api.billing.syncSubscription();
+          } catch (syncError) {
+            console.error('Failed to sync subscription after checkout success:', syncError);
+          }
+        }
+
         await refreshProfile();
 
         const [subData, sessionsData, historyData, invoiceData] = await Promise.all([

@@ -184,7 +184,7 @@ export function ActiveSession() {
             },
           ];
         });
-
+        
         setIsEzriSpeaking(true);
         if (speechTimeoutRef.current) {
           window.clearTimeout(speechTimeoutRef.current);
