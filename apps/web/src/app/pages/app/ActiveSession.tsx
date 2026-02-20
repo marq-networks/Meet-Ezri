@@ -68,6 +68,8 @@ export function ActiveSession() {
   const [permissionStateInitialized, setPermissionStateInitialized] = useState(false);
   const [transcript, setTranscript] = useState<{role: string, content: string, timestamp: number}[]>([]);
   const speechTimeoutRef = useRef<number | null>(null);
+  const isMutedRef = useRef(isMuted);
+  const isSessionPausedRef = useRef(false);
 
   const speakAvatar = (text: string) => {
     if (isSoundOff) return;
@@ -84,6 +86,10 @@ export function ActiveSession() {
       console.error("Failed to play avatar audio:", error);
     }
   };
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -154,6 +160,9 @@ export function ActiveSession() {
     recognition.lang = 'en-US';
 
     recognition.onresult = (event: any) => {
+      if (isMutedRef.current || isSessionPausedRef.current) {
+        return;
+      }
       const current = event.resultIndex;
       const transcriptText = event.results[current][0].transcript;
       
@@ -284,6 +293,10 @@ export function ActiveSession() {
   const [showSafetyResources, setShowSafetyResources] = useState(false);
   const [isSessionPaused, setIsSessionPaused] = useState(false);
   const [lastSafetyState, setLastSafetyState] = useState(currentState);
+
+  useEffect(() => {
+    isSessionPausedRef.current = isSessionPaused;
+  }, [isSessionPaused]);
 
   // Credits tracking
   const [creditsRemaining, setCreditsRemaining] = useState(duration || 0);

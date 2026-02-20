@@ -3,7 +3,11 @@ import { stripe } from '../../config/stripe';
 import { STRIPE_PRICE_IDS, PLAN_LIMITS } from './billing.constants';
 import { CreateSubscriptionInput, UpdateSubscriptionInput, CreateCreditPurchaseInput } from './billing.schema';
 
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const CLIENT_URL =
+  process.env.CLIENT_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://meet-ezri.vercel.app'
+    : 'http://localhost:5173');
 
 async function getOrCreateStripeCustomer(userId: string, email: string) {
   const profile = await prisma.profiles.findUnique({ where: { id: userId } });
