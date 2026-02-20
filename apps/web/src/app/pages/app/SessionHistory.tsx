@@ -43,6 +43,7 @@ interface SessionData {
   favorite: boolean;
   status?: "completed" | "upcoming";
   recordingUrl?: string;
+  isUpcoming?: boolean;
 }
 
 interface BackendSession {
@@ -127,39 +128,45 @@ export function SessionHistory() {
       
       try {
         const data: BackendSession[] = await api.sessions.list();
-        
-        const mapSession = (s: BackendSession): SessionData => ({
-          id: s.id,
-          date: new Date(s.scheduled_at || s.started_at || s.created_at).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-            hour: s.scheduled_at ? 'numeric' : undefined,
-            minute: s.scheduled_at ? 'numeric' : undefined,
-          }),
-          duration: s.duration_minutes ? `${s.duration_minutes} min` : "N/A",
-          type: s.type === 'instant' ? 'video' : (s.type as "video" | "chat") || 'video', // Default to video if unknown
-          mood: "neutral", // Placeholder
-          moodEmoji: "😐", // Placeholder
-          messagesCount: s._count?.session_messages || 0,
-          highlightsCount: 0, // Placeholder
-          topicsDiscussed: [], // Placeholder
-          thumbnail: `gradient-${(s.id.charCodeAt(0) % 5) + 1}`, // Deterministic random
-          summary: s.title || "No summary available",
-          sentiment: 0, // Placeholder
-          favorite: false, // Placeholder
-          status: s.status === 'completed' ? 'completed' : 'upcoming',
-          recordingUrl: s.recording_url || undefined
-        });
+        const now = new Date();
 
-        const completed = data
-          .filter(s => s.status === 'completed' || s.status === 'cancelled') // Treat cancelled as completed history for now? Or just completed.
-          .filter(s => s.status === 'completed') // Strict for now
-          .map(mapSession);
-          
-        const upcoming = data
-          .filter(s => s.status === 'scheduled' || s.status === 'active')
-          .map(mapSession);
+        const mapSession = (s: BackendSession): SessionData => {
+          const baseDateString = s.scheduled_at || s.started_at || s.created_at;
+          const baseDate = new Date(baseDateString);
+          const isUpcoming =
+            (s.status === 'scheduled' || s.status === 'active') &&
+            baseDate.getTime() >= now.getTime();
+
+          return {
+            id: s.id,
+            date: baseDate.toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+              hour: s.scheduled_at ? 'numeric' : undefined,
+              minute: s.scheduled_at ? 'numeric' : undefined,
+            }),
+            duration: s.duration_minutes ? `${s.duration_minutes} min` : "N/A",
+            type: s.type === 'instant' ? 'video' : (s.type as "video" | "chat") || 'video',
+            mood: "neutral",
+            moodEmoji: "😐",
+            messagesCount: s._count?.session_messages || 0,
+            highlightsCount: 0,
+            topicsDiscussed: [],
+            thumbnail: `gradient-${(s.id.charCodeAt(0) % 5) + 1}`,
+            summary: s.title || "No summary available",
+            sentiment: 0,
+            favorite: false,
+            status: s.status === 'completed' ? 'completed' : 'upcoming',
+            recordingUrl: s.recording_url || undefined,
+            isUpcoming,
+          };
+        };
+
+        const mapped = data.map(mapSession);
+
+        const completed = mapped.filter(s => s.status === 'completed');
+        const upcoming = mapped.filter(s => s.status === 'upcoming' && s.isUpcoming);
 
         setCompletedSessions(completed);
         setUpcomingSessions(upcoming);

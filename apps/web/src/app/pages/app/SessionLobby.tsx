@@ -23,6 +23,27 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Skeleton } from "../../components/ui/skeleton";
 
+interface BackendSession {
+  id: string;
+  status: string;
+  type: string;
+  scheduled_at: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  duration_minutes: number | null;
+  config: any;
+  created_at: string;
+}
+
+interface UpcomingSession {
+  id: string;
+  avatar: string;
+  type: string;
+  date: string;
+  duration: string;
+  isExpired: boolean;
+}
+
 export function SessionLobby() {
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -40,7 +61,7 @@ export function SessionLobby() {
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
   const [isStarting, setIsStarting] = useState(false);
-  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
+  const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
 
   useEffect(() => {
@@ -69,8 +90,33 @@ export function SessionLobby() {
   const loadUpcomingSessions = async () => {
     try {
       setIsLoadingSessions(true);
-      const sessions = await api.sessions.list({ status: 'scheduled' });
-      setUpcomingSessions(sessions);
+      const sessions = await api.sessions.list({ status: "scheduled" });
+      const now = new Date();
+      const mappedSessions: UpcomingSession[] = (sessions as BackendSession[]).map((session) => {
+        const scheduledDate = session.scheduled_at ? new Date(session.scheduled_at) : null;
+        const isExpired = !!scheduledDate && scheduledDate.getTime() < now.getTime() && session.status === "scheduled";
+        const date = scheduledDate
+          ? scheduledDate.toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })
+          : new Date(session.created_at).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+            });
+
+        return {
+          id: session.id,
+          avatar: session.config?.avatar || "👨‍⚕️",
+          type: session.type === "instant" ? "Instant" : "Scheduled",
+          date,
+          duration: session.duration_minutes ? `${session.duration_minutes} min` : "N/A",
+          isExpired,
+        };
+      });
+      setUpcomingSessions(mappedSessions);
     } catch (err) {
       console.error("Failed to load sessions:", err);
     } finally {
@@ -548,7 +594,9 @@ export function SessionLobby() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.5 + index * 0.1 }}
                       whileHover={{ x: 5 }}
-                      className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                      className={`p-3 bg-gray-50 rounded-lg transition-colors ${
+                        session.isExpired ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-100 cursor-pointer"
+                      }`}
                     >
                       <div className="flex items-center gap-3 mb-2">
                         <span className="text-2xl">{session.avatar}</span>
@@ -556,6 +604,11 @@ export function SessionLobby() {
                           <p className="font-medium text-sm">{session.type}</p>
                           <p className="text-xs text-muted-foreground">{session.date}</p>
                         </div>
+                        {session.isExpired && (
+                          <span className="text-[10px] uppercase font-semibold text-red-500">
+                            Expired
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />

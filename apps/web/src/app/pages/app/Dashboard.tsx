@@ -12,6 +12,18 @@ import { PWAInstallPrompt } from "../../components/PWAInstallPrompt";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { api } from "../../../lib/api";
 
+interface BackendSession {
+  id: string;
+  status: string;
+  type: string;
+  scheduled_at: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  duration_minutes: number | null;
+  config: any;
+  created_at: string;
+}
+
 export function Dashboard() {
   const { profile, refreshProfile } = useAuth();
   const [upcomingSessionsCount, setUpcomingSessionsCount] = useState(0);
@@ -41,7 +53,13 @@ export function Dashboard() {
       try {
         await refreshProfile();
         const sessions = await api.sessions.list({ status: "scheduled" });
-        setUpcomingSessionsCount(sessions.length);
+        const now = new Date();
+        const nonExpired = (sessions as BackendSession[]).filter((session) => {
+          const scheduledDate = session.scheduled_at ? new Date(session.scheduled_at) : null;
+          if (!scheduledDate) return false;
+          return scheduledDate.getTime() >= now.getTime() && session.status === "scheduled";
+        });
+        setUpcomingSessionsCount(nonExpired.length);
       } catch (error) {
         console.error("Failed to fetch upcoming sessions", error);
       } finally {
