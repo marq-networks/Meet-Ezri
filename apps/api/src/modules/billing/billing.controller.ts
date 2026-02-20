@@ -8,6 +8,8 @@ import {
   getAllSubscriptions,
   updateSubscriptionById,
   createCreditPurchaseSession,
+  createCheckoutSession,
+  createPortalSession,
   syncSubscriptionWithStripe,
   getInvoicesForUser,
   getAllInvoices,
@@ -51,10 +53,8 @@ export async function createSubscriptionHandler(
   reply: FastifyReply
 ) {
   const user = request.user as UserPayload;
-  const result = await import('./billing.service').then(m =>
-    m.createCheckoutSession(user.sub, user.email || '', request.body)
-  );
-  
+  const result = await createCheckoutSession(user.sub, user.email || '', request.body);
+
   return reply.code(200).send(result);
 }
 
@@ -72,7 +72,7 @@ export async function createPortalSessionHandler(
   reply: FastifyReply
 ) {
   const user = request.user as UserPayload;
-  const result = await import('./billing.service').then(m => m.createPortalSession(user.sub));
+  const result = await createPortalSession(user.sub);
   return reply.send(result);
 }
 

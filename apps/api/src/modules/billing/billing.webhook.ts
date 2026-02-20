@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { stripe } from '../../config/stripe';
 import prisma from '../../lib/prisma';
-import { STRIPE_PRICE_IDS } from './billing.constants';
+import { STRIPE_PRICE_IDS, PLAN_LIMITS } from './billing.constants';
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -144,12 +144,9 @@ async function handleCheckoutSessionCompleted(session: any) {
 
   // Update credits based on plan
   let credits = 0;
-  // @ts-ignore
-  const limits = await import('./billing.constants').then(m => m.PLAN_LIMITS);
-  
-  if (planType === 'core') credits = limits.core.credits;
-  else if (planType === 'pro') credits = limits.pro.credits;
-  else if (planType === 'trial') credits = limits.trial.credits;
+  if (planType === 'core') credits = PLAN_LIMITS.core.credits;
+  else if (planType === 'pro') credits = PLAN_LIMITS.pro.credits;
+  else if (planType === 'trial') credits = PLAN_LIMITS.trial.credits;
 
   if (credits > 0) {
     await prisma.profiles.update({
