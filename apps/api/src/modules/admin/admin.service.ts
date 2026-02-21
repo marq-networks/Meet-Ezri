@@ -711,6 +711,48 @@ export async function createManualNotification(data: any) {
   throw new Error("No target audience or user IDs provided");
 }
 
+export async function getNudges() {
+  return prisma.nudges.findMany({
+    orderBy: { created_at: 'desc' }
+  });
+}
+
+export async function createNudge(data: any, createdBy?: string) {
+  return prisma.nudges.create({
+    data: {
+      title: data.title,
+      message: data.message,
+      type: data.type,
+      status: data.status ?? 'draft',
+      target_audience: data.target_audience ?? null,
+      schedule_time: data.schedule_time ?? null,
+      is_recurring: data.is_recurring ?? false,
+      created_by: createdBy,
+    },
+  });
+}
+
+export async function updateNudge(id: string, data: any) {
+  return prisma.nudges.update({
+    where: { id },
+    data: {
+      title: data.title,
+      message: data.message,
+      type: data.type,
+      status: data.status,
+      target_audience: data.target_audience,
+      schedule_time: data.schedule_time,
+      is_recurring: data.is_recurring,
+    },
+  });
+}
+
+export async function deleteNudge(id: string) {
+  return prisma.nudges.delete({
+    where: { id },
+  });
+}
+
 // 3. Email Templates
 export async function getEmailTemplates() {
   return prisma.email_templates.findMany({

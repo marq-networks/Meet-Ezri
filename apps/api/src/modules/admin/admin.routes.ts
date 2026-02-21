@@ -4,6 +4,7 @@ import {
   getDashboardStatsHandler, getUsersHandler, getUserHandler, updateUserHandler, deleteUserHandler, getUserAuditLogsHandler, getRecentActivityHandler,
   getUserSegmentsHandler, createUserSegmentHandler, deleteUserSegmentHandler,
   getManualNotificationsHandler, createManualNotificationHandler, getNotificationAudienceCountsHandler,
+  getNudgesHandler, createNudgeHandler, updateNudgeHandler, deleteNudgeHandler,
   getEmailTemplatesHandler, createEmailTemplateHandler, updateEmailTemplateHandler, deleteEmailTemplateHandler,
   getPushCampaignsHandler, createPushCampaignHandler,
   getSupportTicketsHandler, updateSupportTicketHandler,
@@ -103,6 +104,12 @@ export async function adminRoutes(fastify: FastifyInstance) {
   fastify.get('/notifications/manual', { preHandler: [fastify.authenticate] }, getManualNotificationsHandler);
   fastify.post('/notifications/manual', { preHandler: [fastify.authenticate] }, createManualNotificationHandler);
   fastify.get('/notifications/audience-counts', { preHandler: [fastify.authenticate] }, getNotificationAudienceCountsHandler);
+
+  // Nudges
+  fastify.get('/nudges', { preHandler: [fastify.authenticate] }, getNudgesHandler);
+  fastify.post('/nudges', { preHandler: [fastify.authenticate] }, createNudgeHandler);
+  fastify.put('/nudges/:id', { preHandler: [fastify.authenticate] }, updateNudgeHandler);
+  fastify.delete('/nudges/:id', { preHandler: [fastify.authenticate] }, deleteNudgeHandler);
 
   // Email Templates
   fastify.get('/email-templates', { preHandler: [fastify.authenticate] }, getEmailTemplatesHandler);

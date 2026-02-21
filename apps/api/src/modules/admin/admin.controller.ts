@@ -4,6 +4,7 @@ import {
   getDashboardStats, getAllUsers, getUserById, updateUser, deleteUser, getUserAuditLogs, getRecentActivity,
   getUserSegments, createUserSegment, deleteUserSegment,
   getManualNotifications, createManualNotification, getNotificationAudienceCounts,
+  getNudges, createNudge, updateNudge, deleteNudge,
   getEmailTemplates, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate,
   getPushCampaigns, createPushCampaign,
   getSupportTickets, updateSupportTicket,
@@ -221,6 +222,56 @@ export async function getNotificationAudienceCountsHandler(request: FastifyReque
   } catch (error) {
     request.log.error(error);
     return reply.code(500).send({ message: 'Failed to fetch audience counts' });
+  }
+}
+
+export async function getNudgesHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const nudges = await getNudges();
+    return reply.code(200).send(nudges);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch nudges' });
+  }
+}
+
+export async function createNudgeHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const user = request.user as { sub?: string } | undefined;
+    const createdBy = user?.sub;
+    const nudge = await createNudge(request.body, createdBy);
+    return reply.code(201).send(nudge);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to create nudge' });
+  }
+}
+
+export async function updateNudgeHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const { id } = request.params;
+    const nudge = await updateNudge(id, request.body);
+    return reply.code(200).send(nudge);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to update nudge' });
+  }
+}
+
+export async function deleteNudgeHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const { id } = request.params;
+    await deleteNudge(id);
+    return reply.code(204).send();
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to delete nudge' });
   }
 }
 

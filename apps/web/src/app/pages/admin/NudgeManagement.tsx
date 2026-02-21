@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 
 interface Nudge {
-  id: number;
+  id: string;
   title: string;
   message: string;
   type: "motivational" | "reminder" | "milestone" | "wellness-tip" | "check-in";
@@ -51,6 +51,42 @@ interface Nudge {
 }
 
 const initialNudges: Nudge[] = [];
+
+const mapApiNudge = (apiNudge: any, previous?: Nudge): Nudge => {
+  const meta = (apiNudge?.target_audience || {}) as any;
+  const createdAt = apiNudge?.created_at ? new Date(apiNudge.created_at) : new Date();
+  return {
+    id: apiNudge.id || previous?.id || "",
+    title: apiNudge.title || previous?.title || "",
+    message: apiNudge.message || previous?.message || "",
+    type:
+      (apiNudge.type as Nudge["type"]) ||
+      previous?.type ||
+      "motivational",
+    status:
+      (apiNudge.status as Nudge["status"]) ||
+      previous?.status ||
+      "draft",
+    trigger: meta.trigger || previous?.trigger || "Custom trigger",
+    targetAudience:
+      meta.targetAudience ||
+      meta.label ||
+      previous?.targetAudience ||
+      "All active users",
+    schedule: meta.schedule || previous?.schedule || "Daily",
+    sentCount: previous?.sentCount ?? 0,
+    openRate: previous?.openRate ?? 0,
+    clickRate: previous?.clickRate ?? 0,
+    createdDate:
+      previous?.createdDate ||
+      createdAt.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    lastSent: meta.lastSent || previous?.lastSent,
+  };
+};
 
 export function NudgeManagement() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,6 +113,27 @@ export function NudgeManagement() {
   const [editTrigger, setEditTrigger] = useState("");
   const [editSchedule, setEditSchedule] = useState("");
   const [editTargetAudience, setEditTargetAudience] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const loadNudges = async () => {
+      try {
+        setIsLoading(true);
+        const data = await api.admin.getNudges();
+        const mapped: Nudge[] = Array.isArray(data)
+          ? data.map((n: any) => mapApiNudge(n))
+          : [];
+        setNudges(mapped);
+      } catch (error: any) {
+        console.error("Failed to load nudges", error);
+        toast.error(error.message || "Failed to load nudges");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadNudges();
+  }, []);
 
   const formatCreatedDate = () => {
     const date = new Date();
@@ -95,22 +152,35 @@ export function NudgeManagement() {
         channel: "push",
         target_audience: "all",
       } as any);
-
       const sentCount =
         result && typeof result.count === "number" ? result.count : 0;
+      const lastSent = new Date().toLocaleString();
 
-      setNudges((prev) =>
-        prev.map((n) =>
-          n.id === nudge.id
-            ? {
-                ...n,
-                status: "active",
-                sentCount: n.sentCount + sentCount,
-                lastSent: new Date().toLocaleString(),
-              }
-            : n
-        )
-      );
+      try {
+        const targetAudienceMeta = {
+          label: nudge.targetAudience,
+          trigger: nudge.trigger,
+          schedule: nudge.schedule,
+          lastSent,
+        };
+        const updated = await api.admin.updateNudge(nudge.id, {
+          status: "active",
+          target_audience: targetAudienceMeta,
+        });
+        setNudges((prev) =>
+          prev.map((n) =>
+            n.id === nudge.id
+              ? mapApiNudge(updated, {
+                  ...n,
+                  sentCount: n.sentCount + sentCount,
+                  lastSent,
+                })
+              : n
+          )
+        );
+      } catch (updateError: any) {
+        console.error("Failed to update nudge after sending", updateError);
+      }
 
       if (sentCount > 0) {
         toast.success(`Nudge sent to ${sentCount.toLocaleString()} users`);
@@ -123,38 +193,38 @@ export function NudgeManagement() {
     }
   };
 
-  const handleCreateNudge = () => {
+  const handleCreateNudge = async () => {
     if (!newTitle.trim() || !newMessage.trim()) {
       toast.error("Title and message are required");
       return;
     }
-
-    const nextId = nudges.length ? Math.max(...nudges.map((n) => n.id)) + 1 : 1;
-
-    const created: Nudge = {
-      id: nextId,
-      title: newTitle.trim(),
-      message: newMessage.trim(),
-      type: newType,
-      status: "draft",
-      trigger: newTrigger.trim() || "Custom trigger",
-      targetAudience: newTargetAudience.trim() || "All active users",
-      schedule: newSchedule,
-      sentCount: 0,
-      openRate: 0,
-      clickRate: 0,
-      createdDate: formatCreatedDate(),
-    };
-
-    setNudges((prev) => [...prev, created]);
-    setShowCreateModal(false);
-    setNewTitle("");
-    setNewMessage("");
-    setNewType("motivational");
-    setNewSchedule("Daily");
-    setNewTargetAudience("");
-    setNewTrigger("");
-    toast.success("Nudge created");
+    try {
+      const targetAudienceMeta = {
+        label: newTargetAudience.trim() || "All active users",
+        trigger: newTrigger.trim() || "Custom trigger",
+        schedule: newSchedule,
+      };
+      const createdApiNudge = await api.admin.createNudge({
+        title: newTitle.trim(),
+        message: newMessage.trim(),
+        type: newType,
+        status: "draft",
+        target_audience: targetAudienceMeta,
+      });
+      const created = mapApiNudge(createdApiNudge);
+      setNudges((prev) => [created, ...prev]);
+      setShowCreateModal(false);
+      setNewTitle("");
+      setNewMessage("");
+      setNewType("motivational");
+      setNewSchedule("Daily");
+      setNewTargetAudience("");
+      setNewTrigger("");
+      toast.success("Nudge created");
+    } catch (error: any) {
+      console.error("Failed to create nudge", error);
+      toast.error(error.message || "Failed to create nudge");
+    }
   };
 
   const openEditModal = (nudge: Nudge) => {
@@ -168,7 +238,7 @@ export function NudgeManagement() {
     setEditTargetAudience(nudge.targetAudience);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editModalNudge) return;
 
     if (!editTitle.trim() || !editMessage.trim()) {
@@ -176,37 +246,68 @@ export function NudgeManagement() {
       return;
     }
 
-    setNudges((prev) =>
-      prev.map((n) =>
-        n.id === editModalNudge.id
-          ? {
-              ...n,
-              title: editTitle.trim(),
-              message: editMessage.trim(),
-              type: editType,
-              status: editStatus,
-              trigger: editTrigger.trim() || n.trigger,
-              schedule: editSchedule || n.schedule,
-              targetAudience: editTargetAudience.trim() || n.targetAudience,
-            }
-          : n
-      )
-    );
-
-    setEditModalNudge(null);
-    toast.success("Nudge updated");
+    try {
+      const targetAudienceMeta = {
+        label: editTargetAudience.trim() || editModalNudge.targetAudience,
+        trigger: editTrigger.trim() || editModalNudge.trigger,
+        schedule: editSchedule || editModalNudge.schedule,
+        lastSent: editModalNudge.lastSent,
+      };
+      const updatedApiNudge = await api.admin.updateNudge(editModalNudge.id, {
+        title: editTitle.trim(),
+        message: editMessage.trim(),
+        type: editType,
+        status: editStatus,
+        target_audience: targetAudienceMeta,
+      });
+      setNudges((prev) =>
+        prev.map((n) =>
+          n.id === editModalNudge.id ? mapApiNudge(updatedApiNudge, n) : n
+        )
+      );
+      setEditModalNudge(null);
+      toast.success("Nudge updated");
+    } catch (error: any) {
+      console.error("Failed to update nudge", error);
+      toast.error(error.message || "Failed to update nudge");
+    }
   };
 
-  const handleDeleteConfirmed = () => {
+  const handleDeleteConfirmed = async () => {
     if (!deleteModalNudge) return;
-
-    setNudges((prev) => prev.filter((n) => n.id !== deleteModalNudge.id));
-    toast.success("Nudge deleted");
-    setDeleteModalNudge(null);
+    try {
+      await api.admin.deleteNudge(deleteModalNudge.id);
+      setNudges((prev) => prev.filter((n) => n.id !== deleteModalNudge.id));
+      toast.success("Nudge deleted");
+      setDeleteModalNudge(null);
+    } catch (error: any) {
+      console.error("Failed to delete nudge", error);
+      toast.error(error.message || "Failed to delete nudge");
+    }
   };
 
-  const updateNudgeStatus = (id: number, status: Nudge["status"]) => {
-    setNudges((prev) => prev.map((n) => (n.id === id ? { ...n, status } : n)));
+  const updateNudgeStatus = async (id: string, status: Nudge["status"]) => {
+    try {
+      const existing = nudges.find((n) => n.id === id);
+      const targetAudienceMeta = existing
+        ? {
+            label: existing.targetAudience,
+            trigger: existing.trigger,
+            schedule: existing.schedule,
+            lastSent: existing.lastSent,
+          }
+        : undefined;
+      const updatedApiNudge = await api.admin.updateNudge(id, {
+        status,
+        target_audience: targetAudienceMeta,
+      });
+      setNudges((prev) =>
+        prev.map((n) => (n.id === id ? mapApiNudge(updatedApiNudge, n) : n))
+      );
+    } catch (error: any) {
+      console.error("Failed to update nudge status", error);
+      toast.error(error.message || "Failed to update nudge status");
+    }
   };
 
   const handleCopyTitle = (nudge: Nudge) => {

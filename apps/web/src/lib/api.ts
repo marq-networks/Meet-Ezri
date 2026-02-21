@@ -437,6 +437,27 @@ export const api = {
       return handleResponse(res, 'Failed to create notification');
     },
 
+    async getNudges() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/nudges`, { method: 'GET', headers, cache: 'no-store' });
+      return handleResponse(res, 'Failed to fetch nudges');
+    },
+    async createNudge(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/nudges`, { method: 'POST', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to create nudge');
+    },
+    async updateNudge(id: string, data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/nudges/${id}`, { method: 'PUT', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to update nudge');
+    },
+    async deleteNudge(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/nudges/${id}`, { method: 'DELETE', headers });
+      return handleResponse(res, 'Failed to delete nudge');
+    },
+
     // Email Templates
     async getEmailTemplates() {
       const headers = await getHeaders();
