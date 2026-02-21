@@ -31,6 +31,8 @@ import {
   Upload,
   FileText,
 } from "lucide-react";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 interface Nudge {
   id: number;
@@ -48,142 +50,179 @@ interface Nudge {
   lastSent?: string;
 }
 
+const initialNudges: Nudge[] = [];
+
 export function NudgeManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedNudge, setSelectedNudge] = useState<Nudge | null>(null);
-  
-  // Modal states
+  const [nudges, setNudges] = useState<Nudge[]>(initialNudges);
   const [viewModalNudge, setViewModalNudge] = useState<Nudge | null>(null);
   const [editModalNudge, setEditModalNudge] = useState<Nudge | null>(null);
   const [deleteModalNudge, setDeleteModalNudge] = useState<Nudge | null>(null);
   const [analyticsModalNudge, setAnalyticsModalNudge] = useState<Nudge | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newMessage, setNewMessage] = useState("");
+  const [newType, setNewType] = useState<Nudge["type"]>("motivational");
+  const [newSchedule, setNewSchedule] = useState("Daily");
+  const [newTargetAudience, setNewTargetAudience] = useState("");
+  const [newTrigger, setNewTrigger] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editMessage, setEditMessage] = useState("");
+  const [editType, setEditType] = useState<Nudge["type"]>("motivational");
+  const [editStatus, setEditStatus] = useState<Nudge["status"]>("draft");
+  const [editTrigger, setEditTrigger] = useState("");
+  const [editSchedule, setEditSchedule] = useState("");
+  const [editTargetAudience, setEditTargetAudience] = useState("");
 
-  const nudges: Nudge[] = [
-    {
-      id: 1,
-      title: "Morning Wellness Check-in",
-      message: "Good morning! 🌅 How are you feeling today? Take a moment to check in with yourself.",
-      type: "check-in",
-      status: "active",
-      trigger: "Daily at 8:00 AM",
-      targetAudience: "All active users",
-      schedule: "Daily",
-      sentCount: 12456,
-      openRate: 78.5,
-      clickRate: 45.2,
-      createdDate: "Dec 15, 2024",
-      lastSent: "Today at 8:00 AM",
-    },
-    {
-      id: 2,
-      title: "Session Reminder",
-      message: "You haven't had a session in 3 days. Your mental health matters - let's chat! 💙",
-      type: "reminder",
-      status: "active",
-      trigger: "3 days after last session",
-      targetAudience: "Inactive users (3+ days)",
-      schedule: "Triggered",
-      sentCount: 3421,
-      openRate: 65.3,
-      clickRate: 38.7,
-      createdDate: "Dec 10, 2024",
-      lastSent: "2 hours ago",
-    },
-    {
-      id: 3,
-      title: "Milestone Celebration",
-      message: "🎉 Congratulations! You've completed 10 sessions. You're doing amazing work!",
-      type: "milestone",
-      status: "active",
-      trigger: "10 sessions completed",
-      targetAudience: "Users reaching milestones",
-      schedule: "Triggered",
-      sentCount: 892,
-      openRate: 89.4,
-      clickRate: 67.3,
-      createdDate: "Dec 1, 2024",
-      lastSent: "1 hour ago",
-    },
-    {
-      id: 4,
-      title: "Evening Reflection",
-      message: "Take a moment to reflect on your day. What are you grateful for? 🌙",
-      type: "wellness-tip",
-      status: "active",
-      trigger: "Daily at 8:00 PM",
-      targetAudience: "All active users",
-      schedule: "Daily",
-      sentCount: 11234,
-      openRate: 72.1,
-      clickRate: 41.8,
-      createdDate: "Nov 28, 2024",
-      lastSent: "Yesterday at 8:00 PM",
-    },
-    {
-      id: 5,
-      title: "Breathing Exercise Reminder",
-      message: "Feeling stressed? Try our 5-minute breathing exercise to calm your mind. 🧘‍♀️",
-      type: "wellness-tip",
-      status: "active",
-      trigger: "High stress detected",
-      targetAudience: "Users with low mood scores",
-      schedule: "Triggered",
-      sentCount: 2156,
-      openRate: 82.6,
-      clickRate: 59.4,
-      createdDate: "Nov 20, 2024",
-      lastSent: "3 hours ago",
-    },
-    {
-      id: 6,
-      title: "Weekly Progress Summary",
-      message: "Your weekly progress is ready! 📊 See how you've grown this week.",
-      type: "motivational",
+  const formatCreatedDate = () => {
+    const date = new Date();
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const sendNudgeToUsers = async (nudge: Nudge) => {
+    try {
+      const result = await api.admin.createManualNotification({
+        title: nudge.title,
+        message: nudge.message,
+        channel: "push",
+        target_audience: "all",
+      } as any);
+
+      const sentCount =
+        result && typeof result.count === "number" ? result.count : 0;
+
+      setNudges((prev) =>
+        prev.map((n) =>
+          n.id === nudge.id
+            ? {
+                ...n,
+                status: "active",
+                sentCount: n.sentCount + sentCount,
+                lastSent: new Date().toLocaleString(),
+              }
+            : n
+        )
+      );
+
+      if (sentCount > 0) {
+        toast.success(`Nudge sent to ${sentCount.toLocaleString()} users`);
+      } else {
+        toast.success("Nudge published");
+      }
+    } catch (error: any) {
+      console.error("Failed to send nudge", error);
+      toast.error(error.message || "Failed to send nudge");
+    }
+  };
+
+  const handleCreateNudge = () => {
+    if (!newTitle.trim() || !newMessage.trim()) {
+      toast.error("Title and message are required");
+      return;
+    }
+
+    const nextId = nudges.length ? Math.max(...nudges.map((n) => n.id)) + 1 : 1;
+
+    const created: Nudge = {
+      id: nextId,
+      title: newTitle.trim(),
+      message: newMessage.trim(),
+      type: newType,
       status: "draft",
-      trigger: "Every Monday at 9:00 AM",
-      targetAudience: "All active users",
-      schedule: "Weekly",
+      trigger: newTrigger.trim() || "Custom trigger",
+      targetAudience: newTargetAudience.trim() || "All active users",
+      schedule: newSchedule,
       sentCount: 0,
       openRate: 0,
       clickRate: 0,
-      createdDate: "Dec 20, 2024",
-    },
-    {
-      id: 7,
-      title: "Mood Journal Prompt",
-      message: "How's your mood today? Writing can help you process your feelings. ✍️",
-      type: "check-in",
-      status: "paused",
-      trigger: "Daily at 6:00 PM",
-      targetAudience: "Users with journaling enabled",
-      schedule: "Daily",
-      sentCount: 5678,
-      openRate: 71.3,
-      clickRate: 43.9,
-      createdDate: "Nov 15, 2024",
-      lastSent: "Dec 25, 2024",
-    },
-    {
-      id: 8,
-      title: "Sleep Quality Check",
-      message: "Better sleep = better mental health. Track your sleep tonight! 😴",
-      type: "wellness-tip",
-      status: "active",
-      trigger: "Daily at 9:00 PM",
-      targetAudience: "Users with sleep tracking enabled",
-      schedule: "Daily",
-      sentCount: 8923,
-      openRate: 76.8,
-      clickRate: 52.1,
-      createdDate: "Nov 10, 2024",
-      lastSent: "Yesterday at 9:00 PM",
-    },
-  ];
+      createdDate: formatCreatedDate(),
+    };
+
+    setNudges((prev) => [...prev, created]);
+    setShowCreateModal(false);
+    setNewTitle("");
+    setNewMessage("");
+    setNewType("motivational");
+    setNewSchedule("Daily");
+    setNewTargetAudience("");
+    setNewTrigger("");
+    toast.success("Nudge created");
+  };
+
+  const openEditModal = (nudge: Nudge) => {
+    setEditModalNudge(nudge);
+    setEditTitle(nudge.title);
+    setEditMessage(nudge.message);
+    setEditType(nudge.type);
+    setEditStatus(nudge.status);
+    setEditTrigger(nudge.trigger);
+    setEditSchedule(nudge.schedule);
+    setEditTargetAudience(nudge.targetAudience);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editModalNudge) return;
+
+    if (!editTitle.trim() || !editMessage.trim()) {
+      toast.error("Title and message are required");
+      return;
+    }
+
+    setNudges((prev) =>
+      prev.map((n) =>
+        n.id === editModalNudge.id
+          ? {
+              ...n,
+              title: editTitle.trim(),
+              message: editMessage.trim(),
+              type: editType,
+              status: editStatus,
+              trigger: editTrigger.trim() || n.trigger,
+              schedule: editSchedule || n.schedule,
+              targetAudience: editTargetAudience.trim() || n.targetAudience,
+            }
+          : n
+      )
+    );
+
+    setEditModalNudge(null);
+    toast.success("Nudge updated");
+  };
+
+  const handleDeleteConfirmed = () => {
+    if (!deleteModalNudge) return;
+
+    setNudges((prev) => prev.filter((n) => n.id !== deleteModalNudge.id));
+    toast.success("Nudge deleted");
+    setDeleteModalNudge(null);
+  };
+
+  const updateNudgeStatus = (id: number, status: Nudge["status"]) => {
+    setNudges((prev) => prev.map((n) => (n.id === id ? { ...n, status } : n)));
+  };
+
+  const handleCopyTitle = (nudge: Nudge) => {
+    if (navigator.clipboard) {
+      navigator.clipboard
+        .writeText(nudge.title)
+        .then(() => {
+          toast.success("Nudge title copied");
+        })
+        .catch(() => {
+          toast.error("Failed to copy title");
+        });
+    } else {
+      toast.success("Copy not supported in this browser");
+    }
+  };
 
   const filteredNudges = nudges.filter((nudge) => {
     const matchesSearch =
@@ -200,7 +239,10 @@ export function NudgeManagement() {
     draft: nudges.filter((n) => n.status === "draft").length,
     paused: nudges.filter((n) => n.status === "paused").length,
     totalSent: nudges.reduce((sum, n) => sum + n.sentCount, 0),
-    avgOpenRate: (nudges.reduce((sum, n) => sum + n.openRate, 0) / nudges.length).toFixed(1),
+    avgOpenRate:
+      nudges.length > 0
+        ? (nudges.reduce((sum, n) => sum + n.openRate, 0) / nudges.length).toFixed(1)
+        : "0.0",
   };
 
   const getTypeColor = (type: string) => {
@@ -443,12 +485,14 @@ export function NudgeManagement() {
                     <Button variant="ghost" size="sm" onClick={() => setViewModalNudge(nudge)}>
                       <Eye className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setEditModalNudge(nudge)}>
+                    <Button variant="ghost" size="sm" onClick={() => openEditModal(nudge)}>
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => {
-                      alert(`Copied: ${nudge.title}`);
-                    }}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCopyTitle(nudge)}
+                    >
                       <Copy className="w-4 h-4" />
                     </Button>
                   </div>
@@ -508,21 +552,40 @@ export function NudgeManagement() {
                 {/* Actions */}
                 <div className="flex gap-2">
                   {nudge.status === "active" && (
-                    <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={() => alert(`Paused: ${nudge.title}`)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-2"
+                      onClick={() => {
+                        updateNudgeStatus(nudge.id, "paused");
+                        toast.success("Nudge paused");
+                      }}
+                    >
                       <Pause className="w-4 h-4" />
                       Pause
                     </Button>
                   )}
                   {nudge.status === "paused" && (
-                    <Button size="sm" className="flex-1 gap-2" onClick={() => alert(`Activated: ${nudge.title}`)}>
+                    <Button
+                      size="sm"
+                      className="flex-1 gap-2"
+                      onClick={() => {
+                        updateNudgeStatus(nudge.id, "active");
+                        toast.success("Nudge activated");
+                      }}
+                    >
                       <Play className="w-4 h-4" />
                       Activate
                     </Button>
                   )}
                   {nudge.status === "draft" && (
-                    <Button size="sm" className="flex-1 gap-2" onClick={() => alert(`Published: ${nudge.title}`)}>
+                    <Button
+                      size="sm"
+                      className="flex-1 gap-2"
+                      onClick={() => sendNudgeToUsers(nudge)}
+                    >
                       <Send className="w-4 h-4" />
-                      Publish
+                      Publish & Send
                     </Button>
                   )}
                   <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={() => setAnalyticsModalNudge(nudge)}>
@@ -587,7 +650,11 @@ export function NudgeManagement() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Nudge Title</label>
-                    <Input placeholder="Enter nudge title..." />
+                    <Input
+                      placeholder="Enter nudge title..."
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Message</label>
@@ -595,22 +662,32 @@ export function NudgeManagement() {
                       className="w-full p-3 border rounded-lg"
                       rows={4}
                       placeholder="Enter your message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">Type</label>
-                      <select className="w-full px-3 py-2 border rounded-lg">
-                        <option>Motivational</option>
-                        <option>Reminder</option>
-                        <option>Milestone</option>
-                        <option>Wellness Tip</option>
-                        <option>Check-in</option>
+                      <select
+                        className="w-full px-3 py-2 border rounded-lg"
+                        value={newType}
+                        onChange={(e) => setNewType(e.target.value as Nudge["type"])}
+                      >
+                        <option value="motivational">Motivational</option>
+                        <option value="reminder">Reminder</option>
+                        <option value="milestone">Milestone</option>
+                        <option value="wellness-tip">Wellness Tip</option>
+                        <option value="check-in">Check-in</option>
                       </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Schedule</label>
-                      <select className="w-full px-3 py-2 border rounded-lg">
+                      <select
+                        className="w-full px-3 py-2 border rounded-lg"
+                        value={newSchedule}
+                        onChange={(e) => setNewSchedule(e.target.value)}
+                      >
                         <option>Daily</option>
                         <option>Weekly</option>
                         <option>Triggered</option>
@@ -619,14 +696,32 @@ export function NudgeManagement() {
                     </div>
                   </div>
                   <div>
+                    <label className="block text-sm font-medium mb-2">Trigger</label>
+                    <Input
+                      placeholder="e.g., Daily at 8:00 AM"
+                      value={newTrigger}
+                      onChange={(e) => setNewTrigger(e.target.value)}
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium mb-2">Target Audience</label>
-                    <Input placeholder="e.g., All active users" />
+                    <Input
+                      placeholder="e.g., All active users"
+                      value={newTargetAudience}
+                      onChange={(e) => setNewTargetAudience(e.target.value)}
+                    />
                   </div>
                   <div className="flex gap-2 pt-4">
-                    <Button variant="outline" className="flex-1" onClick={() => setShowCreateModal(false)}>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setShowCreateModal(false);
+                      }}
+                    >
                       Cancel
                     </Button>
-                    <Button className="flex-1">
+                    <Button className="flex-1" onClick={handleCreateNudge}>
                       Create Nudge
                     </Button>
                   </div>
@@ -727,13 +822,20 @@ export function NudgeManagement() {
                   )}
                   
                   <div className="flex gap-2 pt-4">
-                    <Button variant="outline" className="flex-1" onClick={() => setViewModalNudge(null)}>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setViewModalNudge(null)}
+                    >
                       Close
                     </Button>
-                    <Button className="flex-1" onClick={() => {
-                      setEditModalNudge(viewModalNudge);
-                      setViewModalNudge(null);
-                    }}>
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        openEditModal(viewModalNudge);
+                        setViewModalNudge(null);
+                      }}
+                    >
                       <Edit className="w-4 h-4 mr-2" />
                       Edit
                     </Button>
@@ -771,7 +873,10 @@ export function NudgeManagement() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Nudge Title</label>
-                    <Input defaultValue={editModalNudge.title} />
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                    />
                   </div>
                   
                   <div>
@@ -779,14 +884,19 @@ export function NudgeManagement() {
                     <textarea
                       className="w-full p-3 border rounded-lg"
                       rows={4}
-                      defaultValue={editModalNudge.message}
+                      value={editMessage}
+                      onChange={(e) => setEditMessage(e.target.value)}
                     />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">Type</label>
-                      <select className="w-full px-3 py-2 border rounded-lg" defaultValue={editModalNudge.type}>
+                      <select
+                        className="w-full px-3 py-2 border rounded-lg"
+                        value={editType}
+                        onChange={(e) => setEditType(e.target.value as Nudge["type"])}
+                      >
                         <option value="motivational">Motivational</option>
                         <option value="reminder">Reminder</option>
                         <option value="milestone">Milestone</option>
@@ -796,7 +906,11 @@ export function NudgeManagement() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Status</label>
-                      <select className="w-full px-3 py-2 border rounded-lg" defaultValue={editModalNudge.status}>
+                      <select
+                        className="w-full px-3 py-2 border rounded-lg"
+                        value={editStatus}
+                        onChange={(e) => setEditStatus(e.target.value as Nudge["status"])}
+                      >
                         <option value="active">Active</option>
                         <option value="draft">Draft</option>
                         <option value="paused">Paused</option>
@@ -806,12 +920,19 @@ export function NudgeManagement() {
                   
                   <div>
                     <label className="block text-sm font-medium mb-2">Trigger</label>
-                    <Input defaultValue={editModalNudge.trigger} />
+                    <Input
+                      value={editTrigger}
+                      onChange={(e) => setEditTrigger(e.target.value)}
+                    />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium mb-2">Schedule</label>
-                    <select className="w-full px-3 py-2 border rounded-lg" defaultValue={editModalNudge.schedule}>
+                    <select
+                      className="w-full px-3 py-2 border rounded-lg"
+                      value={editSchedule}
+                      onChange={(e) => setEditSchedule(e.target.value)}
+                    >
                       <option>Daily</option>
                       <option>Weekly</option>
                       <option>Triggered</option>
@@ -821,17 +942,21 @@ export function NudgeManagement() {
                   
                   <div>
                     <label className="block text-sm font-medium mb-2">Target Audience</label>
-                    <Input defaultValue={editModalNudge.targetAudience} />
+                    <Input
+                      value={editTargetAudience}
+                      onChange={(e) => setEditTargetAudience(e.target.value)}
+                    />
                   </div>
                   
                   <div className="flex gap-2 pt-4">
-                    <Button variant="outline" className="flex-1" onClick={() => setEditModalNudge(null)}>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setEditModalNudge(null)}
+                    >
                       Cancel
                     </Button>
-                    <Button className="flex-1" onClick={() => {
-                      alert(`Saved changes to: ${editModalNudge.title}`);
-                      setEditModalNudge(null);
-                    }}>
+                    <Button className="flex-1" onClick={handleSaveEdit}>
                       <Save className="w-4 h-4 mr-2" />
                       Save Changes
                     </Button>
@@ -1004,15 +1129,16 @@ export function NudgeManagement() {
                   )}
                   
                   <div className="flex gap-2 pt-4">
-                    <Button variant="outline" className="flex-1" onClick={() => setDeleteModalNudge(null)}>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setDeleteModalNudge(null)}
+                    >
                       Cancel
                     </Button>
-                    <Button 
+                    <Button
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                      onClick={() => {
-                        alert(`Deleted: ${deleteModalNudge.title}`);
-                        setDeleteModalNudge(null);
-                      }}
+                      onClick={handleDeleteConfirmed}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete
@@ -1079,13 +1205,20 @@ export function NudgeManagement() {
                   </div>
                   
                   <div className="flex gap-2 pt-4">
-                    <Button variant="outline" className="flex-1" onClick={() => setShowImportModal(false)}>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setShowImportModal(false)}
+                    >
                       Cancel
                     </Button>
-                    <Button className="flex-1" onClick={() => {
-                      alert('Nudges imported successfully!');
-                      setShowImportModal(false);
-                    }}>
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        toast.success("Nudges imported successfully");
+                        setShowImportModal(false);
+                      }}
+                    >
                       <Upload className="w-4 h-4 mr-2" />
                       Import Nudges
                     </Button>
@@ -1192,13 +1325,20 @@ export function NudgeManagement() {
                   </div>
                   
                   <div className="flex gap-2 pt-4">
-                    <Button variant="outline" className="flex-1" onClick={() => setShowCreateTemplateModal(false)}>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setShowCreateTemplateModal(false)}
+                    >
                       Cancel
                     </Button>
-                    <Button className="flex-1" onClick={() => {
-                      alert('Template created successfully!');
-                      setShowCreateTemplateModal(false);
-                    }}>
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        toast.success("Template created successfully");
+                        setShowCreateTemplateModal(false);
+                      }}
+                    >
                       <FileText className="w-4 h-4 mr-2" />
                       Create Template
                     </Button>

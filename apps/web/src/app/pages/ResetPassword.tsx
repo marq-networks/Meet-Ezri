@@ -2,7 +2,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
-import { Link, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router-dom";
 import { KeyRound, CheckCircle } from "lucide-react";
 import { PublicNav } from "../components/PublicNav";
 import { useState, useEffect } from "react";
@@ -11,21 +11,62 @@ import { toast } from "sonner";
 
 export function ResetPassword() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isAdminReset, setIsAdminReset] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
-    // Check if we have a hash fragment (which Supabase sends)
-    // or if we are already logged in (Supabase might log the user in automatically after clicking the link)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        // If no session, we might be in the hash flow, Supabase client handles this automatically usually
-        // but if not, we might want to check url params
+    const params = new URLSearchParams(location.search);
+    const context = params.get("context");
+    const adminReset = context === "admin";
+    setIsAdminReset(adminReset);
+
+    const init = async () => {
+      const code = params.get("code");
+      const error = params.get("error");
+      const errorDescription = params.get("error_description");
+      const loginPath = adminReset ? "/admin/login" : "/login";
+      const forgotPath = adminReset ? "/forgot-password?context=admin" : "/forgot-password";
+
+      if (error) {
+        toast.error(errorDescription || "Password reset failed");
+        navigate(loginPath);
+        return;
       }
-    });
-  }, []);
+
+      try {
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            throw exchangeError;
+          }
+        }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          toast.error("Password reset link is invalid or has expired");
+          navigate(forgotPath);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Error processing password reset link:", err);
+        toast.error(err.message || "Failed to process reset link");
+        navigate(forgotPath);
+        return;
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    init();
+  }, [location, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +96,9 @@ export function ResetPassword() {
       toast.success("Password updated successfully!");
       
       // Redirect to login after a delay
+      const loginPath = isAdminReset ? "/admin/login" : "/login";
       setTimeout(() => {
-        navigate("/login");
+        navigate(loginPath);
       }, 3000);
     } catch (error: any) {
       console.error("Error resetting password:", error);
@@ -75,9 +117,13 @@ export function ResetPassword() {
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <KeyRound className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Set New Password</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {isAdminReset ? "Set New Admin Password" : "Set New Password"}
+          </h1>
           <p className="text-muted-foreground">
-            Enter your new password below
+            {isAdminReset
+              ? "Create a new password for your admin account."
+              : "Enter your new password below"}
           </p>
         </div>
         
@@ -89,13 +135,15 @@ export function ResetPassword() {
               </div>
               <h3 className="text-xl font-semibold">Password Reset Complete</h3>
               <p className="text-muted-foreground">
-                Your password has been successfully updated. Redirecting to login...
+                {isAdminReset
+                  ? "Your admin password has been successfully updated. Redirecting to admin login..."
+                  : "Your password has been successfully updated. Redirecting to login..."}
               </p>
               <Button 
                 className="w-full mt-4"
-                onClick={() => navigate("/login")}
+                onClick={() => navigate(isAdminReset ? "/admin/login" : "/login")}
               >
-                Go to Login
+                {isAdminReset ? "Go to Admin Login" : "Go to Login"}
               </Button>
             </div>
           ) : (
@@ -110,7 +158,7 @@ export function ResetPassword() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || isProcessing}
                 />
               </div>
               
@@ -124,12 +172,12 @@ export function ResetPassword() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || isProcessing}
                 />
               </div>
               
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Updating..." : "Update Password"}
+              <Button type="submit" className="w-full" disabled={isLoading || isProcessing}>
+                {isLoading ? "Updating..." : isProcessing ? "Verifying reset link..." : "Update Password"}
               </Button>
             </form>
           )}
