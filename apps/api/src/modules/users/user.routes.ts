@@ -9,7 +9,6 @@ import {
   initProfileHandler,
   getAllUsersHandler,
   getUserProfileAdminHandler,
-  markPasswordChangedHandler,
 } from './user.controller';
 
 export async function userRoutes(fastify: FastifyInstance) {
@@ -53,14 +52,6 @@ export async function userRoutes(fastify: FastifyInstance) {
       preHandler: [fastify.authenticate],
     },
     getCreditsHandler
-  );
-
-  fastify.post(
-    '/me/password-changed',
-    {
-      preHandler: [fastify.authenticate],
-    },
-    markPasswordChangedHandler
   );
 
   fastify.patch(
