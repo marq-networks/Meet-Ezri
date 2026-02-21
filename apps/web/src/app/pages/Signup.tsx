@@ -78,15 +78,26 @@ export function Signup() {
         toast.success("Please check your email to verify your account before logging in.");
       }
     } catch (error: any) {
-      const message = error.message?.toLowerCase?.() || "";
+      const rawMessage = error.message || "";
+      const message = rawMessage.toLowerCase();
 
-      if (error.code === "over_email_send_rate_limit") {
+      const isRateLimit = error.code === "over_email_send_rate_limit";
+      const isDuplicateEmail =
+        error.code === "user_already_exists" ||
+        error.code === "email_exists" ||
+        message.includes("user already registered") ||
+        message.includes("already exists") ||
+        message.includes("duplicate key value") ||
+        message.includes("users_email_key") ||
+        message.includes("email address is already in use");
+
+      if (isRateLimit) {
         toast.error("Too many attempts. Please try again later or use a different email.");
-      } else if (message.includes("user already registered") || message.includes("already exists")) {
-        toast.error("An account with this email already exists. Please log in instead.");
+      } else if (isDuplicateEmail) {
+        toast.error("Account already created. Please log in instead.");
         navigate("/login");
       } else {
-        toast.error(error.message || "Failed to create account");
+        toast.error(rawMessage || "Failed to create account");
       }
     } finally {
       setIsLoading(false);
