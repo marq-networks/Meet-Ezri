@@ -48,6 +48,13 @@ interface Segment {
   count: number;
 }
 
+interface AudienceCounts {
+  all: number;
+  active: number;
+  premium: number;
+  trial: number;
+}
+
 export function ManualNotifications() {
   const [channel, setChannel] = useState<"push" | "email" | "in-app" | "sms">("push");
   const [audienceType, setAudienceType] = useState<"all" | "segment" | "specific">(
@@ -63,6 +70,17 @@ export function ManualNotifications() {
   const [isSending, setIsSending] = useState(false);
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
+  const [specificUsers, setSpecificUsers] = useState<string[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [allUsers, setAllUsers] = useState<
+    { id: string; name: string; email: string }[]
+  >([]);
+  const [audienceCounts, setAudienceCounts] = useState<AudienceCounts>({
+    all: 0,
+    active: 0,
+    premium: 0,
+    trial: 0,
+  });
 
   useEffect(() => {
     fetchData();
@@ -71,10 +89,13 @@ export function ManualNotifications() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [segmentsData, notificationsData] = await Promise.all([
-        api.admin.getUserSegments(),
-        api.admin.getManualNotifications()
-      ]);
+      const [segmentsData, notificationsData, countsData, usersData] =
+        await Promise.all([
+          api.admin.getUserSegments(),
+          api.admin.getManualNotifications(),
+          api.admin.getNotificationAudienceCounts(),
+          api.admin.getUsers(),
+        ]);
       
       setSegments(segmentsData.map((s: any) => ({
         id: s.id,
@@ -86,22 +107,49 @@ export function ManualNotifications() {
         setSelectedSegment(segmentsData[0].id);
       }
 
+      setAudienceCounts({
+        all: countsData.all || 0,
+        active: countsData.active || 0,
+        premium: countsData.premium || 0,
+        trial: countsData.trial || 0,
+      });
+
+      setAllUsers(
+        (usersData || []).map((u: any) => ({
+          id: u.id,
+          name: u.full_name || (u.email ? u.email.split("@")[0] : "User"),
+          email: u.email || "",
+        }))
+      );
+
       setRecentNotifications(notificationsData.map((n: any) => ({
         id: n.id,
         title: n.title,
         message: n.message,
-        channel: n.channel,
+        channel: n.metadata?.channel || "push",
         audience: {
-          segment: n.target_audience === 'all' ? 'All Active Users' : (n.segment_name || 'Custom Segment'),
-          count: n.target_count || 0
+          segment: n.metadata?.target_audience === "all"
+            ? "All Users"
+            : n.metadata?.target_audience === "premium"
+            ? "Premium Users"
+            : n.metadata?.target_audience === "trial"
+            ? "Trial Users"
+            : n.metadata?.target_audience === "active"
+            ? "Active Users"
+            : n.metadata?.target_audience === "segment"
+            ? "Segment"
+            : "Targeted",
+          count: n.metadata?.target_count || 0
         },
-        status: n.status,
-        sentAt: new Date(n.sent_at || n.scheduled_for || n.created_at).toLocaleString(),
+        status: n.metadata?.schedule_type === "scheduled" ? "scheduled" : "sent",
+        sentAt: new Date(
+          n.metadata?.scheduled_for || n.created_at
+        ).toLocaleString(),
         sentBy: "Admin", // In a real app, this would come from the user context
         performance: {
-          delivered: n.delivered_count || 0,
-          opened: n.opened_count || 0,
-          clicked: n.clicked_count || 0
+          delivered: n.metadata?.target_count || 0,
+          opened: 0,
+          clicked: 0
         }
       })));
     } catch (error) {
@@ -150,6 +198,11 @@ export function ManualNotifications() {
       return;
     }
 
+    if (scheduleType === "scheduled" && (!scheduledDate || !scheduledTime)) {
+      toast.error("Please select date and time for scheduled notifications");
+      return;
+    }
+
     try {
       setIsSending(true);
       
@@ -162,9 +215,15 @@ export function ManualNotifications() {
         title,
         message,
         channel,
-        target_audience: audienceType === "all" ? "all" : "segment",
+        target_audience:
+          audienceType === "all"
+            ? "all"
+            : audienceType === "segment"
+            ? "segment"
+            : "specific",
         segment_id: audienceType === "segment" ? selectedSegment : undefined,
-        scheduled_for: scheduledFor
+        userIds: audienceType === "specific" ? specificUsers : undefined,
+        scheduled_for: scheduledFor,
       });
 
       if (scheduleType === "now") {
@@ -311,12 +370,81 @@ export function ManualNotifications() {
                   </div>
                 )}
 
+                {audienceType === "specific" && (
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Select Specific Users
+                    </label>
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder="Search by name or email..."
+                      className="w-full px-4 py-2 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-xl divide-y">
+                      {allUsers
+                        .filter((u) => {
+                          if (!userSearch.trim()) return true;
+                          const q = userSearch.toLowerCase();
+                          return (
+                            u.name.toLowerCase().includes(q) ||
+                            u.email.toLowerCase().includes(q)
+                          );
+                        })
+                        .slice(0, 50)
+                        .map((u) => {
+                          const isSelected = specificUsers.includes(u.id);
+                          return (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setSpecificUsers((prev) =>
+                                  prev.includes(u.id)
+                                    ? prev.filter((id) => id !== u.id)
+                                    : [...prev, u.id]
+                                );
+                              }}
+                              className={`w-full px-4 py-2 flex items-center justify-between text-left ${
+                                isSelected
+                                  ? "bg-purple-50"
+                                  : "bg-white hover:bg-gray-50"
+                              }`}
+                            >
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {u.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {u.email}
+                                </p>
+                              </div>
+                              {isSelected && (
+                                <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                              )}
+                            </button>
+                          );
+                        })}
+                    </div>
+
+                    {specificUsers.length > 0 && (
+                      <p className="text-xs text-gray-600">
+                        Selected {specificUsers.length} user
+                        {specificUsers.length > 1 ? "s" : ""}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {audienceType === "all" && (
                   <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                     <Users className="w-5 h-5 text-blue-600" />
                     <div>
                       <p className="text-gray-900 font-medium">All Active Users</p>
-                      <p className="text-sm text-gray-600">1,234 recipients</p>
+                      <p className="text-sm text-gray-600">
+                        {audienceCounts.all.toLocaleString()} recipients
+                      </p>
                     </div>
                   </div>
                 )}
@@ -462,6 +590,8 @@ export function ManualNotifications() {
                       </label>
                       <input
                         type="date"
+                        value={scheduledDate}
+                        onChange={(e) => setScheduledDate(e.target.value)}
                         className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -471,6 +601,8 @@ export function ManualNotifications() {
                       </label>
                       <input
                         type="time"
+                        value={scheduledTime}
+                        onChange={(e) => setScheduledTime(e.target.value)}
                         className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -487,11 +619,21 @@ export function ManualNotifications() {
             >
               <Button
                 onClick={handleSend}
-                disabled={!title || !message}
+                disabled={
+                  !title ||
+                  !message ||
+                  isSending ||
+                  (scheduleType === "scheduled" &&
+                    (!scheduledDate || !scheduledTime))
+                }
                 className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white py-6 text-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-5 h-5 mr-2" />
-                {scheduleType === "now" ? "Send Notification" : "Schedule Notification"}
+                {isSending
+                  ? "Processing..."
+                  : scheduleType === "now"
+                  ? "Send Notification"
+                  : "Schedule Notification"}
               </Button>
             </motion.div>
           </div>

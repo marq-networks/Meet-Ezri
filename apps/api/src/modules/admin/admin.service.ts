@@ -500,6 +500,39 @@ export async function createManualNotification(data: any) {
   // Helper to check preferences
   const shouldSend = (prefs: any) => !prefs || prefs.pushEnabled !== false;
 
+  const baseMetadata = {
+    channel: data.channel || 'push',
+    target_audience: data.target_audience,
+    segment_id: data.segment_id || null,
+    scheduled_for: data.scheduled_for || null,
+    schedule_type: data.scheduled_for ? 'scheduled' : 'now',
+  };
+
+  if (data.target_audience === 'segment' && data.segment_id) {
+    const allUsers = await prisma.profiles.findMany({
+      select: { id: true, notification_preferences: true }
+    });
+
+    const eligibleUsers = allUsers.filter(u => shouldSend(u.notification_preferences));
+
+    if (eligibleUsers.length === 0) return { count: 0 };
+
+    return prisma.notifications.createMany({
+      data: eligibleUsers.map(u => ({
+        user_id: u.id,
+        title: data.title,
+        message: data.message,
+        type: data.type || 'system',
+        metadata: {
+          ...baseMetadata,
+          target_audience: 'segment',
+          target_count: eligibleUsers.length,
+        },
+        created_at: new Date()
+      }))
+    });
+  }
+
   if (data.target_audience === 'all') {
     const allUsers = await prisma.profiles.findMany({ 
       select: { id: true, notification_preferences: true } 
@@ -515,9 +548,13 @@ export async function createManualNotification(data: any) {
         title: data.title,
         message: data.message,
         type: data.type || 'system',
-        metadata: { target_audience: 'all' },
+        metadata: {
+          ...baseMetadata,
+          target_audience: 'all',
+          target_count: eligibleUsers.length,
+        },
         created_at: new Date()
-      }))
+      })),
     });
   }
   
@@ -540,9 +577,13 @@ export async function createManualNotification(data: any) {
         title: data.title,
         message: data.message,
         type: data.type || 'system',
-        metadata: { target_audience: 'premium' },
+        metadata: {
+          ...baseMetadata,
+          target_audience: 'premium',
+          target_count: eligibleUsers.length,
+        },
         created_at: new Date()
-      }))
+      })),
     });
   }
   
@@ -565,9 +606,13 @@ export async function createManualNotification(data: any) {
         title: data.title,
         message: data.message,
         type: data.type || 'system',
-        metadata: { target_audience: 'trial' },
+        metadata: {
+          ...baseMetadata,
+          target_audience: 'trial',
+          target_count: eligibleUsers.length,
+        },
         created_at: new Date()
-      }))
+      })),
     });
   }
   
@@ -601,9 +646,13 @@ export async function createManualNotification(data: any) {
         title: data.title,
         message: data.message,
         type: data.type || 'system',
-        metadata: { target_audience: 'active' },
+        metadata: {
+          ...baseMetadata,
+          target_audience: 'active',
+          target_count: eligibleUsers.length,
+        },
         created_at: new Date()
-      }))
+      })),
     });
   }
 
@@ -623,8 +672,13 @@ export async function createManualNotification(data: any) {
         title: data.title,
         message: data.message,
         type: data.type || 'system',
+        metadata: {
+          ...baseMetadata,
+          target_audience: data.target_audience || 'specific',
+          target_count: eligibleUsers.length,
+        },
         created_at: new Date()
-      }))
+      })),
     });
   }
   
@@ -643,7 +697,12 @@ export async function createManualNotification(data: any) {
         user_id: data.user_id,
         title: data.title,
         message: data.message,
-        type: data.type || 'system'
+        type: data.type || 'system',
+        metadata: {
+          ...baseMetadata,
+          target_audience: data.target_audience || 'user',
+          target_count: 1,
+        },
       }
     });
   }
