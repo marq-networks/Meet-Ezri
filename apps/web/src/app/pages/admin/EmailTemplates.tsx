@@ -45,6 +45,15 @@ export function EmailTemplates() {
   const [isSending, setIsSending] = useState(false);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editMode, setEditMode] = useState<"create" | "edit">("create");
+  const [formName, setFormName] = useState("");
+  const [formSubject, setFormSubject] = useState("");
+  const [formCategory, setFormCategory] =
+    useState<EmailTemplate["category"]>("system");
+  const [formHtmlContent, setFormHtmlContent] = useState("");
+  const [formTextContent, setFormTextContent] = useState("");
+  const [formVariables, setFormVariables] = useState("");
 
   useEffect(() => {
     fetchTemplates();
@@ -58,9 +67,9 @@ export function EmailTemplates() {
         id: t.id,
         name: t.name,
         subject: t.subject,
-        category: t.category,
-        htmlContent: t.html_content,
-        textContent: t.text_content,
+        category: (t.category as EmailTemplate["category"]) || "system",
+        htmlContent: t.html_content || t.body || "",
+        textContent: t.text_content || "",
         variables: Array.isArray(t.variables) ? t.variables : [],
         lastModified: new Date(t.updated_at || t.created_at),
         sentCount: t.sent_count || 0,
@@ -97,7 +106,11 @@ export function EmailTemplates() {
   const stats = {
     total: templates.length,
     sent: templates.reduce((sum, t) => sum + t.sentCount, 0),
-    avgOpenRate: (templates.reduce((sum, t) => sum + t.openRate, 0) / templates.length).toFixed(1)
+    avgOpenRate: templates.length
+      ? (
+          templates.reduce((sum, t) => sum + t.openRate, 0) / templates.length
+        ).toFixed(1)
+      : "0.0"
   };
 
   // Replace template variables with preview values
@@ -141,6 +154,97 @@ export function EmailTemplates() {
     }
   };
 
+  const resetForm = () => {
+    setFormName("");
+    setFormSubject("");
+    setFormCategory("system");
+    setFormHtmlContent("");
+    setFormTextContent("");
+    setFormVariables("");
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setEditMode("create");
+    setIsEditing(true);
+    setShowEditModal(true);
+  };
+
+  const openEditModal = () => {
+    if (!selectedTemplate) return;
+    setEditMode("edit");
+    setFormName(selectedTemplate.name);
+    setFormSubject(selectedTemplate.subject);
+    setFormCategory(selectedTemplate.category);
+    setFormHtmlContent(selectedTemplate.htmlContent);
+    setFormTextContent(selectedTemplate.textContent);
+    setFormVariables(selectedTemplate.variables.join(", "));
+    setIsEditing(true);
+    setShowEditModal(true);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!formName || !formSubject) {
+      toast.error("Name and subject are required");
+      return;
+    }
+
+    const variables = formVariables
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+
+    const payload = {
+      name: formName,
+      subject: formSubject,
+      body: formHtmlContent || formTextContent || "",
+      variables,
+    };
+
+    try {
+      if (editMode === "create") {
+        const created = await api.admin.createEmailTemplate(payload);
+        toast.success("Template created");
+        await fetchTemplates();
+        if (created?.id) {
+          const match = templates.find((t) => t.id === created.id);
+          if (match) {
+            setSelectedTemplate(match);
+          }
+        }
+      } else if (editMode === "edit" && selectedTemplate) {
+        await api.admin.updateEmailTemplate(selectedTemplate.id, payload);
+        toast.success("Template updated");
+        await fetchTemplates();
+      }
+      setShowEditModal(false);
+      setIsEditing(false);
+      resetForm();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save template");
+    }
+  };
+
+  const handleDeleteTemplate = async () => {
+    if (!selectedTemplate) return;
+    const confirmed = window.confirm(
+      `Delete template "${selectedTemplate.name}"?`
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.admin.deleteEmailTemplate(selectedTemplate.id);
+      toast.success("Template deleted");
+      const remaining = templates.filter(
+        (t) => t.id !== selectedTemplate.id
+      );
+      setTemplates(remaining);
+      setSelectedTemplate(remaining[0] || null);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete template");
+    }
+  };
+
   return (
     <AdminLayoutNew>
       <div className="max-w-7xl mx-auto space-y-6">
@@ -158,6 +262,7 @@ export function EmailTemplates() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
+            onClick={openCreateModal}
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white flex items-center gap-2 shadow-lg"
           >
             <Plus className="w-4 h-4" />
@@ -305,6 +410,7 @@ export function EmailTemplates() {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
+                      onClick={openEditModal}
                       className="p-2 rounded-lg hover:bg-blue-50 text-blue-600"
                     >
                       <Edit className="w-4 h-4" />
@@ -321,6 +427,7 @@ export function EmailTemplates() {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
+                      onClick={handleDeleteTemplate}
                       className="p-2 rounded-lg hover:bg-red-50 text-red-600"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -457,6 +564,110 @@ export function EmailTemplates() {
             <Button variant="outline" onClick={() => setShowSendModal(false)}>Cancel</Button>
             <Button onClick={handleSendTestEmail} disabled={isSending || !testEmail}>
               {isSending ? "Sending..." : "Send Email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editMode === "create" ? "New Email Template" : "Edit Email Template"}
+            </DialogTitle>
+            <DialogDescription>
+              Define the content and variables for this email template.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Template Name</Label>
+              <Input
+                id="template-name"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="Welcome Email"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-subject">Subject</Label>
+              <Input
+                id="template-subject"
+                value={formSubject}
+                onChange={(e) => setFormSubject(e.target.value)}
+                placeholder="Welcome to Ezri"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-category">Category</Label>
+              <select
+                id="template-category"
+                value={formCategory}
+                onChange={(e) =>
+                  setFormCategory(e.target.value as EmailTemplate["category"])
+                }
+                className="w-full px-3 py-2 rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="welcome">Welcome</option>
+                <option value="notification">Notification</option>
+                <option value="marketing">Marketing</option>
+                <option value="system">System</option>
+                <option value="crisis">Crisis</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-html">HTML Content</Label>
+              <textarea
+                id="template-html"
+                value={formHtmlContent}
+                onChange={(e) => setFormHtmlContent(e.target.value)}
+                rows={8}
+                placeholder="<p>Hello {{user_name}}, welcome to Ezri...</p>"
+                className="w-full px-3 py-2 rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-text">Text Content (optional)</Label>
+              <textarea
+                id="template-text"
+                value={formTextContent}
+                onChange={(e) => setFormTextContent(e.target.value)}
+                rows={4}
+                placeholder="Hello {{user_name}}, welcome to Ezri..."
+                className="w-full px-3 py-2 rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-variables">
+                Variables (comma separated, without curly braces)
+              </Label>
+              <Input
+                id="template-variables"
+                value={formVariables}
+                onChange={(e) => setFormVariables(e.target.value)}
+                placeholder="user_name, app_url, reset_url"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditModal(false);
+                setIsEditing(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveTemplate}>
+              {editMode === "create" ? "Create Template" : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
