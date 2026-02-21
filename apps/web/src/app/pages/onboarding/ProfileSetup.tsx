@@ -32,18 +32,23 @@ export function OnboardingProfileSetup() {
     }
   }, []);
 
-  // Sync local state when context data changes (e.g. on user switch/reset)
   useEffect(() => {
-    setFirstName(data.firstName || "");
-    setLastName(data.lastName || "");
-    setSelectedPronoun(data.pronouns || "");
-    setAge(data.age || "");
-    if (data.timezone) {
-      setTimezone(data.timezone);
-    } else {
-      setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    if (data.firstName && !firstName) {
+      setFirstName(data.firstName);
     }
-  }, [data]);
+    if (data.lastName && !lastName) {
+      setLastName(data.lastName);
+    }
+    if (data.pronouns && !selectedPronoun) {
+      setSelectedPronoun(data.pronouns);
+    }
+    if (data.age && !age) {
+      setAge(data.age);
+    }
+    if (data.timezone && !timezone) {
+      setTimezone(data.timezone);
+    }
+  }, [data.firstName, data.lastName, data.pronouns, data.age, data.timezone]);
 
   useEffect(() => {
     if (user?.user_metadata) {
