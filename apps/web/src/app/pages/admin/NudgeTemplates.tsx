@@ -24,11 +24,12 @@ import {
   Send,
   AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
 
 interface NudgeTemplate {
   id: string;
@@ -59,137 +60,80 @@ export function NudgeTemplates() {
   const [editModalTemplate, setEditModalTemplate] = useState<NudgeTemplate | null>(null);
   const [deleteModalTemplate, setDeleteModalTemplate] = useState<NudgeTemplate | null>(null);
   const [analyticsModalTemplate, setAnalyticsModalTemplate] = useState<NudgeTemplate | null>(null);
+  const [templates, setTemplates] = useState<NudgeTemplate[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const templates: NudgeTemplate[] = [
-    {
-      id: "1",
-      name: "Daily Mood Check-in Reminder",
-      category: "Engagement",
-      type: "push",
-      title: "How are you feeling today?",
-      message: "Hi {{name}}, take a moment to check in with yourself. Your mood matters! 💙",
-      variables: ["name"],
-      icon: Heart,
-      iconColor: "#ec4899",
-      usage: 1234,
-      rating: 4.8,
-      status: "active",
-      createdBy: "Sarah Chen",
-      lastUsed: "2 hours ago",
-    },
-    {
-      id: "2",
-      name: "Breathing Exercise Prompt",
-      category: "Wellness",
-      type: "in-app",
-      title: "Time for a quick breather",
-      message: "Hey {{name}}, let's take 5 minutes for a breathing exercise. Ready?",
-      variables: ["name"],
-      icon: Zap,
-      iconColor: "#10b981",
-      usage: 2156,
-      rating: 4.9,
-      status: "active",
-      createdBy: "Dr. Michael Ross",
-      lastUsed: "1 hour ago",
-    },
-    {
-      id: "3",
-      name: "Weekly Progress Summary",
-      category: "Progress",
-      type: "email",
-      title: "Your wellness journey this week",
-      message: "Hi {{name}}, you've completed {{sessions}} sessions this week! Keep up the great work.",
-      variables: ["name", "sessions"],
-      icon: TrendingUp,
-      iconColor: "#3b82f6",
-      usage: 892,
-      rating: 4.7,
-      status: "active",
-      createdBy: "Emma Wilson",
-      lastUsed: "3 days ago",
-    },
-    {
-      id: "4",
-      name: "Session Completion Celebration",
-      category: "Achievement",
-      type: "push",
-      title: "🎉 Amazing work, {{name}}!",
-      message: "You just completed your {{milestone}}th session! You're making incredible progress.",
-      variables: ["name", "milestone"],
-      icon: Star,
-      iconColor: "#f59e0b",
-      usage: 1567,
-      rating: 4.9,
-      status: "active",
-      createdBy: "Sarah Chen",
-      lastUsed: "30 minutes ago",
-    },
-    {
-      id: "5",
-      name: "Sleep Reminder",
-      category: "Wellness",
-      type: "push",
-      title: "Wind down for better sleep",
-      message: "Hi {{name}}, it's {{time}}. Time to start your evening routine for restful sleep.",
-      variables: ["name", "time"],
-      icon: Clock,
-      iconColor: "#8b5cf6",
-      usage: 1789,
-      rating: 4.6,
-      status: "active",
-      createdBy: "Dr. Michael Ross",
-      lastUsed: "5 hours ago",
-    },
-    {
-      id: "6",
-      name: "Re-engagement Nudge",
-      category: "Retention",
-      type: "email",
-      title: "We miss you, {{name}}",
-      message: "It's been {{days}} days since your last session. We're here whenever you're ready.",
-      variables: ["name", "days"],
-      icon: MessageSquare,
-      iconColor: "#06b6d4",
-      usage: 543,
-      rating: 4.5,
-      status: "active",
-      createdBy: "Emma Wilson",
-      lastUsed: "1 day ago",
-    },
-    {
-      id: "7",
-      name: "Upcoming Session Reminder",
-      category: "Engagement",
-      type: "push",
-      title: "Your session starts soon",
-      message: "Hi {{name}}, your session with {{companion}} starts in {{minutes}} minutes.",
-      variables: ["name", "companion", "minutes"],
-      icon: Calendar,
-      iconColor: "#f97316",
-      usage: 2341,
-      rating: 4.8,
-      status: "active",
-      createdBy: "Sarah Chen",
-      lastUsed: "1 hour ago",
-    },
-    {
-      id: "8",
-      name: "Streak Milestone",
-      category: "Achievement",
-      type: "in-app",
-      title: "🔥 {{streak}} day streak!",
-      message: "Incredible consistency, {{name}}! You've checked in for {{streak}} days in a row.",
-      variables: ["name", "streak"],
-      icon: Target,
-      iconColor: "#ef4444",
-      usage: 987,
-      rating: 4.9,
-      status: "draft",
-      createdBy: "Dr. Michael Ross",
-      lastUsed: "Never",
-    },
-  ];
+  const mapApiTemplate = (t: any): NudgeTemplate => {
+    const baseIcon = (() => {
+      if (t.name?.includes("Mood") || t.category === "Engagement") return Heart;
+      if (t.name?.includes("Breath") || t.category === "Wellness") return Zap;
+      if (t.name?.includes("Sleep")) return Clock;
+      if (t.name?.includes("Session") || t.name?.includes("Reminder")) return Calendar;
+      if (t.category === "Progress") return TrendingUp;
+      if (t.category === "Achievement") return Star;
+      if (t.category === "Retention") return MessageSquare;
+      return Bell;
+    })();
+
+    const iconColor =
+      t.iconColor ||
+      (t.category === "Engagement"
+        ? "#ec4899"
+        : t.category === "Wellness"
+        ? "#10b981"
+        : t.category === "Progress"
+        ? "#3b82f6"
+        : t.category === "Achievement"
+        ? "#f59e0b"
+        : t.category === "Retention"
+        ? "#06b6d4"
+        : "#6366f1");
+
+    const createdAt = t.created_at ? new Date(t.created_at) : null;
+    const lastUsed =
+      t.last_used != null
+        ? new Date(t.last_used).toLocaleString()
+        : "Never";
+
+    return {
+      id: t.id,
+      name: t.name,
+      category: t.category,
+      type: t.type as NudgeTemplate["type"],
+      title: t.title,
+      message: t.message,
+      variables: Array.isArray(t.variables) ? t.variables : [],
+      icon: baseIcon,
+      iconColor,
+      usage: typeof t.usage === "number" ? t.usage : 0,
+      rating:
+        typeof t.rating === "number"
+          ? t.rating
+          : typeof t.rating === "string"
+          ? parseFloat(t.rating)
+          : 0,
+      status: (t.status as NudgeTemplate["status"]) || "active",
+      createdBy: t.profiles?.full_name || "System",
+      lastUsed,
+    };
+  };
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        setIsLoading(true);
+        const data = await api.admin.getNudgeTemplates();
+        const mapped: NudgeTemplate[] = Array.isArray(data)
+          ? data.map((t: any) => mapApiTemplate(t))
+          : [];
+        setTemplates(mapped);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTemplates();
+  }, []);
 
   const filteredTemplates = templates.filter((template) => {
     const matchesSearch =
@@ -218,15 +162,21 @@ export function NudgeTemplates() {
     },
     {
       label: "Total Usage",
-      value: templates.reduce((sum, t) => sum + t.usage, 0).toLocaleString(),
+      value:
+        templates.length === 0
+          ? "0"
+          : templates.reduce((sum, t) => sum + t.usage, 0).toLocaleString(),
       color: "from-blue-500 to-cyan-600",
       icon: TrendingUp,
     },
     {
       label: "Avg Rating",
-      value: (
-        templates.reduce((sum, t) => sum + t.rating, 0) / templates.length
-      ).toFixed(1),
+      value:
+        templates.length === 0
+          ? "0.0"
+          : (
+              templates.reduce((sum, t) => sum + t.rating, 0) / templates.length
+            ).toFixed(1),
       color: "from-orange-500 to-amber-600",
       icon: Star,
     },
@@ -271,7 +221,25 @@ export function NudgeTemplates() {
               <Filter className="w-4 h-4 mr-2" />
               Import
             </Button>
-            <Button className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white">
+            <Button
+              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white"
+              onClick={() => {
+                const base = {
+                  name: "New Template",
+                  category: "Engagement",
+                  type: "push" as const,
+                  title: "New nudge title",
+                  message: "Write your message here...",
+                  variables: [] as string[],
+                  status: "draft",
+                };
+                api.admin
+                  .createNudgeTemplate(base)
+                  .then((created: any) => {
+                    setTemplates((prev) => [mapApiTemplate(created), ...prev]);
+                  });
+              }}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Create Template
             </Button>
@@ -291,7 +259,9 @@ export function NudgeTemplates() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {isLoading && stat.label === "Total Templates" ? "..." : stat.value}
+                      </p>
                   </div>
                   <div
                     className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center`}
@@ -480,7 +450,9 @@ export function NudgeTemplates() {
                       variant="ghost"
                       className="text-gray-600 hover:text-gray-900"
                       onClick={() => {
-                        alert(`Copied template: ${template.name}`);
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(template.message);
+                        }
                       }}
                     >
                       <Copy className="w-4 h-4" />
@@ -517,7 +489,7 @@ export function NudgeTemplates() {
         </div>
 
         {/* Empty State */}
-        {filteredTemplates.length === 0 && (
+        {filteredTemplates.length === 0 && !isLoading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -694,83 +666,170 @@ export function NudgeTemplates() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold">Edit Template</h2>
                   <Button variant="ghost" size="sm" onClick={() => setEditModalTemplate(null)}>
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Template Name</label>
-                    <Input defaultValue={editModalTemplate.name} />
-                  </div>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Template Name</label>
+                            <Input
+                              defaultValue={editModalTemplate.name}
+                              onChange={(e) =>
+                                setEditModalTemplate({ ...editModalTemplate, name: e.target.value })
+                              }
+                            />
+                          </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Category</label>
-                      <select className="w-full px-3 py-2 border rounded-lg" defaultValue={editModalTemplate.category}>
-                        <option value="Engagement">Engagement</option>
-                        <option value="Wellness">Wellness</option>
-                        <option value="Progress">Progress</option>
-                        <option value="Achievement">Achievement</option>
-                        <option value="Retention">Retention</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Type</label>
-                      <select className="w-full px-3 py-2 border rounded-lg" defaultValue={editModalTemplate.type}>
-                        <option value="push">Push Notification</option>
-                        <option value="email">Email</option>
-                        <option value="in-app">In-App</option>
-                        <option value="sms">SMS</option>
-                      </select>
-                    </div>
-                  </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-2">Category</label>
+                              <select
+                                className="w-full px-3 py-2 border rounded-lg"
+                                defaultValue={editModalTemplate.category}
+                                onChange={(e) =>
+                                  setEditModalTemplate({
+                                    ...editModalTemplate,
+                                    category: e.target.value,
+                                  })
+                                }
+                              >
+                                <option value="Engagement">Engagement</option>
+                                <option value="Wellness">Wellness</option>
+                                <option value="Progress">Progress</option>
+                                <option value="Achievement">Achievement</option>
+                                <option value="Retention">Retention</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-2">Type</label>
+                              <select
+                                className="w-full px-3 py-2 border rounded-lg"
+                                defaultValue={editModalTemplate.type}
+                                onChange={(e) =>
+                                  setEditModalTemplate({
+                                    ...editModalTemplate,
+                                    type: e.target.value as NudgeTemplate["type"],
+                                  })
+                                }
+                              >
+                                <option value="push">Push Notification</option>
+                                <option value="email">Email</option>
+                                <option value="in-app">In-App</option>
+                                <option value="sms">SMS</option>
+                              </select>
+                            </div>
+                          </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Title</label>
-                    <Input defaultValue={editModalTemplate.title} />
-                  </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Title</label>
+                            <Input
+                              defaultValue={editModalTemplate.title}
+                              onChange={(e) =>
+                                setEditModalTemplate({
+                                  ...editModalTemplate,
+                                  title: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Message</label>
-                    <textarea
-                      className="w-full p-3 border rounded-lg"
-                      rows={4}
-                      defaultValue={editModalTemplate.message}
-                    />
-                  </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Message</label>
+                            <textarea
+                              className="w-full p-3 border rounded-lg"
+                              rows={4}
+                              defaultValue={editModalTemplate.message}
+                              onChange={(e) =>
+                                setEditModalTemplate({
+                                  ...editModalTemplate,
+                                  message: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Variables (comma separated)</label>
-                    <Input defaultValue={editModalTemplate.variables.join(", ")} placeholder="name, sessions, etc." />
-                  </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Variables (comma separated)
+                            </label>
+                            <Input
+                              defaultValue={editModalTemplate.variables.join(", ")}
+                              placeholder="name, sessions, etc."
+                              onChange={(e) =>
+                                setEditModalTemplate({
+                                  ...editModalTemplate,
+                                  variables: e.target.value
+                                    .split(",")
+                                    .map((v) => v.trim())
+                                    .filter(Boolean),
+                                })
+                              }
+                            />
+                          </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Status</label>
-                    <select className="w-full px-3 py-2 border rounded-lg" defaultValue={editModalTemplate.status}>
-                      <option value="active">Active</option>
-                      <option value="draft">Draft</option>
-                      <option value="archived">Archived</option>
-                    </select>
-                  </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Status</label>
+                            <select
+                              className="w-full px-3 py-2 border rounded-lg"
+                              defaultValue={editModalTemplate.status}
+                              onChange={(e) =>
+                                setEditModalTemplate({
+                                  ...editModalTemplate,
+                                  status: e.target.value as NudgeTemplate["status"],
+                                })
+                              }
+                            >
+                              <option value="active">Active</option>
+                              <option value="draft">Draft</option>
+                              <option value="archived">Archived</option>
+                            </select>
+                          </div>
 
-                  <div className="flex gap-2 pt-4">
-                    <Button variant="outline" className="flex-1" onClick={() => setEditModalTemplate(null)}>
-                      Cancel
-                    </Button>
-                    <Button className="flex-1" onClick={() => {
-                      alert(`Saved changes to: ${editModalTemplate.name}`);
-                      setEditModalTemplate(null);
-                    }}>
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Changes
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                          <div className="flex gap-2 pt-4">
+                            <Button
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => setEditModalTemplate(null)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              className="flex-1"
+                              onClick={async () => {
+                                if (!editModalTemplate) return;
+                                const payload = {
+                                  name: editModalTemplate.name,
+                                  category: editModalTemplate.category,
+                                  type: editModalTemplate.type,
+                                  title: editModalTemplate.title,
+                                  message: editModalTemplate.message,
+                                  variables: editModalTemplate.variables,
+                                  status: editModalTemplate.status,
+                                };
+                                const updated = await api.admin.updateNudgeTemplate(
+                                  editModalTemplate.id,
+                                  payload
+                                );
+                                setTemplates((prev) =>
+                                  prev.map((t) =>
+                                    t.id === editModalTemplate.id
+                                      ? mapApiTemplate({ ...updated })
+                                      : t
+                                  )
+                                );
+                                setEditModalTemplate(null);
+                              }}
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Save Changes
+                            </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
         {/* Analytics Modal */}
         <AnimatePresence>
@@ -935,8 +994,12 @@ export function NudgeTemplates() {
                     </Button>
                     <Button
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                      onClick={() => {
-                        alert(`Deleted template: ${deleteModalTemplate.name}`);
+                      onClick={async () => {
+                        if (!deleteModalTemplate) return;
+                        await api.admin.deleteNudgeTemplate(deleteModalTemplate.id);
+                        setTemplates((prev) =>
+                          prev.filter((t) => t.id !== deleteModalTemplate.id)
+                        );
                         setDeleteModalTemplate(null);
                       }}
                     >

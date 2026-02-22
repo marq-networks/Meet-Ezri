@@ -753,6 +753,54 @@ export async function deleteNudge(id: string) {
   });
 }
 
+export async function getNudgeTemplates() {
+  return prisma.nudge_templates.findMany({
+    orderBy: { created_at: 'desc' }
+  });
+}
+
+export async function createNudgeTemplate(data: any, createdBy?: string) {
+  return prisma.nudge_templates.create({
+    data: {
+      name: data.name,
+      category: data.category,
+      type: data.type,
+      title: data.title,
+      message: data.message,
+      variables: Array.isArray(data.variables) ? data.variables : [],
+      status: data.status ?? 'active',
+      usage: data.usage ?? 0,
+      rating: data.rating ?? null,
+      created_by: createdBy,
+      last_used: data.last_used ?? null,
+    },
+  });
+}
+
+export async function updateNudgeTemplate(id: string, data: any) {
+  return prisma.nudge_templates.update({
+    where: { id },
+    data: {
+      name: data.name,
+      category: data.category,
+      type: data.type,
+      title: data.title,
+      message: data.message,
+      variables: Array.isArray(data.variables) ? data.variables : undefined,
+      status: data.status,
+      usage: data.usage,
+      rating: data.rating,
+      last_used: data.last_used,
+    },
+  });
+}
+
+export async function deleteNudgeTemplate(id: string) {
+  return prisma.nudge_templates.delete({
+    where: { id },
+  });
+}
+
 // 3. Email Templates
 export async function getEmailTemplates() {
   return prisma.email_templates.findMany({

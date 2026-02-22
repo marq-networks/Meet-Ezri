@@ -437,6 +437,27 @@ export const api = {
       return handleResponse(res, 'Failed to create notification');
     },
 
+    async getNudgeTemplates() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/nudge-templates`, { method: 'GET', headers, cache: 'no-store' });
+      return handleResponse(res, 'Failed to fetch nudge templates');
+    },
+    async createNudgeTemplate(data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/nudge-templates`, { method: 'POST', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to create nudge template');
+    },
+    async updateNudgeTemplate(id: string, data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/nudge-templates/${id}`, { method: 'PUT', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to update nudge template');
+    },
+    async deleteNudgeTemplate(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/nudge-templates/${id}`, { method: 'DELETE', headers });
+      return handleResponse(res, 'Failed to delete nudge template');
+    },
+
     async getNudges() {
       const headers = await getHeaders();
       const res = await fetch(`${API_URL}/admin/nudges`, { method: 'GET', headers, cache: 'no-store' });

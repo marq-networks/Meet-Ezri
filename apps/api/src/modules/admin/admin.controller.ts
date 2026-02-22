@@ -5,6 +5,7 @@ import {
   getUserSegments, createUserSegment, deleteUserSegment,
   getManualNotifications, createManualNotification, getNotificationAudienceCounts,
   getNudges, createNudge, updateNudge, deleteNudge,
+  getNudgeTemplates, createNudgeTemplate, updateNudgeTemplate, deleteNudgeTemplate,
   getEmailTemplates, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate,
   getPushCampaigns, createPushCampaign,
   getSupportTickets, updateSupportTicket,
@@ -272,6 +273,59 @@ export async function deleteNudgeHandler(
   } catch (error) {
     request.log.error(error);
     return reply.code(500).send({ message: 'Failed to delete nudge' });
+  }
+}
+
+export async function getNudgeTemplatesHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const templates = await getNudgeTemplates();
+    return reply.code(200).send(templates);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to fetch nudge templates' });
+  }
+}
+
+export async function createNudgeTemplateHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const user = request.user as { sub?: string } | undefined;
+    const createdBy = user?.sub;
+    const template = await createNudgeTemplate(request.body, createdBy);
+    return reply.code(201).send(template);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({
+      message: 'Failed to create nudge template',
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+export async function updateNudgeTemplateHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const { id } = request.params;
+    const template = await updateNudgeTemplate(id, request.body);
+    return reply.code(200).send(template);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to update nudge template' });
+  }
+}
+
+export async function deleteNudgeTemplateHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const { id } = request.params;
+    await deleteNudgeTemplate(id);
+    return reply.code(204).send();
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to delete nudge template' });
   }
 }
 

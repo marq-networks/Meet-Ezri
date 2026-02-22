@@ -376,6 +376,13 @@ export function NudgeManagement() {
     }
   };
 
+  const getSentDisplay = (nudge: Nudge) => {
+    if (!nudge.lastSent) {
+      return 0;
+    }
+    return nudge.sentCount;
+  };
+
   return (
     <AdminLayoutNew>
       <div className="space-y-6">
@@ -629,7 +636,9 @@ export function NudgeManagement() {
                   <div className="border-t pt-4 mb-4">
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
-                        <p className="text-2xl font-bold text-blue-600">{nudge.sentCount.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {getSentDisplay(nudge).toLocaleString()}
+                        </p>
                         <p className="text-xs text-muted-foreground">Sent</p>
                       </div>
                       <div>
@@ -906,8 +915,10 @@ export function NudgeManagement() {
                     <div className="border-t pt-4">
                       <label className="block text-sm font-medium text-gray-600 mb-3">Performance</label>
                       <div className="grid grid-cols-3 gap-4 text-center">
-                        <div className="p-3 bg-blue-50 rounded-lg">
-                          <p className="text-2xl font-bold text-blue-600">{viewModalNudge.sentCount.toLocaleString()}</p>
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                          <p className="text-2xl font-bold text-blue-600">
+                            {getSentDisplay(viewModalNudge).toLocaleString()}
+                          </p>
                           <p className="text-xs text-gray-600">Sent</p>
                         </div>
                         <div className="p-3 bg-green-50 rounded-lg">
@@ -1100,7 +1111,9 @@ export function NudgeManagement() {
                         <Send className="w-5 h-5 text-blue-600" />
                         <TrendingUp className="w-4 h-4 text-blue-600" />
                       </div>
-                      <p className="text-3xl font-bold text-blue-600">{analyticsModalNudge.sentCount.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-blue-600">
+                        {getSentDisplay(analyticsModalNudge).toLocaleString()}
+                      </p>
                       <p className="text-sm text-gray-600">Total Sent</p>
                     </div>
                     
