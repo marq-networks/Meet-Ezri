@@ -4,7 +4,7 @@ export const createWellnessToolSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   category: z.string(),
-  duration_minutes: z.number().optional(), // in minutes
+  duration_minutes: z.number().optional(),
   content: z.string().optional(),
   image_url: z.string().optional(),
   is_premium: z.boolean().default(false),
@@ -39,9 +39,12 @@ export const wellnessToolResponseSchema = z.object({
   icon: z.string().nullable(),
   created_at: z.date(),
   updated_at: z.date(),
-  profiles: z.object({
-    full_name: z.string().nullable(),
-  }).optional().nullable(),
+  profiles: z
+    .object({
+      full_name: z.string().nullable(),
+    })
+    .optional()
+    .nullable(),
 });
 
 export const trackProgressSchema = z.object({
@@ -55,6 +58,20 @@ export const progressResponseSchema = z.object({
   duration_spent: z.number().nullable(),
   feedback_rating: z.number().nullable(),
   completed_at: z.date().nullable(),
+});
+
+export const wellnessChallengeResponseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  category: z.string().nullable(),
+  start_date: z.date(),
+  end_date: z.date(),
+  goal_criteria: z.any().nullable(),
+  reward_points: z.number().nullable(),
+  created_at: z.date(),
+  participants: z.number().optional(),
+  completionRate: z.number().optional(),
 });
 
 export type CreateWellnessToolInput = z.infer<typeof createWellnessToolSchema>;

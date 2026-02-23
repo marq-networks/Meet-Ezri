@@ -25,10 +25,12 @@ import {
   Eye,
   Copy,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface NudgeCampaign {
   id: string;
@@ -74,179 +76,181 @@ export function NudgeScheduler() {
   const [deleteModalCampaign, setDeleteModalCampaign] = useState<NudgeCampaign | null>(null);
   const [analyticsModalCampaign, setAnalyticsModalCampaign] = useState<NudgeCampaign | null>(null);
   const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
+  const [campaigns, setCampaigns] = useState<NudgeCampaign[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([]);
+  const [campaignName, setCampaignName] = useState("");
+  const [campaignType, setCampaignType] = useState<"time-based" | "event-based" | "behavior-based">("time-based");
+  const [campaignStatus, setCampaignStatus] = useState<NudgeCampaign["status"]>("scheduled");
+  const [campaignTemplateId, setCampaignTemplateId] = useState("");
+  const [triggerType, setTriggerType] = useState("");
+  const [triggerValue, setTriggerValue] = useState("");
+  const [frequency, setFrequency] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [targetAudience, setTargetAudience] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const campaigns: NudgeCampaign[] = [
-    {
-      id: "1",
-      name: "Morning Mood Check-in Campaign",
-      template: "Daily Mood Check-in Reminder",
-      type: "time-based",
-      status: "active",
+  const mapApiCampaign = (c: any): NudgeCampaign => {
+    const metrics = c.metrics || {};
+    const audience = metrics.audience || {};
+    const trigger = metrics.trigger || {};
+    const schedule = metrics.schedule || {};
+    const performance = metrics.performance || {};
+    const abTest = metrics.abTest;
+    const createdAt = c.created_at ? new Date(c.created_at) : new Date();
+    const start =
+      schedule.startDate ||
+      (c.scheduled_at ? new Date(c.scheduled_at).toISOString().slice(0, 10) : createdAt.toISOString().slice(0, 10));
+    const lastRun =
+      metrics.lastRun ||
+      (c.sent_at ? new Date(c.sent_at).toLocaleString() : "Not yet run");
+
+    return {
+      id: c.id,
+      name: c.title || metrics.name || "Untitled campaign",
+      template: metrics.template || "",
+      type: (metrics.type as NudgeCampaign["type"]) || "time-based",
+      status: (c.status as NudgeCampaign["status"]) || "scheduled",
       audience: {
-        segment: "All Active Users",
-        count: 1234,
+        segment: audience.segment || "All users",
+        count: typeof audience.count === "number" ? audience.count : 0,
       },
       trigger: {
-        type: "Daily",
-        value: "9:00 AM",
+        type: trigger.type || "Custom",
+        value: trigger.value || "",
       },
       schedule: {
-        startDate: "2024-01-15",
-        frequency: "Daily",
+        startDate: start,
+        endDate: schedule.endDate,
+        frequency: schedule.frequency || "Once",
       },
       performance: {
-        sent: 8640,
-        opened: 6912,
-        clicked: 4320,
-        converted: 3456,
+        sent: performance.sent ?? 0,
+        opened: performance.opened ?? 0,
+        clicked: performance.clicked ?? 0,
+        converted: performance.converted ?? 0,
       },
-      abTest: {
-        enabled: true,
-        variants: 2,
-      },
-      createdBy: "Sarah Chen",
-      lastRun: "Today at 9:00 AM",
-    },
-    {
-      id: "2",
-      name: "Post-Session Follow-up",
-      template: "Session Completion Celebration",
-      type: "event-based",
-      status: "active",
-      audience: {
-        segment: "Session Completers",
-        count: 856,
-      },
-      trigger: {
-        type: "Event",
-        value: "Session Completed",
-      },
-      schedule: {
-        startDate: "2024-01-10",
-        frequency: "On Event",
-      },
-      performance: {
-        sent: 2340,
-        opened: 2106,
-        clicked: 1638,
-        converted: 1404,
-      },
-      abTest: {
-        enabled: false,
-        variants: 1,
-      },
-      createdBy: "Dr. Michael Ross",
-      lastRun: "2 hours ago",
-    },
-    {
-      id: "3",
-      name: "Evening Wind-down Reminder",
-      template: "Sleep Reminder",
-      type: "time-based",
-      status: "active",
-      audience: {
-        segment: "Sleep-focused Users",
-        count: 567,
-      },
-      trigger: {
-        type: "Daily",
-        value: "9:00 PM",
-      },
-      schedule: {
-        startDate: "2024-01-12",
-        frequency: "Daily",
-      },
-      performance: {
-        sent: 5670,
-        opened: 4536,
-        clicked: 3402,
-        converted: 2835,
-      },
-      createdBy: "Emma Wilson",
-      lastRun: "Today at 9:00 PM",
-    },
-    {
-      id: "4",
-      name: "7-Day Inactive Re-engagement",
-      template: "Re-engagement Nudge",
-      type: "behavior-based",
-      status: "active",
-      audience: {
-        segment: "Inactive 7+ Days",
-        count: 234,
-      },
-      trigger: {
-        type: "Inactivity",
-        value: "7 days",
-      },
-      schedule: {
-        startDate: "2024-01-08",
-        frequency: "Triggered",
-      },
-      performance: {
-        sent: 468,
-        opened: 281,
-        clicked: 140,
-        converted: 94,
-      },
-      createdBy: "Sarah Chen",
-      lastRun: "5 hours ago",
-    },
-    {
-      id: "5",
-      name: "Weekly Progress Summary",
-      template: "Weekly Progress Summary",
-      type: "time-based",
-      status: "scheduled",
-      audience: {
-        segment: "All Active Users",
-        count: 1234,
-      },
-      trigger: {
-        type: "Weekly",
-        value: "Sunday 6:00 PM",
-      },
-      schedule: {
-        startDate: "2024-01-21",
-        frequency: "Weekly",
-      },
-      performance: {
-        sent: 0,
-        opened: 0,
-        clicked: 0,
-        converted: 0,
-      },
-      createdBy: "Emma Wilson",
-      lastRun: "Not yet run",
-    },
-    {
-      id: "6",
-      name: "Streak Milestone Celebration",
-      template: "Streak Milestone",
-      type: "event-based",
-      status: "paused",
-      audience: {
-        segment: "Streak Achievers",
-        count: 345,
-      },
-      trigger: {
-        type: "Event",
-        value: "Streak Milestone Reached",
-      },
-      schedule: {
-        startDate: "2024-01-05",
-        frequency: "On Event",
-      },
-      performance: {
-        sent: 1035,
-        opened: 931,
-        clicked: 827,
-        converted: 724,
-      },
-      createdBy: "Dr. Michael Ross",
-      lastRun: "3 days ago",
-    },
-  ];
+      abTest: abTest
+        ? {
+            enabled: !!abTest.enabled,
+            variants: abTest.variants ?? 1,
+          }
+        : undefined,
+      createdBy: metrics.createdBy || "System",
+      lastRun,
+    };
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const [campaignData, templateData] = await Promise.all([
+          api.admin.getPushCampaigns(),
+          api.admin.getNudgeTemplates(),
+        ]);
+        const mappedCampaigns = Array.isArray(campaignData)
+          ? campaignData.map((c: any) => mapApiCampaign(c))
+          : [];
+        const mappedTemplates = Array.isArray(templateData)
+          ? templateData.map((t: any) => ({ id: t.id, name: t.name }))
+          : [];
+        setCampaigns(mappedCampaigns);
+        setTemplates(mappedTemplates);
+      } catch (error: any) {
+        console.error("Failed to load scheduler data", error);
+        toast.error(error?.message || "Failed to load scheduler data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const handleCreateCampaign = async () => {
+    try {
+      setIsSaving(true);
+      const selectedTemplate = templates.find((t) => t.id === campaignTemplateId);
+      const metrics = {
+        templateId: campaignTemplateId || null,
+        template: selectedTemplate?.name || "",
+        type: campaignType,
+        audience: {
+          segment: targetAudience || "All users",
+          count: 0,
+        },
+        trigger: {
+          type: triggerType || "Custom",
+          value: triggerValue || "",
+        },
+        schedule: {
+          startDate: startDate || new Date().toISOString().slice(0, 10),
+          frequency: frequency || "Once",
+        },
+        performance: {
+          sent: 0,
+          opened: 0,
+          clicked: 0,
+          converted: 0,
+        },
+        lastRun: "Not yet run",
+      };
+
+      const payload = {
+        title: campaignName || selectedTemplate?.name || "Untitled campaign",
+        message: "",
+        status: campaignStatus,
+        target_segment_id: null,
+        metrics,
+      };
+
+      const created = await api.admin.createPushCampaign(payload);
+      setCampaigns((prev) => [mapApiCampaign(created), ...prev]);
+      setShowCreateCampaignModal(false);
+      setCampaignName("");
+      setCampaignType("time-based");
+      setCampaignStatus("scheduled");
+      setCampaignTemplateId("");
+      setTriggerType("");
+      setTriggerValue("");
+      setFrequency("");
+      setStartDate("");
+      setTargetAudience("");
+      toast.success("Campaign created");
+    } catch (error: any) {
+      console.error("Failed to create campaign", error);
+      toast.error(error?.message || "Failed to create campaign");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateStatus = async (campaign: NudgeCampaign, status: NudgeCampaign["status"]) => {
+    try {
+      const updated = await api.admin.updatePushCampaign(campaign.id, {
+        status,
+      });
+      const mapped = mapApiCampaign(updated);
+      setCampaigns((prev) => prev.map((c) => (c.id === campaign.id ? mapped : c)));
+      toast.success(`Campaign ${status === "active" ? "activated" : "paused"}`);
+    } catch (error: any) {
+      console.error("Failed to update campaign status", error);
+      toast.error(error?.message || "Failed to update campaign");
+    }
+  };
+
+  const handleDeleteCampaign = async (campaign: NudgeCampaign) => {
+    try {
+      await api.admin.deletePushCampaign(campaign.id);
+      setCampaigns((prev) => prev.filter((c) => c.id !== campaign.id));
+      setDeleteModalCampaign(null);
+      toast.success("Campaign deleted");
+    } catch (error: any) {
+      console.error("Failed to delete campaign", error);
+      toast.error(error?.message || "Failed to delete campaign");
+    }
+  };
 
   const filteredCampaigns = campaigns.filter((campaign) => {
     const matchesStatus =
@@ -254,6 +258,17 @@ export function NudgeScheduler() {
     const matchesType = selectedType === "all" || campaign.type === selectedType;
     return matchesStatus && matchesType;
   });
+
+  const campaignsWithSends = campaigns.filter((c) => c.performance.sent > 0);
+  const avgOpenRate =
+    campaignsWithSends.length === 0
+      ? "0.0"
+      : (
+          campaignsWithSends.reduce(
+            (sum, c) => sum + c.performance.opened / c.performance.sent,
+            0
+          ) / campaignsWithSends.length
+        ).toFixed(1);
 
   const stats = [
     {
@@ -279,14 +294,7 @@ export function NudgeScheduler() {
     {
       label: "Avg Open Rate",
       value:
-        (
-          (campaigns.reduce(
-            (sum, c) => sum + (c.performance.sent > 0 ? c.performance.opened / c.performance.sent : 0),
-            0
-          ) /
-            campaigns.filter((c) => c.performance.sent > 0).length) *
-          100
-        ).toFixed(1) + "%",
+        avgOpenRate + "%",
       color: "from-orange-500 to-amber-600",
       icon: TrendingUp,
     },
@@ -645,7 +653,7 @@ export function NudgeScheduler() {
                             variant="ghost"
                             className="text-gray-600 hover:text-gray-900"
                             onClick={() => {
-                              alert(`Copied campaign: ${campaign.name}`);
+                              toast.success(`Copied campaign: ${campaign.name}`);
                             }}
                           >
                             <Copy className="w-4 h-4" />
@@ -655,7 +663,7 @@ export function NudgeScheduler() {
                               size="sm"
                               variant="ghost"
                               className="text-yellow-600 hover:text-yellow-700"
-                              onClick={() => alert(`Paused: ${campaign.name}`)}
+                              onClick={() => handleUpdateStatus(campaign, "paused")}
                             >
                               <Pause className="w-4 h-4" />
                             </Button>
@@ -665,7 +673,7 @@ export function NudgeScheduler() {
                               size="sm"
                               variant="ghost"
                               className="text-green-600 hover:text-green-700"
-                              onClick={() => alert(`Activated: ${campaign.name}`)}
+                              onClick={() => handleUpdateStatus(campaign, "active")}
                             >
                               <Play className="w-4 h-4" />
                             </Button>
@@ -1139,8 +1147,9 @@ export function NudgeScheduler() {
                     <Button
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                       onClick={() => {
-                        alert(`Deleted campaign: ${deleteModalCampaign.name}`);
-                        setDeleteModalCampaign(null);
+                        if (deleteModalCampaign) {
+                          handleDeleteCampaign(deleteModalCampaign);
+                        }
                       }}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -1180,13 +1189,22 @@ export function NudgeScheduler() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Campaign Name</label>
-                    <Input />
+                    <Input
+                      value={campaignName}
+                      onChange={(e) => setCampaignName(e.target.value)}
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">Type</label>
-                      <select className="w-full px-3 py-2 border rounded-lg">
+                      <select
+                        className="w-full px-3 py-2 border rounded-lg"
+                        value={campaignType}
+                        onChange={(e) =>
+                          setCampaignType(e.target.value as NudgeCampaign["type"])
+                        }
+                      >
                         <option value="time-based">Time-based</option>
                         <option value="event-based">Event-based</option>
                         <option value="behavior-based">Behavior-based</option>
@@ -1194,7 +1212,13 @@ export function NudgeScheduler() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Status</label>
-                      <select className="w-full px-3 py-2 border rounded-lg">
+                      <select
+                        className="w-full px-3 py-2 border rounded-lg"
+                        value={campaignStatus}
+                        onChange={(e) =>
+                          setCampaignStatus(e.target.value as NudgeCampaign["status"])
+                        }
+                      >
                         <option value="active">Active</option>
                         <option value="paused">Paused</option>
                         <option value="scheduled">Scheduled</option>
@@ -1205,34 +1229,61 @@ export function NudgeScheduler() {
 
                   <div>
                     <label className="block text-sm font-medium mb-2">Template</label>
-                    <Input />
+                    <select
+                      className="w-full px-3 py-2 border rounded-lg"
+                      value={campaignTemplateId}
+                      onChange={(e) => setCampaignTemplateId(e.target.value)}
+                    >
+                      <option value="">Select template</option>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">Trigger Type</label>
-                      <Input />
+                      <Input
+                        value={triggerType}
+                        onChange={(e) => setTriggerType(e.target.value)}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Trigger Value</label>
-                      <Input />
+                      <Input
+                        value={triggerValue}
+                        onChange={(e) => setTriggerValue(e.target.value)}
+                      />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">Frequency</label>
-                      <Input />
+                      <Input
+                        value={frequency}
+                        onChange={(e) => setFrequency(e.target.value)}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Start Date</label>
-                      <Input type="date" />
+                      <Input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium mb-2">Target Audience</label>
-                    <Input />
+                    <Input
+                      value={targetAudience}
+                      onChange={(e) => setTargetAudience(e.target.value)}
+                    />
                   </div>
 
                   <div className="flex gap-2 pt-4">
@@ -1240,11 +1291,17 @@ export function NudgeScheduler() {
                       Cancel
                     </Button>
                     <Button className="flex-1" onClick={() => {
-                      alert(`Created new campaign`);
-                      setShowCreateCampaignModal(false);
-                    }}>
+                      if (!campaignName && !campaignTemplateId) {
+                        toast.error("Please enter a campaign name or select a template");
+                        return;
+                      }
+                      if (isSaving) {
+                        return;
+                      }
+                      handleCreateCampaign();
+                    }} disabled={isSaving}>
                       <Save className="w-4 h-4 mr-2" />
-                      Create Campaign
+                      {isSaving ? "Creating..." : "Create Campaign"}
                     </Button>
                   </div>
                 </div>

@@ -512,6 +512,16 @@ export const api = {
       const res = await fetch(`${API_URL}/admin/push-campaigns`, { method: 'POST', headers, body: JSON.stringify(data) });
       return handleResponse(res, 'Failed to create campaign');
     },
+    async updatePushCampaign(id: string, data: any) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/push-campaigns/${id}`, { method: 'PUT', headers, body: JSON.stringify(data) });
+      return handleResponse(res, 'Failed to update campaign');
+    },
+    async deletePushCampaign(id: string) {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/push-campaigns/${id}`, { method: 'DELETE', headers });
+      return handleResponse(res, 'Failed to delete campaign');
+    },
 
     // Support Tickets
     async getSupportTickets() {
@@ -910,6 +920,15 @@ export const api = {
         headers,
       });
       return handleResponse(res, 'Failed to fetch wellness stats');
+    },
+
+    async getChallenges() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/wellness/challenges`, {
+        method: 'GET',
+        headers,
+      });
+      return handleResponse(res, 'Failed to fetch wellness challenges');
     }
   },
 

@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool, trackWellnessProgress, getUserWellnessProgress, startWellnessSession, completeWellnessSession, getWellnessStats } from './wellness.service';
+import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool, trackWellnessProgress, getUserWellnessProgress, startWellnessSession, completeWellnessSession, getWellnessStats, getWellnessChallengesWithStats } from './wellness.service';
 import { CreateWellnessToolInput, UpdateWellnessToolInput, TrackProgressInput } from './wellness.schema';
 
 export async function createWellnessToolHandler(
@@ -132,5 +132,17 @@ export async function getWellnessStatsHandler(
     return reply.send(stats);
   } catch (error) {
     return reply.code(500).send({ message: 'Failed to fetch wellness stats' });
+  }
+}
+
+export async function getWellnessChallengesHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const challenges = await getWellnessChallengesWithStats();
+    return reply.send(challenges);
+  } catch (error) {
+    return reply.code(500).send({ message: 'Failed to fetch wellness challenges' });
   }
 }

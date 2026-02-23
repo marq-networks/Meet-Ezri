@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "motion/react";
 import { AdminLayoutNew } from "../../components/AdminLayoutNew";
-import { 
+import {
   Trophy,
   Target,
   Users,
@@ -22,13 +22,25 @@ import {
   X,
   Save,
   BarChart3,
-  Eye
+  Eye,
 } from "lucide-react";
-import { useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { useEffect, useMemo, useState } from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from "recharts";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface Challenge {
   id: string;
@@ -49,6 +61,114 @@ interface Challenge {
   dailyTasks: string[];
 }
 
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case "mindfulness":
+      return Heart;
+    case "exercise":
+      return Footprints;
+    case "sleep":
+      return Moon;
+    case "journaling":
+      return Book;
+    case "social":
+      return Users;
+    case "habits":
+      return Coffee;
+    default:
+      return Target;
+  }
+};
+
+const getCategoryColor = (category: string) => {
+  switch (category) {
+    case "mindfulness":
+      return "from-purple-500 to-pink-600";
+    case "exercise":
+      return "from-green-500 to-emerald-600";
+    case "sleep":
+      return "from-blue-500 to-indigo-600";
+    case "journaling":
+      return "from-yellow-500 to-orange-600";
+    case "social":
+      return "from-red-500 to-rose-600";
+    case "habits":
+      return "from-gray-500 to-slate-600";
+    default:
+      return "from-blue-500 to-indigo-600";
+  }
+};
+
+const getCategoryDisplayName = (category: string) => {
+  switch (category) {
+    case "mindfulness":
+      return "Mindfulness";
+    case "exercise":
+      return "Exercise";
+    case "sleep":
+      return "Sleep";
+    case "journaling":
+      return "Journal";
+    case "social":
+      return "Social";
+    case "habits":
+      return "Habits";
+    default:
+      return category;
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "active":
+      return "bg-green-100 text-green-700";
+    case "scheduled":
+      return "bg-blue-100 text-blue-700";
+    case "completed":
+      return "bg-gray-100 text-gray-700";
+    case "draft":
+      return "bg-yellow-100 text-yellow-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+};
+
+const getDifficultyColor = (difficulty: string) => {
+  switch (difficulty) {
+    case "easy":
+      return "bg-green-100 text-green-700";
+    case "medium":
+      return "bg-yellow-100 text-yellow-700";
+    case "hard":
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+};
+
+const mapApiChallenge = (apiChallenge: any): Challenge => {
+  const meta = (apiChallenge.goal_criteria || {}) as any;
+  return {
+    id: apiChallenge.id,
+    name: apiChallenge.title,
+    description: apiChallenge.description || "",
+    category:
+      (apiChallenge.category as Challenge["category"]) || "mindfulness",
+    status: (meta.status as Challenge["status"]) || "active",
+    startDate: new Date(apiChallenge.start_date),
+    endDate: new Date(apiChallenge.end_date),
+    participants: apiChallenge.participants ?? 0,
+    completionRate: apiChallenge.completionRate ?? 0,
+    goal: meta.goal || "",
+    difficulty: (meta.difficulty as Challenge["difficulty"]) || "easy",
+    rewards: {
+      points: apiChallenge.reward_points ?? 0,
+      badge: meta.badge || undefined,
+    },
+    dailyTasks: Array.isArray(meta.dailyTasks) ? meta.dailyTasks : [],
+  };
+};
+
 export function WellnessChallenges() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
@@ -56,212 +176,85 @@ export function WellnessChallenges() {
   // Modal states
   const [viewStatsModal, setViewStatsModal] = useState<Challenge | null>(null);
   const [editModal, setEditModal] = useState<Challenge | null>(null);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock challenges
-  const challenges: Challenge[] = [
-    {
-      id: "chal001",
-      name: "7-Day Mindfulness Journey",
-      description: "Practice daily meditation and breathing exercises",
-      category: "mindfulness",
-      status: "active",
-      startDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
-      participants: 342,
-      completionRate: 68,
-      goal: "Complete 7 days of 10-minute meditation",
-      difficulty: "easy",
-      rewards: {
-        points: 100,
-        badge: "Mindful Master"
-      },
-      dailyTasks: [
-        "10 minutes guided meditation",
-        "5 deep breathing exercises",
-        "Mindful moment reflection"
-      ]
-    },
-    {
-      id: "chal002",
-      name: "30-Day Sleep Optimization",
-      description: "Establish healthy sleep habits and track progress",
-      category: "sleep",
-      status: "active",
-      startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
-      participants: 456,
-      completionRate: 72,
-      goal: "Get 7-8 hours of sleep for 30 days",
-      difficulty: "medium",
-      rewards: {
-        points: 300,
-        badge: "Sleep Champion"
-      },
-      dailyTasks: [
-        "Track sleep hours",
-        "No screens 1 hour before bed",
-        "Consistent sleep schedule"
-      ]
-    },
-    {
-      id: "chal003",
-      name: "Gratitude Journal Challenge",
-      description: "Write daily gratitude entries",
-      category: "journaling",
-      status: "active",
-      startDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
-      participants: 289,
-      completionRate: 81,
-      goal: "Write 3 gratitude items daily for 14 days",
-      difficulty: "easy",
-      rewards: {
-        points: 150,
-        badge: "Grateful Heart"
-      },
-      dailyTasks: [
-        "Write 3 things you're grateful for",
-        "Reflect on positive moments",
-        "Share one gratitude with someone"
-      ]
-    },
-    {
-      id: "chal004",
-      name: "Move More Challenge",
-      description: "Daily physical activity tracking",
-      category: "exercise",
-      status: "active",
-      startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      participants: 521,
-      completionRate: 64,
-      goal: "30 minutes of activity daily for 21 days",
-      difficulty: "medium",
-      rewards: {
-        points: 250,
-        badge: "Active Achiever"
-      },
-      dailyTasks: [
-        "30 minutes of physical activity",
-        "Track steps (goal: 8000+)",
-        "Stretch for 5 minutes"
-      ]
-    },
-    {
-      id: "chal005",
-      name: "Social Connection Week",
-      description: "Reach out and connect with others",
-      category: "social",
-      status: "scheduled",
-      startDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
-      participants: 0,
-      completionRate: 0,
-      goal: "Connect with someone daily for 7 days",
-      difficulty: "easy",
-      rewards: {
-        points: 100,
-        badge: "Social Butterfly"
-      },
-      dailyTasks: [
-        "Call or meet with someone",
-        "Send a thoughtful message",
-        "Join a group activity"
-      ]
-    },
-    {
-      id: "chal006",
-      name: "Digital Detox Weekend",
-      description: "Reduce screen time and find balance",
-      category: "habits",
-      status: "completed",
-      startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      participants: 234,
-      completionRate: 58,
-      goal: "Limit screen time to 2 hours/day",
-      difficulty: "hard",
-      rewards: {
-        points: 200,
-        badge: "Digital Warrior"
-      },
-      dailyTasks: [
-        "Track daily screen time",
-        "2 hours screen-free activities",
-        "No phone during meals"
-      ]
-    }
-  ];
+  useEffect(() => {
+    const fetchChallenges = async () => {
+      try {
+        setIsLoading(true);
+        const data = await api.wellness.getChallenges();
+        const mapped: Challenge[] = Array.isArray(data)
+          ? data.map(mapApiChallenge)
+          : [];
+        setChallenges(mapped);
+      } catch (error: any) {
+        console.error("Failed to fetch wellness challenges", error);
+        toast.error(
+          error?.message || "Failed to fetch wellness challenges"
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Participation trend
-  const participationTrend = [
-    { month: "Jan", participants: 234 },
-    { month: "Feb", participants: 289 },
-    { month: "Mar", participants: 312 },
-    { month: "Apr", participants: 378 },
-    { month: "May", participants: 456 },
-    { month: "Jun", participants: 521 }
-  ];
-
-  // Completion rates by category
-  const categoryData = [
-    { category: "Mindfulness", rate: 68 },
-    { category: "Sleep", rate: 72 },
-    { category: "Journal", rate: 81 },
-    { category: "Exercise", rate: 64 },
-    { category: "Social", rate: 75 },
-    { category: "Habits", rate: 58 }
-  ];
-
-  const getCategoryIcon = (category: string) => {
-    switch(category) {
-      case "mindfulness": return Heart;
-      case "exercise": return Footprints;
-      case "sleep": return Moon;
-      case "journaling": return Book;
-      case "social": return Users;
-      case "habits": return Coffee;
-      default: return Target;
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch(category) {
-      case "mindfulness": return "from-purple-500 to-pink-600";
-      case "exercise": return "from-green-500 to-emerald-600";
-      case "sleep": return "from-blue-500 to-indigo-600";
-      case "journaling": return "from-yellow-500 to-orange-600";
-      case "social": return "from-red-500 to-rose-600";
-      case "habits": return "from-gray-500 to-slate-600";
-      default: return "from-blue-500 to-indigo-600";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case "active": return "bg-green-100 text-green-700";
-      case "scheduled": return "bg-blue-100 text-blue-700";
-      case "completed": return "bg-gray-100 text-gray-700";
-      case "draft": return "bg-yellow-100 text-yellow-700";
-      default: return "bg-gray-100 text-gray-700";
-    }
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch(difficulty) {
-      case "easy": return "bg-green-100 text-green-700";
-      case "medium": return "bg-yellow-100 text-yellow-700";
-      case "hard": return "bg-red-100 text-red-700";
-      default: return "bg-gray-100 text-gray-700";
-    }
-  };
+    fetchChallenges();
+  }, []);
 
   const stats = {
-    activeChallenges: challenges.filter(c => c.status === "active").length,
-    totalParticipants: challenges.reduce((sum, c) => sum + c.participants, 0),
-    avgCompletionRate: Math.round(challenges.reduce((sum, c) => sum + c.completionRate, 0) / challenges.length),
-    totalBadgesEarned: 1847
+    activeChallenges: challenges.filter((c) => c.status === "active").length,
+    totalParticipants: challenges.reduce(
+      (sum, c) => sum + (c.participants || 0),
+      0
+    ),
+    avgCompletionRate:
+      challenges.length > 0
+        ? Math.round(
+            challenges.reduce(
+              (sum, c) => sum + (c.completionRate || 0),
+              0
+            ) / challenges.length
+          )
+        : 0,
+    totalBadgesEarned: challenges.filter((c) => c.rewards.badge).length,
   };
+
+  const participationTrend = useMemo(() => {
+    const map = new Map<string, { month: string; participants: number }>();
+    challenges.forEach((challenge) => {
+      const d = challenge.startDate;
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const label = d.toLocaleString("default", { month: "short" });
+      const existing = map.get(key) || { month: label, participants: 0 };
+      existing.participants += challenge.participants;
+      map.set(key, existing);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([, value]) => value);
+  }, [challenges]);
+
+  const categoryData = useMemo(() => {
+    const map = new Map<
+      string,
+      { category: string; totalRate: number; count: number }
+    >();
+    challenges.forEach((challenge) => {
+      const key = challenge.category;
+      const label = getCategoryDisplayName(challenge.category);
+      const existing =
+        map.get(key) || { category: label, totalRate: 0, count: 0 };
+      existing.totalRate += challenge.completionRate;
+      existing.count += 1;
+      map.set(key, existing);
+    });
+    return Array.from(map.values()).map((value) => ({
+      category: value.category,
+      rate: value.count
+        ? Math.round(value.totalRate / value.count)
+        : 0,
+    }));
+  }, [challenges]);
 
   return (
     <AdminLayoutNew>

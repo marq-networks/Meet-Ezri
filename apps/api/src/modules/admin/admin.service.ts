@@ -834,6 +834,19 @@ export async function createPushCampaign(data: any) {
   return prisma.push_campaigns.create({ data });
 }
 
+export async function updatePushCampaign(id: string, data: any) {
+  return prisma.push_campaigns.update({
+    where: { id },
+    data
+  });
+}
+
+export async function deletePushCampaign(id: string) {
+  return prisma.push_campaigns.delete({
+    where: { id }
+  });
+}
+
 // 5. Support Tickets
 export async function getSupportTickets() {
   return prisma.support_tickets.findMany({

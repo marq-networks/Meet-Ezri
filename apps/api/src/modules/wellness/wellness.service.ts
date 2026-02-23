@@ -24,6 +24,47 @@ export async function createWellnessTool(data: CreateWellnessToolInput & { creat
   });
 }
 
+export async function getWellnessChallengesWithStats() {
+  const [challenges, participation, completions] = await Promise.all([
+    prisma.wellness_challenges.findMany({
+      orderBy: { start_date: 'asc' },
+    }),
+    prisma.user_challenge_participation.groupBy({
+      by: ['challenge_id'],
+      _count: { user_id: true },
+    }),
+    prisma.user_challenge_participation.groupBy({
+      by: ['challenge_id'],
+      where: { is_completed: true },
+      _count: { user_id: true },
+    }),
+  ]);
+
+  const participantsMap = new Map<string, number>();
+  participation.forEach((row) => {
+    participantsMap.set(row.challenge_id, row._count.user_id);
+  });
+
+  const completionsMap = new Map<string, number>();
+  completions.forEach((row) => {
+    completionsMap.set(row.challenge_id, row._count.user_id);
+  });
+
+  return challenges.map((challenge) => {
+    const participants = participantsMap.get(challenge.id) || 0;
+    const completed = completionsMap.get(challenge.id) || 0;
+    const completionRate = participants
+      ? Math.round((completed / participants) * 100)
+      : 0;
+
+    return {
+      ...challenge,
+      participants,
+      completionRate,
+    };
+  });
+}
+
 export async function getWellnessTools(category?: string) {
   const where = category ? { category } : {};
   return prisma.wellness_tools.findMany({

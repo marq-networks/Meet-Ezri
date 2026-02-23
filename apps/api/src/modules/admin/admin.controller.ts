@@ -7,7 +7,7 @@ import {
   getNudges, createNudge, updateNudge, deleteNudge,
   getNudgeTemplates, createNudgeTemplate, updateNudgeTemplate, deleteNudgeTemplate,
   getEmailTemplates, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate,
-  getPushCampaigns, createPushCampaign,
+  getPushCampaigns, createPushCampaign, updatePushCampaign, deletePushCampaign,
   getSupportTickets, updateSupportTicket,
   getCommunityStats, getCommunityGroups,
   getLiveSessions, getActivityLogs, getSessionRecordings, getErrorLogs, getSessionRecordingTranscript,
@@ -388,6 +388,32 @@ export async function createPushCampaignHandler(request: FastifyRequest, reply: 
   } catch (error) {
     request.log.error(error);
     return reply.code(500).send({ message: 'Failed to create campaign' });
+  }
+}
+
+export async function updatePushCampaignHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const campaign = await updatePushCampaign(request.params.id, request.body);
+    return reply.code(200).send(campaign);
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to update campaign' });
+  }
+}
+
+export async function deletePushCampaignHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    await deletePushCampaign(request.params.id);
+    return reply.code(204).send();
+  } catch (error) {
+    request.log.error(error);
+    return reply.code(500).send({ message: 'Failed to delete campaign' });
   }
 }
 

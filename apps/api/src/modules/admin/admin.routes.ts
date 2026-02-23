@@ -7,7 +7,7 @@ import {
   getNudgesHandler, createNudgeHandler, updateNudgeHandler, deleteNudgeHandler,
   getNudgeTemplatesHandler, createNudgeTemplateHandler, updateNudgeTemplateHandler, deleteNudgeTemplateHandler,
   getEmailTemplatesHandler, createEmailTemplateHandler, updateEmailTemplateHandler, deleteEmailTemplateHandler,
-  getPushCampaignsHandler, createPushCampaignHandler,
+  getPushCampaignsHandler, createPushCampaignHandler, updatePushCampaignHandler, deletePushCampaignHandler,
   getSupportTicketsHandler, updateSupportTicketHandler,
   getCommunityStatsHandler, getCommunityGroupsHandler,
   getLiveSessionsHandler, endLiveSessionHandler, flagSessionForReviewHandler, getActivityLogsHandler, getSessionRecordingsHandler, getErrorLogsHandler, getSessionRecordingTranscriptHandler,
@@ -127,6 +127,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
   // Push Campaigns
   fastify.get('/push-campaigns', { preHandler: [fastify.authenticate] }, getPushCampaignsHandler);
   fastify.post('/push-campaigns', { preHandler: [fastify.authenticate] }, createPushCampaignHandler);
+  fastify.put('/push-campaigns/:id', { preHandler: [fastify.authenticate] }, updatePushCampaignHandler);
+  fastify.delete('/push-campaigns/:id', { preHandler: [fastify.authenticate] }, deletePushCampaignHandler);
 
   // Support Tickets
   fastify.get('/support-tickets', { preHandler: [fastify.authenticate] }, getSupportTicketsHandler);

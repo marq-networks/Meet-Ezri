@@ -3,9 +3,6 @@ import { AdminLayoutNew } from "../../components/AdminLayoutNew";
 import {
   TrendingUp,
   TrendingDown,
-  Eye,
-  MousePointer,
-  CheckCircle,
   Users,
   Bell,
   Target,
@@ -18,8 +15,6 @@ import {
   Area,
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart as RechartsPie,
   Pie,
   Cell,
@@ -30,161 +25,289 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+
+interface NudgeNotification {
+  id: string;
+  title: string;
+  channel: "push" | "email" | "in-app" | "sms" | "other";
+  audience: string;
+  sentCount: number;
+  createdAt: Date;
+  campaignKey: string;
+}
+
+interface PerformanceTrendPoint {
+  date: string;
+  sent: number;
+  opened: number;
+  clicked: number;
+  converted: number;
+}
+
+interface CampaignPerformanceItem {
+  name: string;
+  sent: number;
+  openRate: number;
+  clickRate: number;
+  conversionRate: number;
+}
+
+interface NudgeCampaignAggregate {
+  key: string;
+  name: string;
+  channel: NudgeNotification["channel"];
+  audience: string;
+  recipients: number;
+  createdAt: Date;
+}
 
 export function NudgePerformance() {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
+  const [notifications, setNotifications] = useState<NudgeNotification[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Overall Performance Trend
-  const performanceTrend = [
-    { date: "Week 1", sent: 12450, opened: 9960, clicked: 6225, converted: 4980 },
-    { date: "Week 2", sent: 15230, opened: 12184, clicked: 7615, converted: 6092 },
-    { date: "Week 3", sent: 18900, opened: 15120, clicked: 9450, converted: 7560 },
-    { date: "Week 4", sent: 21340, opened: 17072, clicked: 10670, converted: 8536 },
-  ];
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const data = await api.admin.getManualNotifications();
+        const mapped: NudgeNotification[] = Array.isArray(data)
+          ? data.map((n: any) => {
+              const metadata = n.metadata || {};
+              const channelRaw = metadata.channel as string | undefined;
+              const channel: NudgeNotification["channel"] =
+                channelRaw === "push" ||
+                channelRaw === "email" ||
+                channelRaw === "in-app" ||
+                channelRaw === "sms"
+                  ? channelRaw
+                  : "push";
+              const count =
+                typeof metadata.target_count === "number"
+                  ? metadata.target_count
+                  : 1;
+              const createdAt = new Date(n.sent_at || n.created_at);
+              const audienceRaw = metadata.target_audience as string | undefined;
+              let audience = "Targeted";
+              if (audienceRaw === "all") {
+                audience = "All Users";
+              } else if (audienceRaw) {
+                audience =
+                  audienceRaw.charAt(0).toUpperCase() +
+                  audienceRaw.slice(1) +
+                  " Users";
+              }
+              const campaignKey = [
+                n.title || "",
+                metadata.target_audience || "",
+                metadata.schedule_type || "",
+                createdAt.toISOString().slice(0, 16),
+              ].join("|");
+              return {
+                id: n.id,
+                title: n.title || "Untitled nudge",
+                channel,
+                audience,
+                sentCount: count,
+                createdAt,
+                campaignKey,
+              };
+            })
+          : [];
+        setNotifications(mapped);
+      } catch (error: any) {
+        console.error("Failed to load nudge performance data", error);
+        toast.error(error?.message || "Failed to load nudge performance data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
-  // Campaign Performance Comparison
-  const campaignPerformance = [
-    {
-      name: "Morning Mood Check-in",
-      sent: 8640,
-      opened: 6912,
-      clicked: 4320,
-      converted: 3456,
-      openRate: 80,
-      clickRate: 50,
-      conversionRate: 40,
-    },
-    {
-      name: "Post-Session Follow-up",
-      sent: 2340,
-      opened: 2106,
-      clicked: 1638,
-      converted: 1404,
-      openRate: 90,
-      clickRate: 70,
-      conversionRate: 60,
-    },
-    {
-      name: "Evening Wind-down",
-      sent: 5670,
-      opened: 4536,
-      clicked: 3402,
-      converted: 2835,
-      openRate: 80,
-      clickRate: 60,
-      conversionRate: 50,
-    },
-    {
-      name: "7-Day Re-engagement",
-      sent: 468,
-      opened: 281,
-      clicked: 140,
-      converted: 94,
-      openRate: 60,
-      clickRate: 30,
-      conversionRate: 20,
-    },
-  ];
+  const rangeStart = useMemo(() => {
+    const d = new Date();
+    if (timeRange === "7d") {
+      d.setDate(d.getDate() - 7);
+    } else if (timeRange === "30d") {
+      d.setDate(d.getDate() - 30);
+    } else {
+      d.setDate(d.getDate() - 90);
+    }
+    return d;
+  }, [timeRange]);
 
-  // Channel Performance
-  const channelData = [
-    { name: "Push Notification", value: 45, count: 12450, color: "#3b82f6" },
-    { name: "Email", value: 30, count: 8300, color: "#10b981" },
-    { name: "In-App", value: 20, count: 5533, color: "#f59e0b" },
-    { name: "SMS", value: 5, count: 1383, color: "#ec4899" },
-  ];
+  const filteredNotifications = useMemo(
+    () => notifications.filter((n) => n.createdAt >= rangeStart),
+    [notifications, rangeStart]
+  );
 
-  // Time-of-Day Performance
-  const timePerformance = [
-    { time: "6AM", openRate: 65, clickRate: 35 },
-    { time: "9AM", openRate: 85, clickRate: 55 },
-    { time: "12PM", openRate: 75, clickRate: 45 },
-    { time: "3PM", openRate: 70, clickRate: 40 },
-    { time: "6PM", openRate: 80, clickRate: 50 },
-    { time: "9PM", openRate: 82, clickRate: 52 },
-  ];
+  const campaignAggregates = useMemo(() => {
+    const map = new Map<string, NudgeCampaignAggregate>();
+    filteredNotifications.forEach((n) => {
+      const existing = map.get(n.campaignKey);
+      if (!existing) {
+        map.set(n.campaignKey, {
+          key: n.campaignKey,
+          name: n.title,
+          channel: n.channel,
+          audience: n.audience,
+          recipients: n.sentCount,
+          createdAt: n.createdAt,
+        });
+      } else if (n.sentCount > existing.recipients) {
+        existing.recipients = n.sentCount;
+      }
+    });
+    return Array.from(map.values());
+  }, [filteredNotifications]);
 
-  // A/B Test Results
-  const abTestResults = [
-    {
-      campaign: "Morning Mood Check-in",
-      variantA: { name: "Original", sent: 4320, opened: 3456, clicked: 2160 },
-      variantB: { name: "Emoji Version", sent: 4320, opened: 3802, clicked: 2592 },
-      winner: "B",
-    },
-  ];
+  const totalSent = useMemo(
+    () => campaignAggregates.reduce((sum, c) => sum + c.recipients, 0),
+    [campaignAggregates]
+  );
 
-  // Top Performing Templates
-  const topTemplates = [
-    {
-      id: "1",
-      name: "Session Completion Celebration",
-      sent: 2340,
-      openRate: 90,
-      clickRate: 70,
-      conversionRate: 60,
-    },
-    {
-      id: "2",
-      name: "Evening Wind-down",
-      sent: 5670,
-      openRate: 80,
-      clickRate: 60,
-      conversionRate: 50,
-    },
-    {
-      id: "3",
-      name: "Morning Mood Check-in",
-      sent: 8640,
-      openRate: 80,
-      clickRate: 50,
-      conversionRate: 40,
-    },
-    {
-      id: "4",
-      name: "Streak Milestone",
-      sent: 1035,
-      openRate: 90,
-      clickRate: 80,
-      conversionRate: 70,
-    },
-  ];
+  const totalCampaigns = campaignAggregates.length;
+
+  const distinctCampaigns = useMemo(
+    () => totalCampaigns,
+    [totalCampaigns]
+  );
+
+  const distinctChannels = useMemo(
+    () => new Set(campaignAggregates.map((c) => c.channel)).size,
+    [campaignAggregates]
+  );
+
+  const avgRecipients = totalCampaigns
+    ? totalSent / totalCampaigns
+    : 0;
+
+  const performanceTrend: PerformanceTrendPoint[] = useMemo(() => {
+    const map = new Map<string, PerformanceTrendPoint>();
+    campaignAggregates.forEach((c) => {
+      const key = c.createdAt.toISOString().slice(0, 10);
+      const existing =
+        map.get(key) ||
+        ({
+          date: key,
+          sent: 0,
+          opened: 0,
+          clicked: 0,
+          converted: 0,
+        } as PerformanceTrendPoint);
+      existing.sent += c.recipients;
+      map.set(key, existing);
+    });
+    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [campaignAggregates]);
+
+  const campaignPerformance: CampaignPerformanceItem[] = useMemo(() => {
+    const map = new Map<string, CampaignPerformanceItem>();
+    campaignAggregates.forEach((c) => {
+      const existing =
+        map.get(c.name) ||
+        ({
+          name: c.name,
+          sent: 0,
+          openRate: 0,
+          clickRate: 0,
+          conversionRate: 0,
+        } as CampaignPerformanceItem);
+      existing.sent += c.recipients;
+      map.set(c.name, existing);
+    });
+    return Array.from(map.values()).sort((a, b) => b.sent - a.sent);
+  }, [campaignAggregates]);
+
+  const channelData = useMemo(() => {
+    if (!campaignAggregates.length) return [];
+    const map = new Map<
+      string,
+      { name: string; count: number; color: string }
+    >();
+    const colorMap: Record<string, string> = {
+      push: "#3b82f6",
+      email: "#10b981",
+      "in-app": "#f59e0b",
+      sms: "#ec4899",
+      other: "#6b7280",
+    };
+    campaignAggregates.forEach((c) => {
+      const key = c.channel;
+      const label =
+        key === "in-app"
+          ? "In-App"
+          : key.charAt(0).toUpperCase() + key.slice(1);
+      const existing =
+        map.get(key) || {
+          name: label,
+          count: 0,
+          color: colorMap[key] || "#6b7280",
+        };
+      existing.count += c.recipients;
+      map.set(key, existing);
+    });
+    const total = Array.from(map.values()).reduce(
+      (sum, c) => sum + c.count,
+      0
+    );
+    return Array.from(map.values()).map((c) => ({
+      ...c,
+      value: total ? Math.round((c.count / total) * 100) : 0,
+    }));
+  }, [filteredNotifications]);
+
+  const topTemplates = useMemo(
+    () =>
+      campaignPerformance.slice(0, 4).map((c, index) => ({
+        id: String(index),
+        name: c.name,
+        sent: c.sent,
+        openRate: c.openRate,
+        clickRate: c.clickRate,
+        conversionRate: c.conversionRate,
+      })),
+    [campaignPerformance]
+  );
 
   const stats = [
     {
-      label: "Total Sent",
-      value: "67,920",
-      change: "+18.5%",
+      label: "Total Nudges Sent",
+      value: totalSent.toLocaleString(),
+      change: "N/A",
       trend: "up" as const,
       icon: Bell,
       color: "from-blue-500 to-cyan-600",
     },
     {
-      label: "Avg Open Rate",
-      value: "80.2%",
-      change: "+5.3%",
-      trend: "up" as const,
-      icon: Eye,
-      color: "from-green-500 to-emerald-600",
-    },
-    {
-      label: "Avg Click Rate",
-      value: "51.8%",
-      change: "+3.7%",
-      trend: "up" as const,
-      icon: MousePointer,
-      color: "from-orange-500 to-amber-600",
-    },
-    {
-      label: "Conversion Rate",
-      value: "42.1%",
-      change: "+2.4%",
+      label: "Nudge Campaigns",
+      value: distinctCampaigns.toString(),
+      change: "N/A",
       trend: "up" as const,
       icon: Target,
       color: "from-purple-500 to-pink-600",
+    },
+    {
+      label: "Channels Used",
+      value: distinctChannels.toString(),
+      change: "N/A",
+      trend: "up" as const,
+      icon: Users,
+      color: "from-green-500 to-emerald-600",
+    },
+    {
+      label: "Avg Recipients per Nudge",
+      value: avgRecipients.toFixed(1),
+      change: "N/A",
+      trend: "up" as const,
+      icon: TrendingUp,
+      color: "from-orange-500 to-amber-600",
     },
   ];
 
@@ -227,22 +350,18 @@ export function NudgePerformance() {
             <Button
               className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
               onClick={() => {
-                // Generate CSV data
                 const csvContent = [
                   ["Metric", "Value"],
-                  ["Total Sent", "67,920"],
-                  ["Avg Open Rate", "80.2%"],
-                  ["Avg Click Rate", "51.8%"],
-                  ["Conversion Rate", "42.1%"],
+                  ["Total Nudges Sent", totalSent.toString()],
+                  ["Nudge Campaigns", distinctCampaigns.toString()],
+                  ["Channels Used", distinctChannels.toString()],
+                  ["Avg Recipients per Nudge", avgRecipients.toFixed(1)],
                   [""],
                   ["Campaign Performance"],
-                  ["Campaign", "Sent", "Open Rate", "Click Rate", "Conversion Rate"],
+                  ["Campaign", "Sent"],
                   ...campaignPerformance.map(c => [
                     c.name,
                     c.sent.toString(),
-                    `${c.openRate}%`,
-                    `${c.clickRate}%`,
-                    `${c.conversionRate}%`
                   ])
                 ].map(row => row.join(",")).join("\n");
 
@@ -430,7 +549,7 @@ export function NudgePerformance() {
                       color: "#fff",
                     }}
                   />
-                  <Bar dataKey="openRate" fill="#10b981" radius={[0, 8, 8, 0]} name="Open Rate %" />
+                  <Bar dataKey="sent" fill="#10b981" radius={[0, 8, 8, 0]} name="Sent" />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
@@ -497,9 +616,8 @@ export function NudgePerformance() {
           </motion.div>
         </div>
 
-        {/* Top Performing Templates & Time Performance */}
+        {/* Top Performing Templates */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Templates */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -546,174 +664,7 @@ export function NudgePerformance() {
               </div>
             </Card>
           </motion.div>
-
-          {/* Time-of-Day Performance */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card className="bg-white/10 backdrop-blur-xl border-white/20 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-1">
-                    Time-of-Day Performance
-                  </h3>
-                  <p className="text-sm text-gray-400">Best sending times</p>
-                </div>
-                <TrendingUp className="w-5 h-5 text-cyan-400" />
-              </div>
-
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={timePerformance}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
-                  <XAxis dataKey="time" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#1f2937",
-                      border: "1px solid #374151",
-                      borderRadius: "8px",
-                      color: "#fff",
-                    }}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="openRate"
-                    stroke="#10b981"
-                    strokeWidth={3}
-                    dot={{ fill: "#10b981", r: 6 }}
-                    name="Open Rate %"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="clickRate"
-                    stroke="#f59e0b"
-                    strokeWidth={3}
-                    dot={{ fill: "#f59e0b", r: 6 }}
-                    name="Click Rate %"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </Card>
-          </motion.div>
         </div>
-
-        {/* A/B Test Results */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-white mb-1">
-                  A/B Test Results
-                </h3>
-                <p className="text-sm text-gray-400">Active experiment outcomes</p>
-              </div>
-              <CheckCircle className="w-5 h-5 text-green-400" />
-            </div>
-
-            {abTestResults.map((test) => {
-              const variantAOpenRate = (
-                (test.variantA.opened / test.variantA.sent) *
-                100
-              ).toFixed(1);
-              const variantBOpenRate = (
-                (test.variantB.opened / test.variantB.sent) *
-                100
-              ).toFixed(1);
-              const variantAClickRate = (
-                (test.variantA.clicked / test.variantA.sent) *
-                100
-              ).toFixed(1);
-              const variantBClickRate = (
-                (test.variantB.clicked / test.variantB.sent) *
-                100
-              ).toFixed(1);
-
-              return (
-                <div key={test.campaign}>
-                  <h4 className="text-lg font-bold text-white mb-4">
-                    {test.campaign}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Variant A */}
-                    <div className="bg-white/5 rounded-xl p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h5 className="text-white font-medium">
-                          Variant A: {test.variantA.name}
-                        </h5>
-                        {test.winner === "A" && (
-                          <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
-                            Winner
-                          </span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <p className="text-xs text-gray-500">Sent</p>
-                          <p className="text-lg font-bold text-white">
-                            {test.variantA.sent.toLocaleString()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Open Rate</p>
-                          <p className="text-lg font-bold text-white">
-                            {variantAOpenRate}%
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Click Rate</p>
-                          <p className="text-lg font-bold text-white">
-                            {variantAClickRate}%
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Variant B */}
-                    <div className="bg-white/5 rounded-xl p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h5 className="text-white font-medium">
-                          Variant B: {test.variantB.name}
-                        </h5>
-                        {test.winner === "B" && (
-                          <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
-                            Winner
-                          </span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <p className="text-xs text-gray-500">Sent</p>
-                          <p className="text-lg font-bold text-white">
-                            {test.variantB.sent.toLocaleString()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Open Rate</p>
-                          <p className="text-lg font-bold text-white">
-                            {variantBOpenRate}%
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Click Rate</p>
-                          <p className="text-lg font-bold text-white">
-                            {variantBClickRate}%
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </Card>
-        </motion.div>
       </div>
     </AdminLayoutNew>
   );
