@@ -1,6 +1,6 @@
 export const STRIPE_PRICE_IDS = {
   core: 'price_1SzbZVBt6JG9FijPPF89RTfX',
-  pro: 'price_1SzbZWBt6JG9FijPLyyUMEjh',
+  pro: 'price_1T45gWBt6JG9FijPOV0hXeF3',
 } as const;
 
 export const PLAN_LIMITS = {
