@@ -30,7 +30,7 @@ const PLANS = [
   {
     key: 'pro',
     name: 'MeetEzri Pro Plan',
-    amount: 5900, // $59.00
+    amount: 4900, // $59.00
     currency: 'usd',
     interval: 'month' as Stripe.Price.Recurring.Interval,
   }
