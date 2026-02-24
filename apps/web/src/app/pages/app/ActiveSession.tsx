@@ -170,6 +170,8 @@ export function ActiveSession() {
       if (transcriptText.trim()) {
         const trimmed = transcriptText.trim();
         const lowerTrimmed = trimmed.toLowerCase();
+        
+        console.log("Heard:", lowerTrimmed, "Current Step:", scriptStepRef.current);
 
         setTranscript(prev => {
           const lastEntry = prev[prev.length - 1];
@@ -196,18 +198,52 @@ export function ActiveSession() {
         let assistantText = `I heard you say: "${trimmed}"`;
         const currentStep = scriptStepRef.current;
 
-        if (currentStep === 0 && (lowerTrimmed.includes("hi") || lowerTrimmed.includes("hello") || lowerTrimmed.includes("hey"))) {
-          assistantText = "Hey.";
-          scriptStepRef.current = 1;
-        } else if (currentStep === 1 && (lowerTrimmed.includes("how are you") || lowerTrimmed.includes("how's it going"))) {
-          assistantText = "I’m here. And I’m glad you are too. How’s your day been so far?";
-          scriptStepRef.current = 2;
-        } else if (currentStep === 2 && (lowerTrimmed.includes("okay") || lowerTrimmed.includes("ok") || lowerTrimmed.includes("fine") || lowerTrimmed.includes("good"))) {
-          assistantText = "Just okay? That sounds like there’s a story behind it.";
-          scriptStepRef.current = 3;
-        } else if (currentStep === 3 && (lowerTrimmed.includes("maybe") || lowerTrimmed.includes("little") || lowerTrimmed.includes("story"))) {
-          assistantText = "I’m listening. Start wherever feels easiest.";
-          scriptStepRef.current = 4;
+        // "Draining Day" Script
+        if (currentStep === 0) {
+            if (lowerTrimmed.includes("hi") || lowerTrimmed.includes("hello") || lowerTrimmed.includes("hey")) {
+                assistantText = "Hey. How’s today treating you?";
+                scriptStepRef.current = 1;
+            }
+        } else if (currentStep === 1) {
+            if (lowerTrimmed.includes("long") || lowerTrimmed.includes("busy") || lowerTrimmed.includes("draining") || lowerTrimmed.includes("tough") || lowerTrimmed.includes("hard")) {
+                assistantText = "Long as in busy… or long as in draining?";
+                scriptStepRef.current = 2;
+            }
+        } else if (currentStep === 2) {
+            if (lowerTrimmed.includes("draining") || lowerTrimmed.includes("exhausting") || lowerTrimmed.includes("tired") || lowerTrimmed.includes("both")) {
+                assistantText = "That kind of day sticks to you. What took most of your energy?";
+                scriptStepRef.current = 3;
+            }
+        } else if (currentStep === 3) {
+            if (lowerTrimmed.includes("work") || lowerTrimmed.includes("meeting") || lowerTrimmed.includes("job") || lowerTrimmed.includes("boss") || lowerTrimmed.includes("colleague") || lowerTrimmed.includes("email")) {
+                assistantText = "Too many conversations and not enough breathing space?";
+                scriptStepRef.current = 4;
+            }
+        } else if (currentStep === 4) {
+            if (lowerTrimmed.includes("exactly") || lowerTrimmed.includes("yes") || lowerTrimmed.includes("yeah") || lowerTrimmed.includes("right") || lowerTrimmed.includes("totally") || lowerTrimmed.includes("definitely")) {
+                assistantText = "Yeah. That builds up. Did anything today feel even slightly good?";
+                scriptStepRef.current = 5;
+            }
+        } else if (currentStep === 5) {
+            if (lowerTrimmed.includes("coffee") || lowerTrimmed.includes("friend") || lowerTrimmed.includes("lunch") || lowerTrimmed.includes("break") || lowerTrimmed.includes("walk") || lowerTrimmed.includes("tea")) {
+                assistantText = "There it is. What about it felt different from the rest of the day?";
+                scriptStepRef.current = 6;
+            }
+        } else if (currentStep === 6) {
+            if (lowerTrimmed.includes("calm") || lowerTrimmed.includes("peace") || lowerTrimmed.includes("quiet") || lowerTrimmed.includes("relax") || lowerTrimmed.includes("pressure") || lowerTrimmed.includes("slow")) {
+                assistantText = "So calm exists in your day. It just gets crowded out. If tonight had even 20 minutes of that same calm… what would you do?";
+                scriptStepRef.current = 7;
+            }
+        } else if (currentStep === 7) {
+            if (lowerTrimmed.includes("sit") || lowerTrimmed.includes("quiet") || lowerTrimmed.includes("phone") || lowerTrimmed.includes("nothing") || lowerTrimmed.includes("read") || lowerTrimmed.includes("sleep") || lowerTrimmed.includes("rest")) {
+                assistantText = "That sounds like your nervous system asking for a reset. You don’t need to solve your whole life tonight. Just protect those 20 minutes.";
+                scriptStepRef.current = 8;
+            }
+        } else if (currentStep === 8) {
+            if (lowerTrimmed.includes("need") || lowerTrimmed.includes("yeah") || lowerTrimmed.includes("yes") || lowerTrimmed.includes("good") || lowerTrimmed.includes("okay") || lowerTrimmed.includes("right")) {
+                assistantText = "Good. Then let’s make that the goal for today. Nothing dramatic. Just quiet.";
+                scriptStepRef.current = 9; // End of script
+            }
         }
 
         speechTimeoutRef.current = window.setTimeout(() => {
@@ -557,6 +593,10 @@ export function ActiveSession() {
               variant="ghost"
               size="sm"
               className="text-white hover:bg-white/10"
+              onClick={() => {
+                const step = scriptStepRef.current;
+                toast.info(`Current Script Step: ${step}`);
+              }}
             >
               <Settings className="w-4 h-4" />
             </Button>
