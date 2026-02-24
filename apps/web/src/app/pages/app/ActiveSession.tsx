@@ -70,6 +70,7 @@ export function ActiveSession() {
   const speechTimeoutRef = useRef<number | null>(null);
   const isMutedRef = useRef(isMuted);
   const isSessionPausedRef = useRef(false);
+  const scriptStepRef = useRef(0);
 
   const speakAvatar = (text: string) => {
     if (isSoundOff) return;
@@ -168,6 +169,7 @@ export function ActiveSession() {
       
       if (transcriptText.trim()) {
         const trimmed = transcriptText.trim();
+        const lowerTrimmed = trimmed.toLowerCase();
 
         setTranscript(prev => {
           const lastEntry = prev[prev.length - 1];
@@ -189,7 +191,25 @@ export function ActiveSession() {
         if (speechTimeoutRef.current) {
           window.clearTimeout(speechTimeoutRef.current);
         }
-        const assistantText = `I heard you say: "${trimmed}"`;
+        
+        // Script logic
+        let assistantText = `I heard you say: "${trimmed}"`;
+        const currentStep = scriptStepRef.current;
+
+        if (currentStep === 0 && (lowerTrimmed.includes("hi") || lowerTrimmed.includes("hello") || lowerTrimmed.includes("hey"))) {
+          assistantText = "Hey.";
+          scriptStepRef.current = 1;
+        } else if (currentStep === 1 && (lowerTrimmed.includes("how are you") || lowerTrimmed.includes("how's it going"))) {
+          assistantText = "I’m here. And I’m glad you are too. How’s your day been so far?";
+          scriptStepRef.current = 2;
+        } else if (currentStep === 2 && (lowerTrimmed.includes("okay") || lowerTrimmed.includes("ok") || lowerTrimmed.includes("fine") || lowerTrimmed.includes("good"))) {
+          assistantText = "Just okay? That sounds like there’s a story behind it.";
+          scriptStepRef.current = 3;
+        } else if (currentStep === 3 && (lowerTrimmed.includes("maybe") || lowerTrimmed.includes("little") || lowerTrimmed.includes("story"))) {
+          assistantText = "I’m listening. Start wherever feels easiest.";
+          scriptStepRef.current = 4;
+        }
+
         speechTimeoutRef.current = window.setTimeout(() => {
           setTranscript(prev => [
             ...prev,
