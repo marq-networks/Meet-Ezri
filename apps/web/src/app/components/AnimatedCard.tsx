@@ -52,9 +52,9 @@ export function AnimatedCard({ children, className = "", delay = 0 }: AnimatedCa
         transformStyle: "preserve-3d",
         transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`
       }}
-      className={`transition-all duration-200 ${className}`}
+      className={`transition-all duration-200 h-full ${className}`}
     >
-      <div style={{ transform: "translateZ(20px)" }}>
+      <div style={{ transform: "translateZ(20px)" }} className="h-full">
         {children}
       </div>
     </motion.div>

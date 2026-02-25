@@ -105,6 +105,17 @@ export const api = {
     return handleBlobResponse(res, 'Failed to export user data');
   },
 
+  async checkUserExists(email: string, fullName?: string) {
+    const res = await fetch(`${API_URL}/users/check`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, full_name: fullName }),
+    });
+    return handleResponse(res, 'Failed to check user existence');
+  },
+
   async sendEmail(to: string, subject: string, html: string, text?: string) {
     const headers = await getHeaders();
     const res = await fetch(`${API_URL}/email/send`, {

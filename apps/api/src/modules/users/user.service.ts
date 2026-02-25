@@ -95,6 +95,28 @@ export async function getUserEmail(userId: string): Promise<string | null> {
   return user?.email || null;
 }
 
+export async function checkUserExists(email: string, fullName?: string) {
+  const existingUser = await prisma.users.findFirst({
+    where: { email: email }
+  });
+
+  if (existingUser) {
+    return { exists: true, reason: 'email' };
+  }
+
+  if (fullName) {
+    const existingProfile = await prisma.profiles.findFirst({
+      where: { full_name: fullName }
+    });
+    
+    if (existingProfile) {
+      return { exists: true, reason: 'name' };
+    }
+  }
+
+  return { exists: false };
+}
+
 export async function createProfile(userId: string, email: string, fullName?: string) {
   const profile = await prisma.profiles.create({
     data: {

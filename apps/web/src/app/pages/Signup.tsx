@@ -9,6 +9,7 @@ import { motion } from "motion/react";
 import { FloatingElement } from "../components/FloatingElement";
 import { PublicNav } from "../components/PublicNav";
 import { supabase } from "@/lib/supabase";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -57,6 +58,20 @@ export function Signup() {
 
     setIsLoading(true);
     try {
+      // Check if user exists before attempting signup
+      const checkResult = await api.checkUserExists(email, `${firstName} ${lastName}`);
+      
+      if (checkResult.exists) {
+        if (checkResult.reason === 'name') {
+          toast.error("An account with this name already exists. Please use a different name or log in.");
+        } else {
+          toast.error("Account already exists. Please log in instead.");
+        }
+        setIsLoading(false);
+        // Optional: navigate("/login");
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,

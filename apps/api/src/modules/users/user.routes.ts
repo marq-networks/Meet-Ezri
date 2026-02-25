@@ -9,9 +9,15 @@ import {
   initProfileHandler,
   getAllUsersHandler,
   getUserProfileAdminHandler,
+  checkUserExistsHandler,
 } from './user.controller';
+import { checkUserSchema } from './user.schema';
 
 export async function userRoutes(fastify: FastifyInstance) {
+  // Public Routes
+  fastify.post('/check', { schema: { body: checkUserSchema } }, checkUserExistsHandler);
+
+
   // Admin Routes
   fastify.get(
     '/admin/users',

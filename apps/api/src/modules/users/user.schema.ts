@@ -51,3 +51,11 @@ export const updateProfileSchema = z.object({
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+export const checkUserSchema = z.object({
+  email: z.string().email(),
+  full_name: z.string().optional(),
+});
+
+export type CheckUserInput = z.infer<typeof checkUserSchema>;
+

@@ -1,11 +1,20 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { onboardingSchema, updateProfileSchema } from './user.schema';
+import { onboardingSchema, updateProfileSchema, checkUserSchema, CheckUserInput } from './user.schema';
 import * as userService from './user.service';
 
 interface UserPayload {
   sub: string;
   email?: string;
   role?: string;
+}
+
+export async function checkUserExistsHandler(
+  request: FastifyRequest<{ Body: CheckUserInput }>,
+  reply: FastifyReply
+) {
+  const { email, full_name } = request.body;
+  const result = await userService.checkUserExists(email, full_name);
+  return result;
 }
 
 export async function getAllUsersHandler(
