@@ -37,6 +37,7 @@ export const sessionResponseSchema = z.object({
   ended_at: z.string().datetime().nullable(),
   duration_minutes: z.number().nullable(),
   config: z.any().nullable(),
+  is_favorite: z.boolean().default(false),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 });

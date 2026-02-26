@@ -29,6 +29,9 @@ export const habitResponseSchema = z.object({
   frequency: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
   icon: z.string().nullable().optional(),
+  habit_logs: z.array(z.object({
+    completed_at: z.union([z.string(), z.date()]),
+  })).optional(),
   created_at: z.union([z.string(), z.date()]),
   is_archived: z.boolean().nullable().optional(),
 });

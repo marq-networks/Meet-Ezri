@@ -23,6 +23,7 @@ export const journalResponseSchema = z.object({
   content: z.string().nullable(),
   mood_tags: z.array(z.string()),
   is_private: z.boolean().nullable(),
+  is_favorite: z.boolean().default(false),
   location: z.string().nullable(),
   created_at: z.date(),
   updated_at: z.date(),

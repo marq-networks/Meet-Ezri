@@ -37,6 +37,7 @@ export const wellnessToolResponseSchema = z.object({
   difficulty: z.string().nullable(),
   status: z.string().nullable(),
   icon: z.string().nullable(),
+  is_favorite: z.boolean().default(false),
   created_at: z.date(),
   updated_at: z.date(),
   profiles: z

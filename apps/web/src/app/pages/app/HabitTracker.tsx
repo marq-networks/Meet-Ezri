@@ -66,10 +66,9 @@ export function HabitTracker() {
     const logs = backendHabit.habit_logs || [];
     const sortedLogs = logs
       .map((log: any) => {
-        // Parse UTC date string to Local Date (midnight) to ensure consistency
-        const dateStr = log.completed_at.substring(0, 10);
-        const [y, m, d] = dateStr.split('-').map(Number);
-        return new Date(y, m - 1, d);
+        // Parse UTC date string or Date object to Local Date (midnight)
+        const dateVal = new Date(log.completed_at);
+        return new Date(dateVal.getFullYear(), dateVal.getMonth(), dateVal.getDate());
       })
       .sort((a: Date, b: Date) => b.getTime() - a.getTime());
 
