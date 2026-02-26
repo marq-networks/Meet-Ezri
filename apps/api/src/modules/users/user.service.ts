@@ -52,7 +52,7 @@ export async function getAllUsers() {
         orderBy: { created_at: 'desc' },
         take: 1
       },
-      appointments_user: {
+      appointments_appointments_user_idToprofiles: {
         where: { status: 'completed' }
       }
     }
@@ -61,7 +61,7 @@ export async function getAllUsers() {
   return users.map((user: typeof users[number]) => {
     // Calculate basic stats or risk level mock
     const lastActive = user.updated_at || user.created_at;
-    const sessionCount = user.appointments_user.length;
+    const sessionCount = user.appointments_appointments_user_idToprofiles.length;
     
     // Simple risk logic (mock)
     let riskLevel = 'low';
@@ -158,7 +158,7 @@ export async function getProfile(userId: string) {
           orderBy: { created_at: 'desc' },
           take: 30,
         },
-        appointments_user: {
+        appointments_appointments_user_idToprofiles: {
           where: {
             status: 'scheduled',
             start_time: { gt: new Date() }
@@ -193,7 +193,7 @@ export async function getProfile(userId: string) {
   if (!profile) return null;
 
   const streakDays = calculateStreak(profile.mood_entries);
-  const upcomingSessions = profile.appointments_user.length;
+  const upcomingSessions = profile.appointments_appointments_user_idToprofiles.length;
   const primaryContact = profile.emergency_contacts?.[0];
 
   const subscription = profile.subscriptions?.[0];

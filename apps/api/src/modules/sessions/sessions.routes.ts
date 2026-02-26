@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { createSessionHandler, getSessionsHandler, getSessionHandler, endSessionHandler, createMessageHandler, getSessionTranscriptHandler, scheduleSessionHandler, getUserSessionsHandler } from './sessions.controller';
+import { createSessionHandler, getSessionsHandler, getSessionHandler, endSessionHandler, createMessageHandler, getSessionTranscriptHandler, scheduleSessionHandler, getUserSessionsHandler, toggleSessionFavoriteHandler } from './sessions.controller';
 import { createSessionSchema, endSessionSchema, createMessageSchema } from './sessions.schema';
 
 export async function sessionRoutes(app: FastifyInstance) {
@@ -69,6 +69,14 @@ export async function sessionRoutes(app: FastifyInstance) {
       preHandler: [app.authenticate],
     },
     createMessageHandler
+  );
+
+  app.post(
+    '/:id/favorite',
+    {
+      preHandler: [app.authenticate],
+    },
+    toggleSessionFavoriteHandler
   );
 
   app.get(

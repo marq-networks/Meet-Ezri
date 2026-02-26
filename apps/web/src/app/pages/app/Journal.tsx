@@ -36,7 +36,7 @@ interface JournalEntry {
   date?: string;
   preview?: string;
   mood?: string;
-  favorite?: boolean; // TODO: Add favorite field to backend or handle it via metadata
+  favorite?: boolean;
 }
 
 export function Journal() {
@@ -115,7 +115,7 @@ export function Journal() {
           }),
           preview: entry.content ? entry.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...' : '',
           mood: moodDisplay,
-          favorite: false // Default to false as backend doesn't support it yet
+          favorite: entry.is_favorite || false
         };
       });
 
@@ -124,6 +124,18 @@ export function Journal() {
       console.error("Failed to fetch journal entries", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleToggleFavorite = async (entryId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await api.journal.toggleFavorite(entryId);
+      setEntries(prev => prev.map(entry => 
+        entry.id === entryId ? { ...entry, favorite: !entry.favorite } : entry
+      ));
+    } catch (error) {
+      console.error("Failed to toggle favorite", error);
     }
   };
 
@@ -233,6 +245,9 @@ export function Journal() {
       if (filterDateRange === 'month' && diffDays > 30) return false;
       if (filterDateRange === 'year' && diffDays > 365) return false;
     }
+
+    // Favorites filter
+    if (filterFavorites && !entry.favorite) return false;
 
     return true;
   });
@@ -569,14 +584,14 @@ export function Journal() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {entry.favorite && (
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
-                          <Heart className="w-5 h-5 text-red-500 fill-red-500" />
-                        </motion.div>
-                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => handleToggleFavorite(entry.id, e)}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+                      >
+                         <Heart className={`w-5 h-5 ${entry.favorite ? "text-red-500 fill-red-500" : "text-gray-400"}`} />
+                      </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}

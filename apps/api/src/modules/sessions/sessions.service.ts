@@ -100,26 +100,23 @@ export async function endSession(userId: string, sessionId: string, durationSeco
         let newPurCredits = purCredits;
 
         if (subCredits >= minutesUsed) {
-          // All from subscription credits
           newSubCredits = subCredits - minutesUsed;
         } else {
-          // Exhaust subscription credits, take rest from purchased
-          const remainder = minutesUsed - Math.max(0, subCredits);
-          newSubCredits = Math.max(0, subCredits - minutesUsed); // Should be 0 if subCredits < minutesUsed
-          newPurCredits = purCredits - remainder;
+          newSubCredits = 0;
+          newPurCredits = purCredits - (minutesUsed - subCredits);
         }
 
         await prisma.profiles.update({
           where: { id: userId },
           data: {
             credits: newSubCredits,
-            purchased_credits: newPurCredits
+            purchased_credits: Math.max(0, newPurCredits)
           }
         });
       }
     } catch (error) {
-      console.error('Failed to deduct credits:', error);
-      // Continue to end session even if credit deduction fails
+      console.error('Error deducting credits:', error);
+      // Don't fail the session end if credit deduction fails, but log it
     }
   }
 
@@ -142,10 +139,23 @@ export async function endSession(userId: string, sessionId: string, durationSeco
   return prisma.app_sessions.update({
     where: { id: sessionId },
     data: {
-      status: 'completed',
       ended_at: new Date(),
       duration_minutes: minutesUsed,
       recording_url: recordingUrl,
+      status: 'completed'
+    },
+  });
+}
+
+export async function toggleSessionFavorite(userId: string, sessionId: string) {
+  const session = await getSessionById(userId, sessionId);
+  if (!session) {
+    throw new Error('Session not found');
+  }
+  return prisma.app_sessions.update({
+    where: { id: sessionId },
+    data: {
+      is_favorite: !session.is_favorite,
     },
   });
 }
@@ -200,5 +210,16 @@ export async function getSessionTranscript(userId: string, sessionId: string) {
   return prisma.session_messages.findMany({
     where: { session_id: sessionId },
     orderBy: { created_at: 'asc' },
+  });
+}
+
+export async function getUserSessions(userId: string) {
+  return prisma.app_sessions.findMany({
+    where: {
+      user_id: userId,
+    },
+    orderBy: {
+      created_at: 'desc',
+    },
   });
 }

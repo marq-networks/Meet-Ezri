@@ -65,7 +65,12 @@ export function HabitTracker() {
   const processHabitData = (backendHabit: any): Habit => {
     const logs = backendHabit.habit_logs || [];
     const sortedLogs = logs
-      .map((log: any) => new Date(log.completed_at))
+      .map((log: any) => {
+        // Parse UTC date string to Local Date (midnight) to ensure consistency
+        const dateStr = log.completed_at.substring(0, 10);
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      })
       .sort((a: Date, b: Date) => b.getTime() - a.getTime());
 
     const today = new Date();
@@ -76,10 +81,11 @@ export function HabitTracker() {
     let bestStreak = 0;
     
     // Simple daily streak calculation
-    // This is a simplified version. Robust streak calculation is complex.
-    // We assume one log per day matters.
     const uniqueDates = Array.from<string>(new Set(sortedLogs.map((d: Date) => format(d, 'yyyy-MM-dd'))))
-      .map((d: string) => new Date(d))
+      .map((d: string) => {
+        const [y, m, day] = d.split('-').map(Number);
+        return new Date(y, m - 1, day);
+      })
       .sort((a: Date, b: Date) => b.getTime() - a.getTime());
 
     if (uniqueDates.length > 0) {
@@ -259,6 +265,44 @@ export function HabitTracker() {
       fetchHabits(); // Refresh to update streaks and logs
     } catch (error) {
       console.error("Failed to toggle habit", error);
+    }
+  };
+
+  const toggleHabitForDate = async (habitId: string, index: number) => {
+    const habitIndex = habits.findIndex(h => h.id === habitId);
+    if (habitIndex === -1) return;
+    
+    const habit = habits[habitIndex];
+    const isCompleted = habit.weekProgress[index];
+
+    const today = new Date();
+    const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
+    const targetDate = new Date(startOfCurrentWeek);
+    targetDate.setDate(targetDate.getDate() + index);
+
+    // Prevent toggling future dates
+    if (targetDate > today) return;
+
+    // Optimistic update
+    const newHabits = [...habits];
+    newHabits[habitIndex] = {
+      ...habit,
+      weekProgress: habit.weekProgress.map((p, i) => i === index ? !p : p)
+    };
+    setHabits(newHabits);
+
+    try {
+      if (isCompleted) {
+        await api.habits.uncomplete(habitId, format(targetDate, 'yyyy-MM-dd'));
+      } else {
+        await api.habits.complete(habitId, format(targetDate, 'yyyy-MM-dd'));
+      }
+      fetchHabits();
+    } catch (error) {
+      console.error("Failed to toggle habit for date", error);
+      toast.error("Failed to update habit status");
+      // Revert optimistic update
+      setHabits(habits);
     }
   };
 
@@ -459,21 +503,35 @@ export function HabitTracker() {
 
                     {/* Week Progress */}
                     <div className="hidden sm:flex items-center gap-1">
-                      {habit.weekProgress.map((completed, i) => (
-                        <div
+                      {habit.weekProgress.map((completed, i) => {
+                        const today = new Date();
+                        const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
+                        const date = new Date(startOfCurrentWeek);
+                        date.setDate(date.getDate() + i);
+                        const isFuture = date > today;
+
+                        return (
+                        <motion.button
                           key={i}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          whileHover={!isFuture ? { scale: 1.1 } : {}}
+                          whileTap={!isFuture ? { scale: 0.9 } : {}}
+                          onClick={() => !isFuture && toggleHabitForDate(habit.id, i)}
+                          disabled={isFuture}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                             completed
                               ? `bg-gradient-to-br ${habit.color} text-white`
-                              : "bg-gray-100"
+                              : isFuture 
+                                ? "bg-gray-50 text-gray-300 cursor-not-allowed"
+                                : "bg-gray-100 hover:bg-gray-200 text-gray-500"
                           }`}
-                          title={weekDays[i]}
+                          title={`${weekDays[i]} - ${format(date, 'MMM d')}`}
                         >
                           <span className="text-xs font-medium">
-                            {completed ? "✓" : weekDays[i][0]}
+                            {completed ? <Check className="w-4 h-4" /> : weekDays[i][0]}
                           </span>
-                        </div>
-                      ))}
+                        </motion.button>
+                        );
+                      })}
                     </div>
 
                     {/* Actions */}

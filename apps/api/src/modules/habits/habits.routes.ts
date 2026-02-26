@@ -8,7 +8,7 @@ import {
   removeHabitCompletionHandler,
   getUserHabitsHandler
 } from "./habits.controller";
-import { createHabitSchema, updateHabitSchema, logHabitSchema } from "./habits.schema";
+import { createHabitSchema, updateHabitSchema, logHabitSchema, habitResponseSchema } from "./habits.schema";
 
 export async function habitsRoutes(server: FastifyInstance) {
   server.get(
@@ -26,7 +26,7 @@ export async function habitsRoutes(server: FastifyInstance) {
       schema: {
         body: createHabitSchema,
         response: {
-          201: createHabitSchema,
+          201: habitResponseSchema,
         },
       },
     },
@@ -48,7 +48,7 @@ export async function habitsRoutes(server: FastifyInstance) {
       schema: {
         body: updateHabitSchema,
         response: {
-          200: updateHabitSchema,
+          200: habitResponseSchema,
         },
       },
     },

@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createSession, getSessions, getSessionById, endSession, createMessage, getSessionTranscript } from './sessions.service';
+import { createSession, getSessions, getSessionById, endSession, createMessage, getSessionTranscript, toggleSessionFavorite } from './sessions.service';
 import { CreateSessionInput, EndSessionInput, CreateMessageInput } from './sessions.schema';
 
 interface UserPayload {
@@ -52,6 +52,22 @@ export async function createMessageHandler(
     const user = request.user as UserPayload;
     const message = await createMessage(user.sub, request.params.id, request.body);
     return reply.code(201).send(message);
+  } catch (error: any) {
+    if (error.message === 'Session not found') {
+      return reply.code(404).send({ message: 'Session not found' });
+    }
+    throw error;
+  }
+}
+
+export async function toggleSessionFavoriteHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const user = request.user as UserPayload;
+    const session = await toggleSessionFavorite(user.sub, request.params.id);
+    return reply.send(session);
   } catch (error: any) {
     if (error.message === 'Session not found') {
       return reply.code(404).send({ message: 'Session not found' });

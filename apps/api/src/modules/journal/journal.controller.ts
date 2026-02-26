@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createJournalEntry, deleteJournalEntry, getJournalEntries, getJournalEntryById, updateJournalEntry } from './journal.service';
+import { createJournalEntry, deleteJournalEntry, getJournalEntries, getJournalEntryById, updateJournalEntry, toggleJournalFavorite } from './journal.service';
 import { CreateJournalInput, UpdateJournalInput } from './journal.schema';
 
 interface UserPayload {
@@ -50,6 +50,21 @@ export async function updateJournalHandler(
   
   try {
     const journal = await updateJournalEntry(user.sub, id, request.body);
+    return reply.send(journal);
+  } catch (error) {
+    return reply.code(404).send({ message: 'Journal entry not found' });
+  }
+}
+
+export async function toggleJournalFavoriteHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  const user = request.user as UserPayload;
+  const { id } = request.params;
+  
+  try {
+    const journal = await toggleJournalFavorite(user.sub, id);
     return reply.send(journal);
   } catch (error) {
     return reply.code(404).send({ message: 'Journal entry not found' });

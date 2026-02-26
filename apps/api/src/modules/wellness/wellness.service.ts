@@ -65,9 +65,9 @@ export async function getWellnessChallengesWithStats() {
   });
 }
 
-export async function getWellnessTools(category?: string) {
+export async function getWellnessTools(userId: string, category?: string) {
   const where = category ? { category } : {};
-  return prisma.wellness_tools.findMany({
+  const tools = await prisma.wellness_tools.findMany({
     where,
     orderBy: { created_at: 'desc' },
     include: {
@@ -75,15 +75,77 @@ export async function getWellnessTools(category?: string) {
         select: {
           full_name: true,
         }
+      },
+      favorite_wellness_tools: {
+        where: { user_id: userId },
+        select: { created_at: true }
       }
     }
   });
+
+  return tools.map(tool => ({
+    ...tool,
+    is_favorite: tool.favorite_wellness_tools.length > 0,
+    favorite_wellness_tools: undefined
+  }));
 }
 
-export async function getWellnessToolById(id: string) {
-  return prisma.wellness_tools.findUnique({
-    where: { id },
+export async function toggleWellnessToolFavorite(userId: string, toolId: string) {
+  const tool = await prisma.wellness_tools.findUnique({
+    where: { id: toolId }
   });
+
+  if (!tool) {
+    throw new Error('Wellness tool not found');
+  }
+
+  const existing = await prisma.favorite_wellness_tools.findUnique({
+    where: {
+      user_id_tool_id: {
+        user_id: userId,
+        tool_id: toolId
+      }
+    }
+  });
+
+  if (existing) {
+    await prisma.favorite_wellness_tools.delete({
+      where: {
+        user_id_tool_id: {
+          user_id: userId,
+          tool_id: toolId
+        }
+      }
+    });
+    return { is_favorite: false };
+  } else {
+    await prisma.favorite_wellness_tools.create({
+      data: {
+        user_id: userId,
+        tool_id: toolId
+      }
+    });
+    return { is_favorite: true };
+  }
+}
+
+export async function getWellnessToolById(userId: string, id: string) {
+  const tool = await prisma.wellness_tools.findUnique({
+    where: { id },
+    include: {
+      favorite_wellness_tools: {
+        where: { user_id: userId }
+      }
+    }
+  });
+
+  if (!tool) return null;
+
+  return {
+    ...tool,
+    is_favorite: tool.favorite_wellness_tools.length > 0,
+    favorite_wellness_tools: undefined
+  };
 }
 
 export async function updateWellnessTool(id: string, data: UpdateWellnessToolInput) {

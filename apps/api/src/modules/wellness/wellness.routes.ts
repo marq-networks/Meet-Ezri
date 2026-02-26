@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { createWellnessToolSchema, updateWellnessToolSchema, wellnessToolResponseSchema, trackProgressSchema, progressResponseSchema, wellnessChallengeResponseSchema } from './wellness.schema';
-import { createWellnessToolHandler, deleteWellnessToolHandler, getWellnessToolByIdHandler, getWellnessToolsHandler, updateWellnessToolHandler, trackWellnessProgressHandler, getUserWellnessProgressHandler, startWellnessSessionHandler, completeWellnessSessionHandler, getWellnessStatsHandler, getWellnessChallengesHandler } from './wellness.controller';
+import { createWellnessToolHandler, deleteWellnessToolHandler, getWellnessToolByIdHandler, getWellnessToolsHandler, updateWellnessToolHandler, trackWellnessProgressHandler, getUserWellnessProgressHandler, startWellnessSessionHandler, completeWellnessSessionHandler, getWellnessStatsHandler, getWellnessChallengesHandler, toggleWellnessToolFavoriteHandler } from './wellness.controller';
 import { z } from 'zod';
 
 export async function wellnessRoutes(app: FastifyInstance) {
@@ -34,6 +34,24 @@ export async function wellnessRoutes(app: FastifyInstance) {
       preHandler: [app.authenticate],
     },
     getWellnessToolByIdHandler
+  );
+
+  app.post(
+    '/:id/favorite',
+    {
+      schema: {
+        params: z.object({
+          id: z.string(),
+        }),
+        response: {
+          200: z.object({
+            is_favorite: z.boolean(),
+          }),
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    toggleWellnessToolFavoriteHandler
   );
 
   // Admin only

@@ -92,7 +92,7 @@ export function WellnessTools() {
           difficulty: t.difficulty || "Beginner",
           icon: iconMap[t.icon || "Sparkles"] || Sparkles,
           color: colorMap[t.category] || "from-indigo-400 to-purple-500",
-          favorite: false
+          favorite: t.is_favorite || false
         }));
 
         setExercises(mappedTools);
@@ -147,6 +147,18 @@ export function WellnessTools() {
       }
     } catch (error) {
       console.error("Failed to start wellness session:", error);
+    }
+  };
+
+  const handleToggleFavorite = async (exerciseId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      await api.wellness.toggleFavorite(exerciseId);
+      setExercises(prev => prev.map(ex => 
+        ex.id === exerciseId ? { ...ex, favorite: !ex.favorite } : ex
+      ));
+    } catch (error) {
+      console.error("Failed to toggle wellness favorite:", error);
     }
   };
 
@@ -417,14 +429,14 @@ export function WellnessTools() {
                       >
                         <Icon className="w-6 h-6" />
                       </motion.div>
-                      {exercise.favorite && (
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
-                          <Heart className="w-5 h-5 text-red-500 fill-red-500" />
-                        </motion.div>
-                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => handleToggleFavorite(exercise.id, e)}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+                      >
+                        <Heart className={`w-5 h-5 ${exercise.favorite ? "text-red-500 fill-red-500" : "text-gray-300"}`} />
+                      </motion.button>
                     </div>
                     <h3 className="font-bold mb-2 group-hover:text-primary transition-colors">
                       {exercise.title}
@@ -618,9 +630,10 @@ export function WellnessTools() {
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
+                        onClick={(e) => handleToggleFavorite(activeExerciseData.id, e)}
                         className="p-4 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
                       >
-                        <Heart className="w-5 h-5" />
+                        <Heart className={`w-5 h-5 ${activeExerciseData.favorite ? "text-red-500 fill-red-500" : "text-white"}`} />
                       </motion.button>
                     </div>
                   </div>

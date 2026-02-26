@@ -57,6 +57,7 @@ interface BackendSession {
   ended_at: string | null;
   duration_minutes: number | null;
   recording_url: string | null;
+  is_favorite: boolean;
   created_at: string;
   updated_at: string;
   _count?: {
@@ -101,6 +102,26 @@ export function SessionHistory() {
   
   const [transcript, setTranscript] = useState<{ role: string; content: string; created_at: string }[]>([]);
   const [loadingTranscript, setLoadingTranscript] = useState(false);
+
+  const handleToggleFavorite = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await api.sessions.toggleFavorite(sessionId);
+      
+      // Update local state
+      const updateSessions = (sessions: SessionData[]) => 
+        sessions.map(s => s.id === sessionId ? { ...s, favorite: !s.favorite } : s);
+      
+      setCompletedSessions(prev => updateSessions(prev));
+      setUpcomingSessions(prev => updateSessions(prev));
+      
+      if (selectedSession?.id === sessionId) {
+        setSelectedSession(prev => prev ? { ...prev, favorite: !prev.favorite } : null);
+      }
+    } catch (error) {
+      console.error("Failed to toggle favorite", error);
+    }
+  };
 
   useEffect(() => {
     if (selectedSession) {
@@ -156,7 +177,7 @@ export function SessionHistory() {
             thumbnail: `gradient-${(s.id.charCodeAt(0) % 5) + 1}`,
             summary: s.title || "No summary available",
             sentiment: 0,
-            favorite: false,
+            favorite: s.is_favorite || false,
             status: s.status === 'completed' ? 'completed' : 'upcoming',
             recordingUrl: s.recording_url || undefined,
             isUpcoming,
@@ -463,7 +484,7 @@ export function SessionHistory() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+              <Card className="group overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
                 <div className="flex flex-col sm:flex-row">
                   {/* Thumbnail */}
                   <div className={`w-full sm:w-48 h-32 bg-gradient-to-br ${gradientStyles[session.thumbnail]} relative`}>
@@ -485,11 +506,22 @@ export function SessionHistory() {
                         <Play className="w-6 h-6 text-primary ml-1" />
                       </motion.button>
                     </div>
-                    {session.favorite && (
-                      <div className="absolute top-2 right-2">
-                        <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                      </div>
-                    )}
+                    <button
+                      onClick={(e) => handleToggleFavorite(session.id, e)}
+                      className={`absolute top-2 right-2 p-2 rounded-full transition-all duration-200 ${
+                        session.favorite 
+                          ? "bg-white/20 opacity-100" 
+                          : "bg-black/20 opacity-0 group-hover:opacity-100 hover:bg-black/30"
+                      }`}
+                    >
+                      <Star 
+                        className={`w-5 h-5 transition-colors ${
+                          session.favorite 
+                            ? "text-yellow-400 fill-yellow-400" 
+                            : "text-white"
+                        }`} 
+                      />
+                    </button>
                   </div>
 
                   {/* Content */}

@@ -54,7 +54,7 @@ export function AnimatedCard({ children, className = "", delay = 0 }: AnimatedCa
       }}
       className={`transition-all duration-200 h-full ${className}`}
     >
-      <div style={{ transform: "translateZ(20px)" }} className="h-full">
+      <div style={{ transform: "translateZ(20px)" }} className="h-full flex flex-col">
         {children}
       </div>
     </motion.div>

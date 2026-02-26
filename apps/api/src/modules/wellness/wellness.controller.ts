@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool, trackWellnessProgress, getUserWellnessProgress, startWellnessSession, completeWellnessSession, getWellnessStats, getWellnessChallengesWithStats } from './wellness.service';
+import { createWellnessTool, deleteWellnessTool, getWellnessToolById, getWellnessTools, updateWellnessTool, trackWellnessProgress, getUserWellnessProgress, startWellnessSession, completeWellnessSession, getWellnessStats, getWellnessChallengesWithStats, toggleWellnessToolFavorite } from './wellness.service';
 import { CreateWellnessToolInput, UpdateWellnessToolInput, TrackProgressInput } from './wellness.schema';
 
 export async function createWellnessToolHandler(
@@ -17,7 +17,7 @@ export async function getWellnessToolsHandler(
   request: FastifyRequest<{ Querystring: { category?: string } }>,
   reply: FastifyReply
 ) {
-  const tools = await getWellnessTools(request.query.category);
+  const tools = await getWellnessTools(request.user.sub, request.query.category);
   return reply.send(tools);
 }
 
@@ -25,7 +25,7 @@ export async function getWellnessToolByIdHandler(
   request: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) {
-  const tool = await getWellnessToolById(request.params.id);
+  const tool = await getWellnessToolById(request.user.sub, request.params.id);
   if (!tool) {
     return reply.code(404).send({ message: 'Wellness tool not found' });
   }
@@ -41,6 +41,21 @@ export async function updateWellnessToolHandler(
     return reply.send(tool);
   } catch (error) {
     return reply.code(404).send({ message: 'Wellness tool not found' });
+  }
+}
+
+export async function toggleWellnessToolFavoriteHandler(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  try {
+    const result = await toggleWellnessToolFavorite(request.user.sub, request.params.id);
+    return reply.send(result);
+  } catch (error: any) {
+    if (error.message === 'Wellness tool not found') {
+      return reply.code(404).send({ message: 'Wellness tool not found' });
+    }
+    throw error;
   }
 }
 

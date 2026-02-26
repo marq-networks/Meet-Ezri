@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { createJournalSchema, journalResponseSchema, updateJournalSchema } from './journal.schema';
-import { createJournalHandler, deleteJournalHandler, getJournalByIdHandler, getJournalsHandler, updateJournalHandler, getUserJournalsHandler } from './journal.controller';
+import { createJournalHandler, deleteJournalHandler, getJournalByIdHandler, getJournalsHandler, updateJournalHandler, getUserJournalsHandler, toggleJournalFavoriteHandler } from './journal.controller';
 import { z } from 'zod';
 
 export async function journalRoutes(app: FastifyInstance) {
@@ -72,6 +72,20 @@ export async function journalRoutes(app: FastifyInstance) {
       preHandler: [app.authenticate],
     },
     updateJournalHandler
+  );
+
+  app.post(
+    '/:id/favorite',
+    {
+      schema: {
+        params: z.object({ id: z.string() }),
+        response: {
+          200: journalResponseSchema,
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    toggleJournalFavoriteHandler
   );
 
   app.delete(

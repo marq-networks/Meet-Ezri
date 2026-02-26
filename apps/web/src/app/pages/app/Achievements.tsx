@@ -202,12 +202,14 @@ export function Achievements() {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <AnimatedCard delay={0.1}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <Award className="w-8 h-8 text-yellow-600" />
-                  <span className="text-2xl font-bold text-gray-900">{stats.unlockedCount}/{stats.totalCount}</span>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Award className="w-8 h-8 text-yellow-600" />
+                    <span className="text-2xl font-bold text-gray-900">{stats.unlockedCount}/{stats.totalCount}</span>
+                  </div>
+                  <p className="text-sm text-gray-600">Unlocked</p>
                 </div>
-                <p className="text-sm text-gray-600">Unlocked</p>
                 <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full"
@@ -218,32 +220,38 @@ export function Achievements() {
             </AnimatedCard>
 
             <AnimatedCard delay={0.2}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <Star className="w-8 h-8 text-purple-600" />
-                  <span className="text-2xl font-bold text-gray-900">{stats.totalPoints}</span>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Star className="w-8 h-8 text-purple-600" />
+                    <span className="text-2xl font-bold text-gray-900">{stats.totalPoints}</span>
+                  </div>
+                  <p className="text-sm text-gray-600">Total Points</p>
                 </div>
-                <p className="text-sm text-gray-600">Total Points</p>
               </div>
             </AnimatedCard>
 
             <AnimatedCard delay={0.3}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <TrendingUp className="w-8 h-8 text-green-600" />
-                  <span className="text-2xl font-bold text-gray-900">{stats.currentStreak}</span>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <TrendingUp className="w-8 h-8 text-green-600" />
+                    <span className="text-2xl font-bold text-gray-900">{stats.currentStreak}</span>
+                  </div>
+                  <p className="text-sm text-gray-600">Current Streak</p>
                 </div>
-                <p className="text-sm text-gray-600">Current Streak</p>
               </div>
             </AnimatedCard>
 
             <AnimatedCard delay={0.4}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <Trophy className="w-8 h-8 text-blue-600" />
-                  <span className="text-2xl font-bold text-gray-900">{stats.longestStreak}</span>
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Trophy className="w-8 h-8 text-blue-600" />
+                    <span className="text-2xl font-bold text-gray-900">{stats.longestStreak}</span>
+                  </div>
+                  <p className="text-sm text-gray-600">Longest Streak</p>
                 </div>
-                <p className="text-sm text-gray-600">Longest Streak</p>
               </div>
             </AnimatedCard>
           </div>
@@ -282,9 +290,8 @@ export function Achievements() {
               
               return (
                 <AnimatedCard key={achievement.id} delay={index * 0.05}>
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className={`relative bg-white rounded-2xl border-2 ${
+                  <div
+                    className={`relative bg-white rounded-2xl border-2 h-full flex flex-col ${
                       isUnlocked ? rarityBorders[achievement.rarity] : 'border-gray-200'
                     } p-6 overflow-hidden hover:shadow-lg transition-all ${!isUnlocked && 'opacity-60'}`}
                   >
@@ -294,7 +301,7 @@ export function Achievements() {
                     )}
 
                     {/* Content */}
-                    <div className="relative">
+                    <div className="relative flex-1 flex flex-col">
                       <div className="flex items-start justify-between mb-4">
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
                           isUnlocked 
@@ -357,7 +364,7 @@ export function Achievements() {
                         </span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 </AnimatedCard>
               );
             })}
