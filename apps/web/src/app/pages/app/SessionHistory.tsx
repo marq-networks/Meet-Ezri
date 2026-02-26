@@ -93,6 +93,7 @@ export function SessionHistory() {
 
   const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
   const [filterMood, setFilterMood] = useState<string>("all");
+  const [filterFavorites, setFilterFavorites] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"completed" | "upcoming">("completed");
   
@@ -243,10 +244,11 @@ export function SessionHistory() {
   const filteredSessions = sessions.filter((session) => {
     if (activeTab === "upcoming") return true; // Don't filter upcoming sessions by mood
     const matchesMood = filterMood === "all" || session.mood === filterMood;
+    const matchesFavorite = !filterFavorites || session.favorite;
     const matchesSearch = session.topicsDiscussed.some(topic => 
       topic.toLowerCase().includes(searchQuery.toLowerCase())
     ) || session.summary.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesMood && (searchQuery === "" || matchesSearch);
+    return matchesMood && matchesFavorite && (searchQuery === "" || matchesSearch);
   });
 
   const gradientStyles: Record<string, string> = {
@@ -439,6 +441,15 @@ export function SessionHistory() {
                 />
               </div>
               <div className="flex gap-2">
+                <Button
+                  onClick={() => setFilterFavorites(!filterFavorites)}
+                  variant={filterFavorites ? "default" : "outline"}
+                  className={`gap-2 ${filterFavorites ? "bg-red-500 hover:bg-red-600 text-white border-red-500" : "text-gray-600 hover:text-red-500 hover:border-red-200"}`}
+                >
+                  <Heart className={`w-4 h-4 ${filterFavorites ? "fill-current" : ""}`} />
+                  Favorites
+                </Button>
+                <div className="w-px h-8 bg-gray-200 mx-2" />
                 {["all", "positive", "neutral", "concerned"].map((mood) => (
                   <Button
                     key={mood}

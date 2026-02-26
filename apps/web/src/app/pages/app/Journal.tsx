@@ -407,6 +407,19 @@ export function Journal() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => setFilterFavorites(!filterFavorites)}
+              className={`px-4 py-3 border rounded-lg transition-colors flex items-center gap-2 ${
+                filterFavorites 
+                  ? "bg-red-50 border-red-200 text-red-500" 
+                  : "border-gray-300 hover:bg-gray-50 text-gray-600"
+              }`}
+            >
+              <Heart className={`w-5 h-5 ${filterFavorites ? "fill-current" : ""}`} />
+              <span className="hidden sm:inline font-medium">Favorites</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowFilterModal(true)}
               className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
