@@ -1,82 +1,130 @@
 
 import prisma from '../../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { DashboardStats } from './admin.schema';
 import { endSession } from '../sessions/sessions.service';
 
+// Simple in-memory cache for dashboard stats
+const STATS_CACHE_TTL = 60 * 1000; // 60 seconds
+let statsCache: { data: DashboardStats; timestamp: number } | null = null;
+
+// Simple in-memory cache for users list
+const USERS_CACHE_TTL = 30 * 1000; // 30 seconds
+const usersCache = new Map<string, { data: any[], timestamp: number }>();
+
+// New caches for slow endpoints
+const RECENT_ACTIVITY_CACHE_TTL = 30 * 1000; // 30 seconds
+let recentActivityCache: { data: any; timestamp: number } | null = null;
+
+const MANUAL_NOTIFICATIONS_CACHE_TTL = 60 * 1000; // 60 seconds
+let manualNotificationsCache: { data: any[]; timestamp: number } | null = null;
+
+const NUDGE_TEMPLATES_CACHE_TTL = 120 * 1000; // 120 seconds
+let nudgeTemplatesCache: { data: any[]; timestamp: number } | null = null;
+
+const COMMUNITY_STATS_CACHE_TTL = 60 * 1000; // 60 seconds
+let communityStatsCache: { data: any; timestamp: number } | null = null;
+
+const COMMUNITY_GROUPS_CACHE_TTL = 60 * 1000; // 60 seconds
+let communityGroupsCache: { data: any[]; timestamp: number } | null = null;
+
+const ACTIVITY_LOGS_CACHE_TTL = 120 * 1000; // 120 seconds
+let activityLogsCache: { data: any[]; timestamp: number } | null = null;
+
+const CRISIS_EVENTS_CACHE_TTL = 120 * 1000; // 120 seconds
+const crisisEventsCache = new Map<string, { data: any[]; timestamp: number }>();
+
+const EMAIL_TEMPLATES_CACHE_TTL = 120 * 1000; // 120 seconds
+let emailTemplatesCache: { data: any[]; timestamp: number } | null = null;
+
+const ERROR_LOGS_CACHE_TTL = 120 * 1000; // 120 seconds
+let errorLogsCache: { data: any[]; timestamp: number } | null = null;
+
+const LIVE_SESSIONS_CACHE_TTL = 120 * 1000; // 120 seconds
+let liveSessionsCache: { data: any[]; timestamp: number } | null = null;
+
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const [
-    totalUsers,
-    activeSessions,
-    totalSessions,
-    avgDurationResult,
-    crisisAlerts,
-    moodEntriesCount,
-    journalEntriesCount,
-    sleepEntriesCount,
-    habitLogsCount,
-    wellnessProgressCount,
-    crisisEventsCount
-  ] = await Promise.all([
-    prisma.profiles.count(),
-    prisma.app_sessions.count({ 
-      where: { 
-        started_at: { not: null },
-        ended_at: null
-      } 
+  const now = Date.now();
+  if (statsCache && (now - statsCache.timestamp < STATS_CACHE_TTL)) {
+    return statsCache.data;
+  }
+  // Use 'now' from above
+  const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  
+  const [countsResult, revenueResult, dailyStats, hourlyStats] = await Promise.all([
+    // 1. Optimized: Single query for all counts using raw SQL
+    prisma.$queryRaw`
+      SELECT 
+        (SELECT count(*) FROM profiles) as total_users,
+        (SELECT count(*) FROM app_sessions WHERE started_at IS NOT NULL AND ended_at IS NULL) as active_sessions,
+        (SELECT count(*) FROM app_sessions) as total_sessions,
+        (SELECT AVG(duration_minutes) FROM app_sessions) as avg_duration,
+        (SELECT count(*) FROM crisis_events WHERE status = 'pending') as pending_crisis,
+        (SELECT count(*) FROM mood_entries) as mood_entries,
+        (SELECT count(*) FROM journal_entries) as journal_entries,
+        (SELECT count(*) FROM sleep_entries) as sleep_entries,
+        (SELECT count(*) FROM habit_logs) as habit_logs,
+        (SELECT count(*) FROM user_wellness_progress) as wellness_progress,
+        (SELECT count(*) FROM crisis_events) as total_crisis
+    `,
+    // 2. Calculate MRR (Monthly Recurring Revenue) from active subscriptions
+    prisma.subscriptions.aggregate({
+      _sum: { amount: true },
+      where: { status: 'active' }
     }),
-    prisma.app_sessions.count(),
-    prisma.app_sessions.aggregate({
-      _avg: { duration_minutes: true }
-    }),
-    prisma.crisis_events.count({ where: { status: 'pending' } }),
-    prisma.mood_entries.count(),
-    prisma.journal_entries.count(),
-    prisma.sleep_entries.count(),
-    prisma.habit_logs.count(),
-    prisma.user_wellness_progress.count(),
-    prisma.crisis_events.count()
+    // 3. Real session activity for last 7 days - Optimized with Group By
+    prisma.$queryRaw`
+      SELECT 
+        DATE(started_at) as date,
+        COUNT(*) as count,
+        COALESCE(SUM(duration_minutes), 0) as total_duration
+      FROM app_sessions
+      WHERE started_at >= ${sevenDaysAgo}
+      GROUP BY DATE(started_at)
+    `,
+    // 4. Hourly stats for last 7 days - Optimized
+    prisma.$queryRaw`
+      SELECT 
+        EXTRACT(HOUR FROM started_at) as hour,
+        COUNT(*) as count
+      FROM app_sessions
+      WHERE started_at >= ${sevenDaysAgo}
+      GROUP BY EXTRACT(HOUR FROM started_at)
+    `
   ]);
 
-  const avgSessionLength = Math.round(avgDurationResult._avg.duration_minutes || 0);
+  const counts = (countsResult as any[])[0] || {};
 
-  // Calculate MRR (Monthly Recurring Revenue) from active subscriptions
-  const revenueResult = await prisma.subscriptions.aggregate({
-    _sum: {
-      amount: true
-    },
-    where: {
-      status: 'active'
-    }
-  });
+  const totalUsers = Number(counts.total_users || 0);
+  const activeSessions = Number(counts.active_sessions || 0);
+  const totalSessions = Number(counts.total_sessions || 0);
+  const avgSessionLength = Math.round(Number(counts.avg_duration || 0));
+  const crisisAlerts = Number(counts.pending_crisis || 0);
+  const moodEntriesCount = Number(counts.mood_entries || 0);
+  const journalEntriesCount = Number(counts.journal_entries || 0);
+  const sleepEntriesCount = Number(counts.sleep_entries || 0);
+  const habitLogsCount = Number(counts.habit_logs || 0);
+  const wellnessProgressCount = Number(counts.wellness_progress || 0);
+  const crisisEventsCount = Number(counts.total_crisis || 0);
+
   const revenue = revenueResult._sum.amount?.toNumber() || 0;
-
-  // Real session activity for last 7 days
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  
-  const recentSessionsData = await prisma.app_sessions.findMany({
-    where: {
-      started_at: { gte: sevenDaysAgo }
-    },
-    select: {
-      started_at: true,
-      duration_minutes: true
-    }
-  });
 
   const sessionActivity = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-    const daySessions = recentSessionsData.filter(s => {
-      const sDate = new Date(s.started_at!);
+    
+    // Find matching stat
+    const stat = (dailyStats as any[]).find((s: any) => {
+      const sDate = new Date(s.date);
       return sDate.getDate() === d.getDate() && sDate.getMonth() === d.getMonth();
     });
     
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    
     return {
       day: dayName,
-      sessions: daySessions.length,
-      duration: Math.round(daySessions.reduce((acc, s) => acc + (s.duration_minutes || 0), 0) / (daySessions.length || 1))
+      sessions: stat ? Number(stat.count) : 0,
+      duration: stat && Number(stat.count) > 0 ? Math.round(Number(stat.total_duration) / Number(stat.count)) : 0
     };
   });
 
@@ -85,13 +133,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     sessions: 0
   }));
 
-  recentSessionsData.forEach(session => {
-    if (!session.started_at) {
-      return;
-    }
-    const hour = new Date(session.started_at).getHours();
+  (hourlyStats as any[]).forEach((stat: any) => {
+    const hour = Number(stat.hour);
     if (hour >= 0 && hour < 24) {
-      hourlyBuckets[hour].sessions += 1;
+      hourlyBuckets[hour].sessions = Number(stat.count);
     }
   });
 
@@ -169,7 +214,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { name: "Desktop", value: 10, color: "#06b6d4" },
   ];
 
-  return {
+  const result = {
     totalUsers,
     activeSessions,
     totalSessions,
@@ -184,9 +229,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     platformDistribution,
     featureUsage
   };
+
+  statsCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 export async function getRecentActivity() {
+  const now = Date.now();
+  if (recentActivityCache && (now - recentActivityCache.timestamp < RECENT_ACTIVITY_CACHE_TTL)) {
+    return recentActivityCache.data;
+  }
+
   const [alerts, moodEntries, sessions] = await Promise.all([
     prisma.crisis_events.findMany({
       where: { status: 'pending' },
@@ -211,81 +264,89 @@ export async function getRecentActivity() {
     profiles: alert.profiles_crisis_events_user_idToprofiles
   }));
 
-  return { alerts: alertsMapped, moodEntries, sessions };
+  const result = { alerts: alertsMapped, moodEntries, sessions };
+  recentActivityCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
-export async function getAllUsers() {
-  const [users, sessionCounts, lastSessions] = await Promise.all([
-    prisma.profiles.findMany({
-      orderBy: {
-        created_at: 'desc'
-      },
-      select: {
-        id: true,
-        email: true,
-        full_name: true,
-        avatar_url: true,
-        created_at: true,
-        updated_at: true,
-        role: true,
-        subscriptions: {
-          where: { status: 'active' },
-          orderBy: { created_at: 'desc' },
-          select: {
-            plan_type: true
-          },
-          take: 1
-        },
-        mood_entries: {
-          orderBy: { created_at: 'desc' },
-          take: 1
-        },
-        org_members: {
-          include: {
-            organizations: true
-          }
-        }
-      }
-    }),
-    prisma.app_sessions.groupBy({
-      by: ['user_id'],
-      where: {
-        ended_at: { not: null }
-      },
+export async function getAllUsers(page: number = 1, limit: number = 20) {
+  const cacheKey = `${page}_${limit}`;
+  const cached = usersCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < USERS_CACHE_TTL)) {
+    return cached.data;
+  }
+
+  const skip = (page - 1) * limit;
+  const take = Math.min(limit, 100);
+
+  // Single optimized query to fetch all related data in one go
+  const users = await prisma.profiles.findMany({
+    take,
+    skip,
+    orderBy: { created_at: 'desc' },
+    select: {
+      id: true,
+      email: true,
+      full_name: true,
+      avatar_url: true,
+      created_at: true,
+      updated_at: true,
+      role: true,
+      // Get session stats
       _count: {
-        _all: true
+        select: { 
+          app_sessions: { 
+            where: { ended_at: { not: null } } 
+          } 
+        }
+      },
+      app_sessions: {
+        orderBy: { started_at: 'desc' },
+        take: 1,
+        select: { started_at: true }
+      },
+      // Get active subscription
+      subscriptions: {
+        where: { status: 'active' },
+        orderBy: { created_at: 'desc' },
+        take: 1,
+        select: { plan_type: true }
+      },
+      // Get organization
+      org_members: {
+        take: 1,
+        select: {
+          organizations: { select: { name: true } }
+        }
+      },
+      // Get latest mood
+      mood_entries: {
+        orderBy: { created_at: 'desc' },
+        take: 1,
+        select: { mood: true, intensity: true }
       }
-    }),
-    prisma.app_sessions.groupBy({
-      by: ['user_id'],
-      _max: {
-        started_at: true
-      }
-    })
-  ]);
-
-  const sessionsCountByUser = new Map<string, number>();
-  sessionCounts.forEach((row: any) => {
-    sessionsCountByUser.set(row.user_id, row._count?._all ?? 0);
+    }
   });
 
-  const lastActiveByUser = new Map<string, Date | null>();
-  lastSessions.forEach((row: any) => {
-    lastActiveByUser.set(row.user_id, row._max?.started_at ?? null);
-  });
+  const result = users.map(user => {
+    const lastSessionDate = user.app_sessions[0]?.started_at;
+    const lastActive = lastSessionDate 
+      ? (new Date(lastSessionDate).getTime() > new Date(user.updated_at).getTime() ? lastSessionDate : user.updated_at)
+      : user.updated_at;
 
-  return users.map((user: any) => {
-    const sessionCount = sessionsCountByUser.get(user.id) ?? 0;
-    const lastActive = lastActiveByUser.get(user.id) ?? user.updated_at;
+    const lastMood = user.mood_entries[0];
+    const moodVal = lastMood?.mood;
+    const intensity = lastMood?.intensity || 0;
 
     let riskLevel = 'low';
-    const lastMood = user.mood_entries?.[0];
-    if (lastMood && lastMood.mood === 'Sad' && lastMood.intensity > 8) {
+    if (moodVal === 'Sad' && intensity > 8) {
       riskLevel = 'high';
-    } else if (lastMood && lastMood.mood === 'Anxious') {
+    } else if (moodVal === 'Anxious') {
       riskLevel = 'medium';
     }
 
+    const sessionCount = user._count.app_sessions || 0;
+    
     let status = 'inactive';
     if (user.role === 'suspended') {
       status = 'suspended';
@@ -293,22 +354,25 @@ export async function getAllUsers() {
       status = 'active';
     }
 
-    const organization =
-      user.org_members?.[0]?.organizations?.name || 'Individual';
-
     return {
-      ...user,
+      id: user.id,
       email: user.email || '',
+      full_name: user.full_name,
+      avatar_url: user.avatar_url,
       created_at: user.created_at,
       updated_at: user.updated_at,
+      role: user.role,
       status,
-      subscription: user.subscriptions?.[0]?.plan_type || 'trial',
+      subscription: user.subscriptions[0]?.plan_type || 'trial',
       session_count: sessionCount,
       last_active: lastActive,
       risk_level: riskLevel,
-      organization
+      organization: user.org_members[0]?.organizations?.name || 'Individual'
     };
   });
+
+  usersCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export async function getUserById(id: string) {
@@ -367,6 +431,8 @@ export async function updateUser(id: string, data: { status?: string; role?: str
   if (!existing) {
     throw new Error('User not found');
   }
+
+  usersCache.clear(); // Invalidate cache
 
   const adminRoles = ['super_admin', 'org_admin', 'team_admin'];
 
@@ -457,15 +523,23 @@ export async function deleteUserSegment(id: string) {
 
 // 2. Notifications
 export async function getManualNotifications() {
+  const now = Date.now();
+  if (manualNotificationsCache && (now - manualNotificationsCache.timestamp < MANUAL_NOTIFICATIONS_CACHE_TTL)) {
+    return manualNotificationsCache.data;
+  }
+
   // Assuming manual notifications are a subset or we track them. 
   // For now, let's fetch recent notifications sent by admin or just general logs.
-  return prisma.notifications.findMany({
+  const result = await prisma.notifications.findMany({
     take: 50,
     orderBy: { created_at: 'desc' },
     include: {
       profiles: { select: { full_name: true, email: true } }
     }
   });
+
+  manualNotificationsCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 export async function getNotificationAudienceCounts() {
@@ -754,9 +828,17 @@ export async function deleteNudge(id: string) {
 }
 
 export async function getNudgeTemplates() {
-  return prisma.nudge_templates.findMany({
+  const now = Date.now();
+  if (nudgeTemplatesCache && (now - nudgeTemplatesCache.timestamp < NUDGE_TEMPLATES_CACHE_TTL)) {
+    return nudgeTemplatesCache.data;
+  }
+
+  const result = await prisma.nudge_templates.findMany({
     orderBy: { created_at: 'desc' }
   });
+
+  nudgeTemplatesCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 export async function createNudgeTemplate(data: any, createdBy?: string) {
@@ -803,9 +885,17 @@ export async function deleteNudgeTemplate(id: string) {
 
 // 3. Email Templates
 export async function getEmailTemplates() {
-  return prisma.email_templates.findMany({
+  const now = Date.now();
+  if (emailTemplatesCache && (now - emailTemplatesCache.timestamp < EMAIL_TEMPLATES_CACHE_TTL)) {
+    return emailTemplatesCache.data;
+  }
+
+  const result = await prisma.email_templates.findMany({
     orderBy: { name: 'asc' }
   });
+
+  emailTemplatesCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 export async function createEmailTemplate(data: any) {
@@ -868,29 +958,50 @@ export async function updateSupportTicket(id: string, data: any) {
 
 // 6. Community Management
 export async function getCommunityStats() {
+  const now = Date.now();
+  if (communityStatsCache && (now - communityStatsCache.timestamp < COMMUNITY_STATS_CACHE_TTL)) {
+    return communityStatsCache.data;
+  }
+
   const [totalGroups, totalPosts, totalComments] = await Promise.all([
     prisma.community_groups.count(),
     prisma.community_posts.count(),
     prisma.community_comments.count()
   ]);
-  return { totalGroups, totalPosts, totalComments };
+  
+  const result = { totalGroups, totalPosts, totalComments };
+  communityStatsCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 export async function getCommunityGroups() {
-  return prisma.community_groups.findMany({
+  const now = Date.now();
+  if (communityGroupsCache && (now - communityGroupsCache.timestamp < COMMUNITY_GROUPS_CACHE_TTL)) {
+    return communityGroupsCache.data;
+  }
+
+  const result = await prisma.community_groups.findMany({
     include: {
       _count: {
         select: { community_group_members: true, community_posts: true }
       }
     }
   });
+
+  communityGroupsCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 // 7. Live Sessions
 export async function getLiveSessions() {
+  const now = Date.now();
+  if (liveSessionsCache && (now - liveSessionsCache.timestamp < LIVE_SESSIONS_CACHE_TTL)) {
+    return liveSessionsCache.data;
+  }
+
   const cutoff = new Date(Date.now() - 4 * 60 * 60 * 1000);
 
-  return prisma.app_sessions.findMany({
+  const result = await prisma.app_sessions.findMany({
     where: {
       started_at: {
         not: null,
@@ -908,6 +1019,9 @@ export async function getLiveSessions() {
     },
     orderBy: { started_at: 'desc' }
   });
+
+  liveSessionsCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 export async function endLiveSessionByAdmin(sessionId: string) {
@@ -951,7 +1065,12 @@ export async function flagSessionForReview(sessionId: string) {
 //
 // 8. Activity Logs
 export async function getActivityLogs() {
-  return prisma.activity_events.findMany({
+  const now = Date.now();
+  if (activityLogsCache && (now - activityLogsCache.timestamp < ACTIVITY_LOGS_CACHE_TTL)) {
+    return activityLogsCache.data;
+  }
+
+  const result = await prisma.activity_events.findMany({
     take: 100,
     orderBy: { timestamp: 'desc' },
     include: {
@@ -960,6 +1079,9 @@ export async function getActivityLogs() {
       }
     }
   });
+
+  activityLogsCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 // 9. Session Recordings / History
@@ -991,10 +1113,18 @@ export async function getSessionRecordingTranscript(sessionId: string) {
 //
 // 10. Error Logs
 export async function getErrorLogs() {
-  return prisma.error_logs.findMany({
+  const now = Date.now();
+  if (errorLogsCache && (now - errorLogsCache.timestamp < ERROR_LOGS_CACHE_TTL)) {
+    return errorLogsCache.data;
+  }
+
+  const result = await prisma.error_logs.findMany({
     orderBy: { created_at: 'desc' },
     take: 100
   });
+
+  errorLogsCache = { data: result, timestamp: Date.now() };
+  return result;
 }
 
 function mapCrisisStatusFromDb(status: string | null): string {
@@ -1015,6 +1145,13 @@ function mapCrisisStatusToDb(status: string): string {
 }
 
 export async function getCrisisEvents(status?: string) {
+  const now = Date.now();
+  const cacheKey = status || 'all';
+  const cached = crisisEventsCache.get(cacheKey);
+  if (cached && (now - cached.timestamp < CRISIS_EVENTS_CACHE_TTL)) {
+    return cached.data;
+  }
+
   const where: any = {};
   if (status) {
     where.status = mapCrisisStatusToDb(status);
@@ -1034,12 +1171,15 @@ export async function getCrisisEvents(status?: string) {
     }
   });
 
-  return events.map((event: any) => ({
+  const result = events.map((event: any) => ({
     ...event,
     status: mapCrisisStatusFromDb(event.status || null),
     profiles: event.profiles_crisis_events_user_idToprofiles,
     assigned_profile: event.profiles_crisis_events_assigned_toToprofiles
   }));
+
+  crisisEventsCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export async function getCrisisEvent(id: string) {

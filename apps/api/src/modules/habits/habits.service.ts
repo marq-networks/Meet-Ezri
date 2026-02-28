@@ -1,6 +1,9 @@
 import prisma from "../../lib/prisma";
 import { CreateHabitInput, UpdateHabitInput, LogHabitInput } from "./habits.schema";
 
+const HABITS_CACHE_TTL = 60 * 1000; // 60 seconds
+const habitsCache = new Map<string, { data: any[]; timestamp: number }>();
+
 export async function createHabit(userId: string, data: CreateHabitInput) {
   // Check if profile exists
   const profile = await prisma.profiles.findUnique({
@@ -26,7 +29,13 @@ export async function createHabit(userId: string, data: CreateHabitInput) {
 }
 
 export async function getHabits(userId: string) {
-  return prisma.habits.findMany({
+  const now = Date.now();
+  const cached = habitsCache.get(userId);
+  if (cached && (now - cached.timestamp < HABITS_CACHE_TTL)) {
+    return cached.data;
+  }
+
+  const result = await prisma.habits.findMany({
     where: {
       user_id: userId,
       is_archived: false,
@@ -43,6 +52,9 @@ export async function getHabits(userId: string) {
       created_at: 'asc',
     },
   });
+
+  habitsCache.set(userId, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export async function updateHabit(userId: string, habitId: string, data: UpdateHabitInput) {

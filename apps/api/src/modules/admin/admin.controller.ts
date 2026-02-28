@@ -48,11 +48,19 @@ export async function getUsersHandler(
   reply: FastifyReply
 ) {
   try {
-    const users = await getAllUsers();
+    const query = request.query as any;
+    const page = query.page && !isNaN(parseInt(query.page, 10)) ? parseInt(query.page, 10) : 1;
+    const limit = query.limit && !isNaN(parseInt(query.limit, 10)) ? parseInt(query.limit, 10) : 20;
+    
+    const users = await getAllUsers(page, limit);
     return reply.code(200).send(users);
   } catch (error) {
     request.log.error(error);
-    return reply.code(500).send({ message: 'Failed to fetch users' });
+    return reply.code(500).send({ 
+      message: 'Failed to fetch users',
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
   }
 }
 

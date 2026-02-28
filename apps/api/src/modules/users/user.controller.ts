@@ -22,7 +22,11 @@ export async function getAllUsersHandler(
   reply: FastifyReply
 ) {
   try {
-    const users = await userService.getAllUsers();
+    const query = request.query as any;
+    const page = query.page ? parseInt(query.page, 10) : 1;
+    const limit = query.limit ? parseInt(query.limit, 10) : 50;
+
+    const users = await userService.getAllUsers(page, limit);
     return users;
   } catch (error) {
     request.log.error({ error }, 'Failed to fetch all users');

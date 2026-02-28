@@ -1,6 +1,15 @@
 import prisma from '../../lib/prisma';
 import { CreateWellnessToolInput, UpdateWellnessToolInput } from './wellness.schema';
 
+const PROGRESS_CACHE_TTL = 30 * 1000; // 30 seconds
+const progressCache = new Map<string, { data: any[]; timestamp: number }>();
+
+const WELLNESS_TOOLS_CACHE_TTL = 60 * 1000; // 60 seconds
+const wellnessToolsCache = new Map<string, { data: any[]; timestamp: number }>();
+
+const WELLNESS_STATS_CACHE_TTL = 60 * 1000; // 60 seconds
+const wellnessStatsCache = new Map<string, { data: any; timestamp: number }>();
+
 export async function createWellnessTool(data: CreateWellnessToolInput & { created_by?: string }) {
   const { created_by, image_url, content, ...rest } = data;
 
@@ -66,6 +75,13 @@ export async function getWellnessChallengesWithStats() {
 }
 
 export async function getWellnessTools(userId: string, category?: string) {
+  const now = Date.now();
+  const cacheKey = `${userId}_${category || 'all'}`;
+  const cached = wellnessToolsCache.get(cacheKey);
+  if (cached && (now - cached.timestamp < WELLNESS_TOOLS_CACHE_TTL)) {
+    return cached.data;
+  }
+
   const where = category ? { category } : {};
   const tools = await prisma.wellness_tools.findMany({
     where,
@@ -83,11 +99,14 @@ export async function getWellnessTools(userId: string, category?: string) {
     }
   });
 
-  return tools.map(tool => ({
+  const result = tools.map(tool => ({
     ...tool,
     is_favorite: tool.favorite_wellness_tools.length > 0,
     favorite_wellness_tools: undefined
   }));
+
+  wellnessToolsCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export async function toggleWellnessToolFavorite(userId: string, toolId: string) {
@@ -165,7 +184,7 @@ export async function deleteWellnessTool(id: string) {
 }
 
 export async function trackWellnessProgress(userId: string, toolId: string, durationSpent: number, rating?: number) {
-  return prisma.user_wellness_progress.create({
+  const result = await prisma.user_wellness_progress.create({
     data: {
       user_id: userId,
       tool_id: toolId,
@@ -174,6 +193,8 @@ export async function trackWellnessProgress(userId: string, toolId: string, dura
       completed_at: new Date(),
     },
   });
+  progressCache.delete(userId);
+  return result;
 }
 
 export async function startWellnessSession(userId: string, toolId: string) {
@@ -206,7 +227,7 @@ export async function startWellnessSession(userId: string, toolId: string) {
 }
 
 export async function completeWellnessSession(progressId: string, durationSpent: number, rating?: number) {
-  return prisma.user_wellness_progress.update({
+  const result = await prisma.user_wellness_progress.update({
     where: { id: progressId },
     data: {
       duration_spent: durationSpent,
@@ -214,39 +235,47 @@ export async function completeWellnessSession(progressId: string, durationSpent:
       completed_at: new Date(),
     },
   });
+  progressCache.delete(result.user_id);
+  return result;
 }
 
 export async function getUserWellnessProgress(userId: string) {
-  const progress = await prisma.user_wellness_progress.groupBy({
-    by: ['tool_id'],
-    where: { 
-      user_id: userId,
-      completed_at: { not: null },
-      duration_spent: { gt: 0 }
-    },
-    _count: { tool_id: true },
-    _sum: { duration_spent: true },
-  });
+  const cached = progressCache.get(userId);
+  if (cached && (Date.now() - cached.timestamp < PROGRESS_CACHE_TTL)) {
+    return cached.data;
+  }
 
-  // Get tool details
-  const tools = await prisma.wellness_tools.findMany({
-    where: {
-      id: { in: progress.map(p => p.tool_id) }
-    }
-  });
+  const progress = await prisma.$queryRaw<any[]>`
+    SELECT 
+      wp.tool_id, 
+      wt.title as "toolTitle", 
+      COUNT(wp.tool_id)::int as "sessionsCompleted", 
+      SUM(wp.duration_spent)::int as "totalSeconds"
+    FROM user_wellness_progress wp
+    JOIN wellness_tools wt ON wp.tool_id = wt.id
+    WHERE wp.user_id = ${userId}::uuid
+      AND wp.completed_at IS NOT NULL 
+      AND wp.duration_spent > 0
+    GROUP BY wp.tool_id, wt.title
+  `;
 
-  return progress.map(p => {
-    const tool = tools.find(t => t.id === p.tool_id);
-    return {
-      toolId: p.tool_id,
-      toolTitle: tool?.title || 'Unknown Exercise',
-      sessionsCompleted: p._count.tool_id,
-      totalMinutes: Math.round((p._sum.duration_spent || 0) / 60), // Convert seconds to minutes
-    };
-  });
+  const result = progress.map(p => ({
+    toolId: p.tool_id,
+    toolTitle: p.toolTitle,
+    sessionsCompleted: p.sessionsCompleted,
+    totalMinutes: Math.round((p.totalSeconds || 0) / 60),
+  }));
+
+  progressCache.set(userId, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export async function getWellnessStats(userId: string) {
+  const cached = wellnessStatsCache.get(userId);
+  if (cached && (Date.now() - cached.timestamp < WELLNESS_STATS_CACHE_TTL)) {
+    return cached.data;
+  }
+
   const today = new Date();
   
   // 1. Time Ranges
@@ -256,8 +285,8 @@ export async function getWellnessStats(userId: string) {
   
   // Monthly: Last 6 Months
   const sixMonthsAgo = new Date(today);
-  sixMonthsAgo.setMonth(today.getMonth() - 5); // Current month + 5 previous = 6
-  sixMonthsAgo.setDate(1); // Start of that month
+  sixMonthsAgo.setMonth(today.getMonth() - 5); 
+  sixMonthsAgo.setDate(1); 
 
   // Helper to group by week
   const getWeekNumber = (date: Date) => {
@@ -267,9 +296,18 @@ export async function getWellnessStats(userId: string) {
     return Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
   };
 
-  // Fetch raw data (extended to 6 months for monthly chart)
-  const [sessions, moodEntries, wellnessProgress, journalEntries, sleepEntries, socialPosts, socialComments] = await Promise.all([
-    // AI Sessions
+  // Run independent queries in parallel
+  const [
+    sessionsResult,
+    moodsResult,
+    wellnessResult,
+    journalsResult,
+    avgMoodResult,
+    sleepEntries,
+    postsCount,
+    commentsCount
+  ] = await Promise.all([
+    // Sessions (Last 6 Months)
     prisma.app_sessions.findMany({
       where: {
         user_id: userId,
@@ -278,15 +316,15 @@ export async function getWellnessStats(userId: string) {
       },
       select: { started_at: true }
     }),
-    // Mood Check-ins
+    // Moods (Last 6 Months)
     prisma.mood_entries.findMany({
       where: {
         user_id: userId,
         created_at: { gte: sixMonthsAgo }
       },
-      select: { created_at: true, intensity: true }
+      select: { created_at: true }
     }),
-    // Wellness Exercises
+    // Wellness Progress (Last 6 Months)
     prisma.user_wellness_progress.findMany({
       where: {
         user_id: userId,
@@ -294,67 +332,90 @@ export async function getWellnessStats(userId: string) {
       },
       select: { completed_at: true }
     }),
-    // Journal Entries (Changed to findMany for monthly chart)
+    // Journals (Last 6 Months)
     prisma.journal_entries.findMany({
-      where: { 
+      where: {
         user_id: userId,
         created_at: { gte: sixMonthsAgo }
       },
       select: { created_at: true }
     }),
-    // Sleep Entries (for Score - keep recent)
+
+    // Average Mood Intensity (Last 4 weeks)
+    prisma.mood_entries.aggregate({
+      where: {
+        user_id: userId,
+        created_at: { gte: fourWeeksAgo }
+      },
+      _avg: { intensity: true }
+    }),
+
+    // Sleep Entries (Recent 10)
     prisma.sleep_entries.findMany({
       where: { user_id: userId },
       orderBy: { created_at: 'desc' },
-      take: 10
+      take: 10,
+      select: { quality_rating: true }
     }),
-    // Social Posts (for Score)
-    prisma.community_posts.count({
-      where: { user_id: userId }
-    }),
-    // Social Comments (for Score)
-    prisma.community_comments.count({
-      where: { user_id: userId }
-    })
+
+    // Social Counts (Total)
+    prisma.community_posts.count({ where: { user_id: userId } }),
+    prisma.community_comments.count({ where: { user_id: userId } })
   ]);
 
-  // --- 1. Weekly Progress Calculation ---
+  // --- Process Results ---
+  
+  // Helper to process raw dates into daily counts
+  const processDates = (items: any[], dateField: string) => {
+    const counts = new Map<string, number>();
+    items.forEach(item => {
+      const date = item[dateField];
+      if (date) {
+        const key = date.toISOString().split('T')[0]; // YYYY-MM-DD
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    });
+    return Array.from(counts.entries()).map(([day, count]) => ({ day, count }));
+  };
+
+  const sessionsCounts = processDates(sessionsResult, 'started_at');
+  const moodsCounts = processDates(moodsResult, 'created_at');
+  const wellnessCounts = processDates(wellnessResult, 'completed_at');
+  const journalsCounts = processDates(journalsResult, 'created_at');
+
+  // Initialize Weekly Data
   const weeklyData = Array(4).fill(0).map((_, i) => ({
     name: `Week ${i + 1}`,
     sessions: 0,
     mood: 0,
-    wellness: 0
+    wellness: 0,
+    journals: 0 // Track for mental score calculation
   }));
 
-  sessions.forEach(s => {
-    if (s.started_at && new Date(s.started_at) >= fourWeeksAgo) {
-      const week = getWeekNumber(s.started_at);
-      if (week >= 0 && week < 4) weeklyData[week].sessions++;
-    }
-  });
+  const processWeekly = (rows: { day: string; count: number }[], type: 'sessions' | 'mood' | 'wellness' | 'journals') => {
+    rows.forEach((row) => {
+      const date = new Date(row.day);
+      if (date >= fourWeeksAgo) {
+        const week = getWeekNumber(date);
+        if (week >= 0 && week < 4) {
+          weeklyData[week][type] += row.count;
+        }
+      }
+    });
+  };
 
-  moodEntries.forEach(m => {
-    if (new Date(m.created_at) >= fourWeeksAgo) {
-      const week = getWeekNumber(m.created_at);
-      if (week >= 0 && week < 4) weeklyData[week].mood++;
-    }
-  });
+  processWeekly(sessionsCounts, 'sessions');
+  processWeekly(moodsCounts, 'mood');
+  processWeekly(wellnessCounts, 'wellness');
+  processWeekly(journalsCounts, 'journals');
 
-  wellnessProgress.forEach(w => {
-    if (w.completed_at && new Date(w.completed_at) >= fourWeeksAgo) {
-      const week = getWeekNumber(w.completed_at);
-      if (week >= 0 && week < 4) weeklyData[week].wellness++;
-    }
-  });
-
-  // --- 2. Monthly Activity Calculation ---
-  // Generate last 6 months labels
+  // Initialize Monthly Data
   const monthlyActivity: { month: string; value: number; _key: string }[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(today);
     d.setMonth(today.getMonth() - i);
     const monthName = d.toLocaleString('default', { month: 'short' });
-    const monthKey = `${d.getFullYear()}-${d.getMonth()}`; // Unique key for matching
+    const monthKey = `${d.getFullYear()}-${d.getMonth()}`; 
     
     monthlyActivity.push({
       month: monthName,
@@ -363,45 +424,39 @@ export async function getWellnessStats(userId: string) {
     });
   }
 
-  // Helper to find month index
-  const incrementMonth = (date: Date) => {
-    const d = new Date(date);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    const monthItem = monthlyActivity.find(m => m._key === key);
-    if (monthItem) monthItem.value++;
+  const processMonthly = (rows: { day: string; count: number }[]) => {
+    rows.forEach((row) => {
+      const d = new Date(row.day);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const monthItem = monthlyActivity.find(m => m._key === key);
+      if (monthItem) monthItem.value += row.count;
+    });
   };
 
-  sessions.forEach(s => s.started_at && incrementMonth(s.started_at));
-  moodEntries.forEach(m => incrementMonth(m.created_at));
-  wellnessProgress.forEach(w => w.completed_at && incrementMonth(w.completed_at));
-  journalEntries.forEach(j => incrementMonth(j.created_at));
+  processMonthly(sessionsCounts);
+  processMonthly(moodsCounts);
+  processMonthly(wellnessCounts);
+  processMonthly(journalsCounts);
 
-  // Clean up helper key
   const finalMonthlyActivity = monthlyActivity.map(({ _key, ...rest }) => rest);
 
-  // --- 3. Wellness Score Calculation ---
-  
-  // Emotional: Avg mood intensity
-  const recentMoods = moodEntries.filter(m => new Date(m.created_at) >= fourWeeksAgo);
-  const avgMood = recentMoods.length > 0
-    ? recentMoods.reduce((acc, curr) => acc + curr.intensity, 0) / recentMoods.length
-    : 0;
+  // --- Wellness Score Calculation ---
+  const avgMood = (avgMoodResult as any)._avg.intensity || 0;
   const emotionalScore = Math.min(avgMood * 10, 100);
 
-  // Sleep: Avg quality
   const avgSleep = sleepEntries.length > 0
     ? sleepEntries.reduce((acc, curr) => acc + (curr.quality_rating || 0), 0) / sleepEntries.length
     : 0;
   const sleepScore = Math.min(avgSleep * 10, 100);
 
-  // Social: Activity based
-  const socialCount = socialPosts + socialComments;
+  // Social Score
+  const socialCount = Number(postsCount) + Number(commentsCount);
   const socialScore = Math.min((socialCount / 5) * 100, 100);
 
-  // Mental: Journals + Sessions + Wellness Exercises (Last 4 weeks for score freshness)
-  const recentJournals = journalEntries.filter(j => new Date(j.created_at) >= fourWeeksAgo).length;
-  const recentSessions = sessions.filter(s => s.started_at && new Date(s.started_at) >= fourWeeksAgo).length;
-  const recentWellness = wellnessProgress.filter(w => w.completed_at && new Date(w.completed_at) >= fourWeeksAgo).length;
+  // Mental: Journals + Sessions + Wellness Exercises (Last 4 weeks)
+  const recentJournals = weeklyData.reduce((acc, w) => acc + w.journals, 0);
+  const recentSessions = weeklyData.reduce((acc, w) => acc + w.sessions, 0);
+  const recentWellness = weeklyData.reduce((acc, w) => acc + w.wellness, 0);
   
   const mentalCount = recentJournals + recentSessions + recentWellness;
   const mentalScore = Math.min((mentalCount / 5) * 100, 100);
@@ -417,9 +472,15 @@ export async function getWellnessStats(userId: string) {
     { subject: 'Sleep', A: Math.round(sleepScore), fullMark: 100 },
   ];
 
-  return {
-    weeklyProgress: weeklyData,
+  // Remove 'journals' from weeklyData response to match original shape
+  const finalWeeklyData = weeklyData.map(({ journals, ...rest }) => rest);
+
+  const result = {
+    weeklyProgress: finalWeeklyData,
     monthlyActivity: finalMonthlyActivity,
     wellnessScore
   };
+
+  wellnessStatsCache.set(userId, { data: result, timestamp: Date.now() });
+  return result;
 }

@@ -44,47 +44,25 @@ function calculateStreak(moodEntries: any[]) {
   return streak;
 }
 
-export async function getAllUsers() {
-  const users = await prisma.profiles.findMany({
-    orderBy: { created_at: 'desc' },
-    include: {
-      mood_entries: {
-        orderBy: { created_at: 'desc' },
-        take: 1
-      },
-      appointments_appointments_user_idToprofiles: {
-        where: { status: 'completed' }
-      }
-    }
-  });
+import * as adminService from '../admin/admin.service';
 
-  return users.map((user: typeof users[number]) => {
-    // Calculate basic stats or risk level mock
-    const lastActive = user.updated_at || user.created_at;
-    const sessionCount = user.appointments_appointments_user_idToprofiles.length;
-    
-    // Simple risk logic (mock)
-    let riskLevel = 'low';
-    const lastMood = user.mood_entries[0];
-    if (lastMood && lastMood.mood === 'Sad' && lastMood.intensity > 8) {
-      riskLevel = 'high';
-    } else if (lastMood && lastMood.mood === 'Anxious') {
-      riskLevel = 'medium';
-    }
+export async function getAllUsers(page: number = 1, limit: number = 50) {
+  // Use the optimized admin service function
+  const users = await adminService.getAllUsers(page, limit);
 
-    return {
-      id: user.id,
-      name: user.full_name || (user.email ? user.email.split('@')[0] : 'User'),
-      email: user.email || '',
-      status: 'active', // In a real app, check auth status or soft delete
-      joinDate: user.created_at,
-      sessions: sessionCount,
-      lastActive: lastActive,
-      riskLevel: riskLevel,
-      subscription: (user.credits || 0) > 100 ? 'core' : 'trial', // Mock logic based on credits
-      organization: 'Individual' // Mock
-    };
-  });
+  // Map to the shape expected by this service's consumers
+  return users.map((user: any) => ({
+    id: user.id,
+    name: user.full_name || (user.email ? user.email.split('@')[0] : 'User'),
+    email: user.email || '',
+    status: user.status === 'suspended' ? 'suspended' : 'active',
+    joinDate: user.created_at,
+    sessions: user.session_count,
+    lastActive: user.last_active,
+    riskLevel: user.risk_level || 'low',
+    subscription: user.subscription || 'trial',
+    organization: user.organization || 'Individual'
+  }));
 }
 
 export async function getUserEmail(userId: string): Promise<string | null> {
@@ -143,8 +121,18 @@ export async function createProfile(userId: string, email: string, fullName?: st
   return profile;
 }
 
+const userProfileCache = new Map<string, { data: any, timestamp: number }>();
+const PROFILE_CACHE_TTL = 30 * 1000; // 30 seconds
+
 export async function getProfile(userId: string) {
-  const [profile, [completedSessions, totalCheckins, totalJournals]] = await Promise.all([
+  // Check cache first
+  const cached = userProfileCache.get(userId);
+  if (cached && (Date.now() - cached.timestamp < PROFILE_CACHE_TTL)) {
+    return cached.data;
+  }
+
+  const [profileResult, recentMoods, scheduledAppointments, countsResult] = await Promise.all([
+    // 1. Profile + simple relations
     prisma.profiles.findUnique({
       where: { id: userId },
       include: {
@@ -154,69 +142,82 @@ export async function getProfile(userId: string) {
           orderBy: { created_at: 'desc' },
           take: 1
         },
-        mood_entries: {
-          orderBy: { created_at: 'desc' },
-          take: 30,
-        },
-        appointments_appointments_user_idToprofiles: {
-          where: {
-            status: 'scheduled',
-            start_time: { gt: new Date() }
-          }
-        },
         emergency_contacts: {
           orderBy: { created_at: 'desc' },
           take: 1
         }
-      },
+      }
     }),
-    Promise.all([
-      prisma.app_sessions.count({
-        where: {
-          user_id: userId,
-          ended_at: { not: null }
-        }
-      }),
-      prisma.mood_entries.count({
-        where: {
-          user_id: userId
-        }
-      }),
-      prisma.journal_entries.count({
-        where: {
-          user_id: userId
-        }
-      })
-    ])
+    // 2. Recent moods
+    prisma.mood_entries.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
+      take: 30
+    }),
+    // 3. Scheduled appointments
+    prisma.appointments.findMany({
+      where: {
+        user_id: userId,
+        status: 'scheduled',
+        start_time: { gt: new Date() }
+      },
+      orderBy: { start_time: 'asc' }
+    }),
+    // 4. Counts (Single Raw Query)
+    prisma.$queryRaw`
+      SELECT
+        (SELECT count(*) FROM app_sessions WHERE user_id = ${userId}::uuid AND ended_at IS NOT NULL) as sessions,
+        (SELECT count(*) FROM mood_entries WHERE user_id = ${userId}::uuid) as moods,
+        (SELECT count(*) FROM journal_entries WHERE user_id = ${userId}::uuid) as journals
+    `
   ]);
 
-  if (!profile) return null;
+  if (!profileResult) return null;
 
-  const streakDays = calculateStreak(profile.mood_entries);
-  const upcomingSessions = profile.appointments_appointments_user_idToprofiles.length;
-  const primaryContact = profile.emergency_contacts?.[0];
+  const activeSubscription = profileResult.subscriptions[0];
+  const latestEmergencyContact = profileResult.emergency_contacts[0];
+  
+  const counts = (countsResult as any[])[0] || {};
+  const completedSessionsCount = Number(counts.sessions || 0);
+  const moodEntriesCount = Number(counts.moods || 0);
+  const journalEntriesCount = Number(counts.journals || 0);
 
-  const subscription = profile.subscriptions?.[0];
-  const planType = (subscription?.plan_type || 'trial') as keyof typeof PLAN_LIMITS;
+  const streakDays = calculateStreak(recentMoods);
+  const upcomingSessions = scheduledAppointments.length;
+  const primaryContact = latestEmergencyContact;
+
+  const planType = (activeSubscription?.plan_type || 'trial') as keyof typeof PLAN_LIMITS;
   const planDetails = PLAN_LIMITS[planType];
 
-  return {
-    ...profile,
-    emergency_contact_name: primaryContact?.name || profile.emergency_contact_name,
-    emergency_contact_phone: primaryContact?.phone || profile.emergency_contact_phone,
-    emergency_contact_relationship: primaryContact?.relationship || profile.emergency_contact_relationship,
+  const result = {
+    ...profileResult,
+    emergency_contact_name: primaryContact?.name || profileResult.emergency_contact_name,
+    emergency_contact_phone: primaryContact?.phone || profileResult.emergency_contact_phone,
+    emergency_contact_relationship: primaryContact?.relationship || profileResult.emergency_contact_relationship,
     streak_days: streakDays,
     upcoming_sessions: upcomingSessions,
     stats: {
-      completed_sessions: completedSessions,
-      total_checkins: totalCheckins,
-      total_journals: totalJournals,
+      completed_sessions: completedSessionsCount,
+      total_checkins: moodEntriesCount,
+      total_journals: journalEntriesCount,
       streak_days: streakDays
     },
-    credits_remaining: profile.credits || 0,
+    credits_remaining: profileResult.credits || 0,
     credits_total: planDetails?.credits || 30,
     subscription_plan: planType,
+    subscriptions: activeSubscription ? [activeSubscription] : [],
+    mood_entries: recentMoods,
+    appointments_appointments_user_idToprofiles: scheduledAppointments,
+    emergency_contacts: latestEmergencyContact ? [latestEmergencyContact] : []
   };
+
+  // Set cache
+  userProfileCache.set(userId, {
+    data: result,
+    timestamp: Date.now()
+  });
+
+  return result;
 }
 
 export async function getCredits(userId: string) {

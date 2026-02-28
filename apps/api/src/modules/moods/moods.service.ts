@@ -1,6 +1,9 @@
 import prisma from "../../lib/prisma";
 import { CreateMoodInput } from "./moods.schema";
 
+const ALL_MOODS_CACHE_TTL = 120 * 1000; // 120 seconds
+let allMoodsCache: { data: any[]; timestamp: number } | null = null;
+
 export async function createMood(userId: string, input: CreateMoodInput) {
   // Update user profile current mood as well
   await prisma.profiles.update({
@@ -27,7 +30,12 @@ export async function getMoodsByUserId(userId: string) {
 }
 
 export async function getAllMoods() {
-  return prisma.mood_entries.findMany({
+  const now = Date.now();
+  if (allMoodsCache && (now - allMoodsCache.timestamp < ALL_MOODS_CACHE_TTL)) {
+    return allMoodsCache.data;
+  }
+
+  const result = await prisma.mood_entries.findMany({
     orderBy: { created_at: "desc" },
     include: {
       profiles: {
@@ -38,4 +46,7 @@ export async function getAllMoods() {
       },
     },
   });
+
+  allMoodsCache = { data: result, timestamp: Date.now() };
+  return result;
 }

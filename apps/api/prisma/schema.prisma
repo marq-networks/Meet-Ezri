@@ -508,6 +508,8 @@ model activity_events {
   metadata     Json?
   profiles     profiles @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([timestamp(sort: Desc)])
+  @@index([user_id])
   @@schema("public")
 }
 
@@ -549,6 +551,10 @@ model app_sessions {
   session_messages session_messages[]
 
   @@index([user_id])
+  @@index([started_at])
+  @@index([ended_at])
+  @@index([user_id, ended_at])
+  @@index([user_id, started_at(sort: Desc)])
   @@schema("public")
 }
 
@@ -570,6 +576,8 @@ model appointments {
   profiles_appointments_user_idToprofiles      profiles  @relation("appointments_user_idToprofiles", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id])
+  @@index([user_id, start_time])
+  @@index([created_at(sort: Desc)])
   @@schema("public")
 }
 
@@ -584,6 +592,9 @@ model audit_logs {
   profiles      profiles?      @relation(fields: [actor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   organizations organizations? @relation(fields: [org_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([org_id])
+  @@index([actor_id])
+  @@index([created_at(sort: Desc)])
   @@schema("public")
 }
 
@@ -597,6 +608,7 @@ model community_comments {
   community_posts community_posts @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   profiles        profiles        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([user_id])
   @@schema("public")
 }
 
@@ -610,6 +622,8 @@ model community_group_members {
   profiles         profiles         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([group_id, user_id])
+  @@index([user_id])
+  @@index([group_id, role])
   @@schema("public")
 }
 
@@ -640,6 +654,7 @@ model community_posts {
   community_groups   community_groups?    @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   profiles           profiles             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([user_id])
   @@schema("public")
 }
 
@@ -787,6 +802,7 @@ model journal_entries {
   profiles    profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id])
+  @@index([user_id, created_at(sort: Desc)])
   @@schema("public")
 }
 
@@ -817,6 +833,7 @@ model mood_entries {
   profiles   profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id])
+  @@index([user_id, created_at(sort: Desc)])
   @@schema("public")
 }
 
@@ -880,6 +897,8 @@ model org_members {
   profiles      profiles      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([org_id, user_id])
+  @@index([user_id])
+  @@index([org_id, role])
   @@schema("public")
 }
 
@@ -963,6 +982,9 @@ model profiles {
   wellness_tools                 wellness_tools[]
   favorite_wellness_tools        favorite_wellness_tools[]
 
+  @@index([created_at(sort: Desc)])
+  @@index([role])
+  @@index([email])
   @@schema("public")
 }
 
@@ -1046,6 +1068,7 @@ model sleep_entries {
   created_at     DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   profiles       profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([user_id, created_at(sort: Desc)])
   @@schema("public")
 }
 
@@ -1069,6 +1092,9 @@ model subscriptions {
   profiles        profiles       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id])
+  @@index([user_id, status])
+  @@index([user_id, status, created_at(sort: Desc)])
+  @@index([created_at(sort: Desc)])
   @@schema("public")
 }
 
@@ -1180,6 +1206,8 @@ model user_wellness_progress {
   wellness_tools  wellness_tools @relation(fields: [tool_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   profiles        profiles       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([user_id, completed_at(sort: Desc), duration_spent, tool_id])
+  @@index([tool_id])
   @@schema("public")
 }
 

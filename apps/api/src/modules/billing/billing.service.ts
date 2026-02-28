@@ -3,6 +3,16 @@ import { stripe } from '../../config/stripe';
 import { STRIPE_PRICE_IDS, PLAN_LIMITS } from './billing.constants';
 import { CreateSubscriptionInput, UpdateSubscriptionInput, CreateCreditPurchaseInput } from './billing.schema';
 
+// Simple in-memory cache for billing data
+const BILLING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const USER_INVOICES_TTL = 30 * 1000; // 30 seconds for user invoices
+let allInvoicesCache: { data: any[]; timestamp: number } | null = null;
+let allTransactionsCache: { data: any[]; timestamp: number } | null = null;
+const userInvoicesCache = new Map<string, { data: any[]; timestamp: number }>();
+
+const SUBSCRIPTIONS_CACHE_TTL = 30 * 1000; // 30 seconds
+const subscriptionsCache = new Map<string, { data: any[]; timestamp: number }>();
+
 const CLIENT_URL =
   process.env.CLIENT_URL ||
   (process.env.NODE_ENV === 'production'
@@ -282,6 +292,12 @@ export async function getBillingHistory(userId: string) {
 }
 
 export async function getInvoicesForUser(userId: string) {
+  const now = Date.now();
+  const cached = userInvoicesCache.get(userId);
+  if (cached && (now - cached.timestamp < USER_INVOICES_TTL)) {
+    return cached.data;
+  }
+
   const profile = await prisma.profiles.findUnique({
     where: { id: userId },
     select: {
@@ -298,7 +314,7 @@ export async function getInvoicesForUser(userId: string) {
     limit: 50,
   });
 
-  return invoices.data.map((invoice) => ({
+  const result = invoices.data.map((invoice) => ({
     id: invoice.id,
     status: invoice.status,
     amount_due: (invoice.amount_due || 0) / 100,
@@ -308,23 +324,66 @@ export async function getInvoicesForUser(userId: string) {
     invoice_pdf: invoice.invoice_pdf || null,
     description: invoice.description || null,
   }));
+
+  userInvoicesCache.set(userId, { data: result, timestamp: now });
+  return result;
 }
 
-export async function getAllSubscriptions() {
-  return prisma.subscriptions.findMany({
+export async function getAllSubscriptions(page: number = 1, limit: number = 50) {
+  const cacheKey = `${page}_${limit}`;
+  const cached = subscriptionsCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < SUBSCRIPTIONS_CACHE_TTL)) {
+    return cached.data;
+  }
+
+  const skip = (page - 1) * limit;
+  const take = Math.min(limit, 100);
+
+  // 1. Fetch subscriptions WITH profiles in one go
+  const subs = await prisma.subscriptions.findMany({
+    take,
+    skip,
+    orderBy: { created_at: 'desc' },
     include: {
       profiles: {
         select: {
           email: true,
-          full_name: true,
+          full_name: true
         }
       }
-    },
-    orderBy: { created_at: 'desc' },
+    }
   });
+
+  // 2. Map results
+  const result = subs.map(sub => ({
+    id: sub.id,
+    user_id: sub.user_id,
+    plan_type: sub.plan_type,
+    status: sub.status,
+    start_date: sub.start_date,
+    end_date: sub.end_date,
+    billing_cycle: sub.billing_cycle,
+    amount: sub.amount,
+    next_billing_at: sub.next_billing_at,
+    payment_method: sub.payment_method,
+    created_at: sub.created_at,
+    updated_at: sub.updated_at,
+    profiles: {
+      email: sub.profiles?.email || null,
+      full_name: sub.profiles?.full_name || null,
+    }
+  }));
+  
+  subscriptionsCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export async function getAllInvoices() {
+  const now = Date.now();
+  if (allInvoicesCache && (now - allInvoicesCache.timestamp < BILLING_CACHE_TTL)) {
+    return allInvoicesCache.data;
+  }
+
   const invoices = await stripe.invoices.list({
     limit: 100,
   });
@@ -354,7 +413,7 @@ export async function getAllInvoices() {
     }
   }
 
-  return invoices.data.map((invoice) => {
+  const result = invoices.data.map((invoice) => {
     const customerId = typeof invoice.customer === 'string' ? invoice.customer : null;
     const profile = customerId ? profileByCustomerId.get(customerId) : undefined;
 
@@ -373,9 +432,17 @@ export async function getAllInvoices() {
       metadata: invoice.metadata || {},
     };
   });
+
+  allInvoicesCache = { data: result, timestamp: now };
+  return result;
 }
 
 export async function getAllPaygTransactions() {
+  const now = Date.now();
+  if (allTransactionsCache && (now - allTransactionsCache.timestamp < BILLING_CACHE_TTL)) {
+    return allTransactionsCache.data;
+  }
+
   const invoices = await stripe.invoices.list({
     limit: 100,
   });
@@ -417,7 +484,7 @@ export async function getAllPaygTransactions() {
     }
   }
 
-  return paygInvoices.map((invoice) => {
+  const result = paygInvoices.map((invoice) => {
     const customerId = typeof invoice.customer === 'string' ? invoice.customer : null;
     const profile = customerId ? profileByCustomerId.get(customerId) : undefined;
 
@@ -449,14 +516,18 @@ export async function getAllPaygTransactions() {
       amount: (invoice.amount_paid || invoice.amount_due || 0) / 100,
       currency: invoice.currency,
       created: new Date(invoice.created * 1000).toISOString(),
+      credits: totalCredits,
+      minutes_purchased: totalCredits > 0 ? totalCredits : null,
+      payment_method: invoice.payment_intent ? 'Card' : null,
+      plan_type: planTypeFromMetadata || 'credits',
       user_id: profile?.id || null,
       user_email: profile?.email || null,
       user_name: profile?.full_name || null,
-      minutes_purchased: totalCredits > 0 ? totalCredits : null,
-      payment_method: invoice.payment_intent ? 'Card' : null,
-      plan_type: planTypeFromMetadata || null,
     };
   });
+
+  allTransactionsCache = { data: result, timestamp: now };
+  return result;
 }
 
 export async function syncSubscriptionWithStripe(userId: string) {

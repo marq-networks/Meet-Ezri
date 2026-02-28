@@ -124,7 +124,11 @@ export async function getAllSubscriptionsHandler(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const subscriptions = await getAllSubscriptions();
+  const query = request.query as any;
+  const page = query.page && !isNaN(parseInt(query.page, 10)) ? parseInt(query.page, 10) : 1;
+  const limit = query.limit && !isNaN(parseInt(query.limit, 10)) ? parseInt(query.limit, 10) : 50;
+  
+  const subscriptions = await getAllSubscriptions(page, limit);
   return reply.send(subscriptions);
 }
 

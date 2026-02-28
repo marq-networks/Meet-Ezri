@@ -8,7 +8,7 @@ export async function createWellnessToolHandler(
 ) {
   const tool = await createWellnessTool({
     ...request.body,
-    created_by: request.user.sub
+    created_by: (request.user as any).sub
   });
   return reply.code(201).send(tool);
 }
@@ -17,7 +17,7 @@ export async function getWellnessToolsHandler(
   request: FastifyRequest<{ Querystring: { category?: string } }>,
   reply: FastifyReply
 ) {
-  const tools = await getWellnessTools(request.user.sub, request.query.category);
+  const tools = await getWellnessTools((request.user as any).sub, request.query.category);
   return reply.send(tools);
 }
 
@@ -25,7 +25,7 @@ export async function getWellnessToolByIdHandler(
   request: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) {
-  const tool = await getWellnessToolById(request.user.sub, request.params.id);
+  const tool = await getWellnessToolById((request.user as any).sub, request.params.id);
   if (!tool) {
     return reply.code(404).send({ message: 'Wellness tool not found' });
   }
@@ -49,7 +49,7 @@ export async function toggleWellnessToolFavoriteHandler(
   reply: FastifyReply
 ) {
   try {
-    const result = await toggleWellnessToolFavorite(request.user.sub, request.params.id);
+    const result = await toggleWellnessToolFavorite((request.user as any).sub, request.params.id);
     return reply.send(result);
   } catch (error: any) {
     if (error.message === 'Wellness tool not found') {
@@ -64,7 +64,7 @@ export async function getUserWellnessProgressHandler(
   reply: FastifyReply
 ) {
   try {
-    const progress = await getUserWellnessProgress(request.user.sub);
+    const progress = await getUserWellnessProgress((request.user as any).sub);
     return reply.send(progress);
   } catch (error) {
     return reply.code(500).send({ message: 'Failed to fetch wellness progress' });
@@ -89,7 +89,7 @@ export async function trackWellnessProgressHandler(
 ) {
   try {
     const progress = await trackWellnessProgress(
-      request.user.sub,
+      (request.user as any).sub,
       request.params.id,
       request.body.duration_spent,
       request.body.feedback_rating
@@ -106,7 +106,7 @@ export async function startWellnessSessionHandler(
 ) {
   try {
     const session = await startWellnessSession(
-      request.user.sub,
+      (request.user as any).sub,
       request.params.id
     );
     return reply.code(201).send(session);
@@ -143,7 +143,7 @@ export async function getWellnessStatsHandler(
   reply: FastifyReply
 ) {
   try {
-    const stats = await getWellnessStats(request.user.sub);
+    const stats = await getWellnessStats((request.user as any).sub);
     return reply.send(stats);
   } catch (error) {
     return reply.code(500).send({ message: 'Failed to fetch wellness stats' });

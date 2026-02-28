@@ -44,6 +44,27 @@ const app = Fastify({ logger: true }).withTypeProvider<ZodTypeProvider>();
 app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
 
+// Performance monitoring hooks
+app.addHook('onRequest', (request, reply, done) => {
+  (request as any).startTime = performance.now();
+  done();
+});
+
+app.addHook('onResponse', (request, reply, done) => {
+  const startTime = (request as any).startTime;
+  if (startTime) {
+    const duration = performance.now() - startTime;
+    if (duration > 500) {
+      const color = duration > 2000 ? '\x1b[31m' : '\x1b[33m'; // Red > 2s, Yellow > 500ms
+      const reset = '\x1b[0m';
+      console.log(
+        `${color}[SLOW REQUEST] ${request.method} ${request.url} - ${reply.statusCode} - ${duration.toFixed(2)}ms${reset}`
+      );
+    }
+  }
+  done();
+});
+
 // Fix for Vercel Serverless: Handle pre-parsed body
 app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
   // If the body is already parsed by the environment (e.g. Vercel), use it
