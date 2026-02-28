@@ -142,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile(null);
         setIsLoading(false);
+        applyAppearanceForUser(null);
       }
     });
 
@@ -208,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    applyAppearanceForUser(null);
     await supabase.auth.signOut();
     setProfile(null);
     setUser(null);

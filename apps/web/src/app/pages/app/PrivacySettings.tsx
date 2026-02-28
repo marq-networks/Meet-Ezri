@@ -127,7 +127,7 @@ export function PrivacySettings() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div
@@ -137,19 +137,19 @@ export function PrivacySettings() {
           >
             <Link 
               to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 transition-colors font-medium"
+              className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors font-medium"
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Settings
             </Link>
 
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg shadow-purple-500/20">
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Privacy & Security</h1>
-                <p className="text-gray-600">Control your data and privacy settings</p>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Privacy & Security</h1>
+                <p className="text-gray-600 dark:text-gray-400">Control your data and privacy settings</p>
               </div>
             </div>
           </motion.div>
@@ -159,24 +159,24 @@ export function PrivacySettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6 transition-colors duration-300"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Privacy Controls</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Privacy Controls</h2>
 
             <div className="space-y-4">
               {/* Profile Visibility */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl transition-colors duration-300">
                 <div className="flex items-center gap-3">
-                  <Eye className="w-5 h-5 text-purple-600" />
+                  <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Profile Visibility</p>
-                    <p className="text-sm text-gray-600">Who can see your profile</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Profile Visibility</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Who can see your profile</p>
                   </div>
                 </div>
                 <select
                   value={settings.profileVisibility}
                   onChange={(e) => updateSettings({...settings, profileVisibility: e.target.value})}
-                  className="px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                  className="px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none transition-colors"
                 >
                   <option value="public">Public</option>
                   <option value="friends">Friends Only</option>
@@ -185,19 +185,19 @@ export function PrivacySettings() {
               </div>
 
               {/* Online Status */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl transition-colors duration-300">
                 <div className="flex items-center gap-3">
-                  <Globe className="w-5 h-5 text-green-600" />
+                  <Globe className="w-5 h-5 text-green-600 dark:text-green-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Show Online Status</p>
-                    <p className="text-sm text-gray-600">Let others see when you're active</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Show Online Status</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Let others see when you're active</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("showOnlineStatus")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.showOnlineStatus ? "bg-green-500" : "bg-gray-300"
+                    settings.showOnlineStatus ? "bg-green-500" : "bg-gray-300 dark:bg-slate-600"
                   }`}
                 >
                   <motion.div
@@ -208,19 +208,19 @@ export function PrivacySettings() {
               </div>
 
               {/* Share Progress */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl transition-colors duration-300">
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-blue-600" />
+                  <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Share Progress</p>
-                    <p className="text-sm text-gray-600">Allow sharing wellness milestones</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Share Progress</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Allow sharing wellness milestones</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("shareProgress")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.shareProgress ? "bg-blue-500" : "bg-gray-300"
+                    settings.shareProgress ? "bg-blue-500" : "bg-gray-300 dark:bg-slate-600"
                   }`}
                 >
                   <motion.div
@@ -237,13 +237,13 @@ export function PrivacySettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6 transition-colors duration-300"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Safety & Support</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Safety & Support</h2>
               <Link
                 to="/app/settings/notification-history"
-                className="text-sm text-purple-600 hover:text-purple-700 font-medium underline"
+                className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium underline"
               >
                 View History
               </Link>
@@ -251,17 +251,17 @@ export function PrivacySettings() {
 
             <div className="space-y-4">
               {/* Trusted Contact Notifications */}
-              <div className="flex items-center justify-between p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
+              <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border-2 border-purple-200 dark:border-purple-800 transition-colors duration-300">
                 <div className="flex items-center gap-3 flex-1">
-                  <Bell className="w-5 h-5 text-purple-600" />
+                  <Bell className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Trusted Contact Notifications</p>
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="font-medium text-gray-900 dark:text-white">Trusted Contact Notifications</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                       Allow your trusted contacts to receive supportive check-in messages when our safety system detects you may need extra support
                     </p>
                     <div className="flex items-center gap-2">
-                      <Heart className="w-4 h-4 text-purple-500" />
-                      <span className="text-xs text-purple-700 font-medium">
+                      <Heart className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+                      <span className="text-xs text-purple-700 dark:text-purple-300 font-medium">
                         Privacy-safe • No medical details shared
                       </span>
                     </div>
@@ -271,7 +271,7 @@ export function PrivacySettings() {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => updateConsent({ trustedContactEnabled: !consent.trustedContactEnabled })}
                   className={`w-14 h-8 rounded-full transition-colors flex-shrink-0 ml-4 ${ 
-                    consent.trustedContactEnabled ? "bg-purple-500" : "bg-gray-300"
+                    consent.trustedContactEnabled ? "bg-purple-500" : "bg-gray-300 dark:bg-slate-600"
                   }`}
                 >
                   <motion.div
@@ -287,20 +287,20 @@ export function PrivacySettings() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="p-4 bg-blue-50 rounded-xl border border-blue-200"
+                  className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 transition-colors duration-300"
                 >
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm text-blue-900 font-medium mb-1">
+                      <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-1">
                         Trusted Contact Notifications Enabled
                       </p>
-                      <p className="text-sm text-blue-700 mb-3">
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
                         Your trusted contacts will receive supportive messages if HIGH_RISK or SAFETY_MODE is detected. Messages are privacy-safe and contain no details about your conversations or sessions.
                       </p>
                       <Link
                         to="/app/settings/emergency-contacts"
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium underline"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium underline"
                       >
                         Manage Trusted Contacts →
                       </Link>
@@ -316,25 +316,25 @@ export function PrivacySettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6 transition-colors duration-300"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Data & Analytics</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Data & Analytics</h2>
 
             <div className="space-y-4">
               {/* Allow Analytics */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl transition-colors duration-300">
                 <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-indigo-600" />
+                  <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Usage Analytics</p>
-                    <p className="text-sm text-gray-600">Help improve Ezri with usage data</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Usage Analytics</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Help improve Ezri with usage data</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("allowAnalytics")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.allowAnalytics ? "bg-indigo-500" : "bg-gray-300"
+                    settings.allowAnalytics ? "bg-indigo-500" : "bg-gray-300 dark:bg-slate-600"
                   }`}
                 >
                   <motion.div
@@ -345,19 +345,19 @@ export function PrivacySettings() {
               </div>
 
               {/* Cookies */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl transition-colors duration-300">
                 <div className="flex items-center gap-3">
-                  <Lock className="w-5 h-5 text-yellow-600" />
+                  <Lock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Essential Cookies</p>
-                    <p className="text-sm text-gray-600">Required for app functionality</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Essential Cookies</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Required for app functionality</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("allowCookies")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.allowCookies ? "bg-yellow-500" : "bg-gray-300"
+                    settings.allowCookies ? "bg-yellow-500" : "bg-gray-300 dark:bg-slate-600"
                   }`}
                 >
                   <motion.div
@@ -368,19 +368,19 @@ export function PrivacySettings() {
               </div>
 
               {/* Marketing Emails */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl transition-colors duration-300">
                 <div className="flex items-center gap-3">
-                  <UserX className="w-5 h-5 text-red-600" />
+                  <UserX className="w-5 h-5 text-red-600 dark:text-red-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Marketing Communications</p>
-                    <p className="text-sm text-gray-600">Receive promotional emails</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Marketing Communications</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Receive promotional emails</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("marketingEmails")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.marketingEmails ? "bg-red-500" : "bg-gray-300"
+                    settings.marketingEmails ? "bg-red-500" : "bg-gray-300 dark:bg-slate-600"
                   }`}
                 >
                   <motion.div
@@ -391,19 +391,19 @@ export function PrivacySettings() {
               </div>
 
               {/* Third Party */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl transition-colors duration-300">
                 <div className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-orange-600" />
+                  <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Third-Party Data Sharing</p>
-                    <p className="text-sm text-gray-600">Share with partner services</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Third-Party Data Sharing</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Share with partner services</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("thirdPartySharing")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.thirdPartySharing ? "bg-orange-500" : "bg-gray-300"
+                    settings.thirdPartySharing ? "bg-orange-500" : "bg-gray-300 dark:bg-slate-600"
                   }`}
                 >
                   <motion.div
@@ -420,41 +420,41 @@ export function PrivacySettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6 transition-colors duration-300"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Data Management</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Data Management</h2>
 
             <div className="space-y-3">
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                className="w-full bg-blue-50 hover:bg-blue-100 rounded-xl p-4 flex items-center justify-between transition-colors"
+                className="w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-xl p-4 flex items-center justify-between transition-colors"
                 onClick={handleDownloadData}
               >
                 <div className="flex items-center gap-3">
-                  <Download className="w-5 h-5 text-blue-600" />
+                  <Download className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">Download My Data</p>
-                    <p className="text-sm text-gray-600">Get a copy of all your information</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Download My Data</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Get a copy of all your information</p>
                   </div>
                 </div>
-                <div className="text-blue-600 font-medium">Export</div>
+                <div className="text-blue-600 dark:text-blue-400 font-medium">Export</div>
               </motion.button>
 
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                className="w-full bg-red-50 hover:bg-red-100 rounded-xl p-4 flex items-center justify-between transition-colors"
+                className="w-full bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl p-4 flex items-center justify-between transition-colors"
                 onClick={handleDeleteAllData}
               >
                 <div className="flex items-center gap-3">
-                  <Trash2 className="w-5 h-5 text-red-600" />
+                  <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">Delete All Data</p>
-                    <p className="text-sm text-gray-600">Permanently remove all your information</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Delete All Data</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Permanently remove all your information</p>
                   </div>
                 </div>
-                <div className="text-red-600 font-medium">Delete</div>
+                <div className="text-red-600 dark:text-red-400 font-medium">Delete</div>
               </motion.button>
             </div>
           </motion.div>
@@ -464,24 +464,24 @@ export function PrivacySettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-6"
+            className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-6 transition-colors duration-300"
           >
             <div className="flex items-start gap-4">
-              <Shield className="w-8 h-8 text-purple-600 flex-shrink-0" />
+              <Shield className="w-8 h-8 text-purple-600 dark:text-purple-400 flex-shrink-0" />
               <div>
-                <h3 className="font-bold text-purple-900 mb-2">HIPAA Compliant</h3>
-                <p className="text-sm text-purple-700 mb-3">
+                <h3 className="font-bold text-purple-900 dark:text-purple-100 mb-2">HIPAA Compliant</h3>
+                <p className="text-sm text-purple-700 dark:text-purple-300 mb-3">
                   Your mental health data is protected under HIPAA regulations. We encrypt all 
                   sensitive information and never share your health records without explicit consent.
                 </p>
                 <div className="flex gap-2">
                   <Link
                     to="/privacy"
-                    className="text-sm text-purple-600 hover:text-purple-700 font-medium underline"
+                    className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium underline"
                   >
                     Privacy Policy
                   </Link>
-                  <span className="text-purple-400">•</span>
+                  <span className="text-purple-400 dark:text-purple-600">•</span>
                   <Link
                     to="/terms"
                     className="text-sm text-purple-600 hover:text-purple-700 font-medium underline"

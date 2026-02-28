@@ -21,7 +21,8 @@ import {
   Sparkles,
   ChevronRight,
   History,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -366,6 +367,13 @@ export function Billing() {
                   className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
                 />
               </div>
+               <Link 
+              to="/app/settings" 
+              className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Settings
+            </Link>
               <p className="text-xs text-blue-600 mt-2">
                 {usagePercentage.toFixed(0)}% used this billing cycle
               </p>

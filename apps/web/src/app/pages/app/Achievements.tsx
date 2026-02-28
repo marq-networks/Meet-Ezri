@@ -176,13 +176,13 @@ export function Achievements() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
             <Link 
               to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 transition-colors font-medium"
+              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200 mb-6 transition-colors font-medium"
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Settings
@@ -193,8 +193,8 @@ export function Achievements() {
                 <Trophy className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Achievements</h1>
-                <p className="text-gray-600">Your journey and milestones</p>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Achievements</h1>
+                <p className="text-gray-600 dark:text-slate-400">Your journey and milestones</p>
               </div>
             </div>
           </div>
@@ -202,15 +202,15 @@ export function Achievements() {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <AnimatedCard delay={0.1}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-full flex flex-col justify-between">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm h-full flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <Award className="w-8 h-8 text-yellow-600" />
-                    <span className="text-2xl font-bold text-gray-900">{stats.unlockedCount}/{stats.totalCount}</span>
+                    <Award className="w-8 h-8 text-yellow-600 dark:text-yellow-500" />
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{stats.unlockedCount}/{stats.totalCount}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Unlocked</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Unlocked</p>
                 </div>
-                <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="mt-3 h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full"
                     style={{ width: `${(stats.unlockedCount / stats.totalCount) * 100}%` }}
@@ -220,37 +220,37 @@ export function Achievements() {
             </AnimatedCard>
 
             <AnimatedCard delay={0.2}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-full flex flex-col justify-between">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm h-full flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <Star className="w-8 h-8 text-purple-600" />
-                    <span className="text-2xl font-bold text-gray-900">{stats.totalPoints}</span>
+                    <Star className="w-8 h-8 text-purple-600 dark:text-purple-500" />
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalPoints}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Total Points</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Total Points</p>
                 </div>
               </div>
             </AnimatedCard>
 
             <AnimatedCard delay={0.3}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-full flex flex-col justify-between">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm h-full flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <TrendingUp className="w-8 h-8 text-green-600" />
-                    <span className="text-2xl font-bold text-gray-900">{stats.currentStreak}</span>
+                    <TrendingUp className="w-8 h-8 text-green-600 dark:text-green-500" />
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{stats.currentStreak}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Current Streak</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Current Streak</p>
                 </div>
               </div>
             </AnimatedCard>
 
             <AnimatedCard delay={0.4}>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-full flex flex-col justify-between">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm h-full flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <Trophy className="w-8 h-8 text-blue-600" />
-                    <span className="text-2xl font-bold text-gray-900">{stats.longestStreak}</span>
+                    <Trophy className="w-8 h-8 text-blue-600 dark:text-blue-500" />
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{stats.longestStreak}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Longest Streak</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Longest Streak</p>
                 </div>
               </div>
             </AnimatedCard>
@@ -271,7 +271,7 @@ export function Achievements() {
                     className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
                       isActive
                         ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md'
-                        : 'bg-white text-gray-700 border border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-purple-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -291,8 +291,8 @@ export function Achievements() {
               return (
                 <AnimatedCard key={achievement.id} delay={index * 0.05}>
                   <div
-                    className={`relative bg-white rounded-2xl border-2 h-full flex flex-col ${
-                      isUnlocked ? rarityBorders[achievement.rarity] : 'border-gray-200'
+                    className={`relative bg-white dark:bg-slate-900 rounded-2xl border-2 h-full flex flex-col ${
+                      isUnlocked ? rarityBorders[achievement.rarity] : 'border-gray-200 dark:border-slate-800'
                     } p-6 overflow-hidden hover:shadow-lg transition-all ${!isUnlocked && 'opacity-60'}`}
                   >
                     {/* Rarity Gradient Overlay */}
@@ -306,32 +306,32 @@ export function Achievements() {
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
                           isUnlocked 
                             ? `bg-gradient-to-br ${rarityColors[achievement.rarity]}` 
-                            : 'bg-gray-100'
+                            : 'bg-gray-100 dark:bg-slate-800'
                         }`}>
                           {isUnlocked ? (
                             <Icon className="w-8 h-8 text-white" />
                           ) : (
-                            <Lock className="w-8 h-8 text-gray-400" />
+                            <Lock className="w-8 h-8 text-gray-400 dark:text-slate-600" />
                           )}
                         </div>
                         {isUnlocked && (
-                          <div className="flex items-center gap-1 bg-yellow-100 px-2 py-1 rounded-lg">
-                            <Star className="w-4 h-4 text-yellow-600" />
-                            <span className="text-sm font-bold text-yellow-700">{achievement.points}</span>
+                          <div className="flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-1 rounded-lg">
+                            <Star className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
+                            <span className="text-sm font-bold text-yellow-700 dark:text-yellow-500">{achievement.points}</span>
                           </div>
                         )}
                       </div>
 
-                      <h3 className="text-lg font-bold text-gray-900 mb-2">{achievement.title}</h3>
-                      <p className="text-sm text-gray-600 mb-4">{achievement.description}</p>
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{achievement.title}</h3>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">{achievement.description}</p>
 
                       {/* Progress Bar */}
                       <div className="mb-3">
-                        <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-slate-400 mb-1">
                           <span>Progress</span>
                           <span>{achievement.progress}/{achievement.total}</span>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${(achievement.progress / achievement.total) * 100}%` }}
@@ -339,7 +339,7 @@ export function Achievements() {
                             className={`h-full ${
                               isUnlocked 
                                 ? `bg-gradient-to-r ${rarityColors[achievement.rarity]}` 
-                                : 'bg-gradient-to-r from-gray-300 to-gray-400'
+                                : 'bg-gradient-to-r from-gray-300 to-gray-400 dark:from-slate-600 dark:to-slate-500'
                             } rounded-full`}
                           />
                         </div>
@@ -347,8 +347,8 @@ export function Achievements() {
 
                       {/* Unlocked Date */}
                       {isUnlocked && achievement.unlockedDate && (
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                          <CheckCircle className="w-4 h-4 text-green-600" />
+                        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-400">
+                          <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-500" />
                           <span>Unlocked on {new Date(achievement.unlockedDate).toLocaleDateString()}</span>
                         </div>
                       )}
@@ -358,7 +358,7 @@ export function Achievements() {
                         <span className={`text-xs font-bold uppercase px-2 py-1 rounded-lg ${
                           isUnlocked
                             ? `bg-gradient-to-r ${rarityColors[achievement.rarity]} text-white`
-                            : 'bg-gray-200 text-gray-500'
+                            : 'bg-gray-200 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
                         }`}>
                           {achievement.rarity}
                         </span>
@@ -373,9 +373,9 @@ export function Achievements() {
           {/* Empty State */}
           {filteredAchievements.length === 0 && (
             <div className="text-center py-16">
-              <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">No achievements in this category yet</h3>
-              <p className="text-gray-600">Keep going! Your achievements are waiting to be unlocked.</p>
+              <Trophy className="w-16 h-16 text-gray-400 dark:text-slate-600 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No achievements in this category yet</h3>
+              <p className="text-gray-600 dark:text-slate-400">Keep going! Your achievements are waiting to be unlocked.</p>
             </div>
           )}
         </div>

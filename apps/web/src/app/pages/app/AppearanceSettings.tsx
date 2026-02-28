@@ -72,46 +72,21 @@ export function AppearanceSettings() {
     return () => clearTimeout(timer);
   }, [settings, storageKey]);
 
+  // Sync with external changes
   useEffect(() => {
-    if (typeof document === "undefined") return;
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<any>;
+      const detail = custom.detail || {};
+      // Only update if different to avoid loops
+      setSettings(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(detail)) return prev;
+        return { ...prev, ...detail };
+      });
+    };
 
-    const root = document.documentElement;
-
-    if (settings.theme === "auto") {
-      if (typeof window === "undefined" || !window.matchMedia) {
-        root.classList.remove("dark");
-        return;
-      }
-
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-      const applyTheme = (isDark: boolean) => {
-        if (isDark) {
-          root.classList.add("dark");
-        } else {
-          root.classList.remove("dark");
-        }
-      };
-
-      applyTheme(mediaQuery.matches);
-
-      const listener = (event: MediaQueryListEvent) => {
-        applyTheme(event.matches);
-      };
-
-      mediaQuery.addEventListener("change", listener);
-
-      return () => {
-        mediaQuery.removeEventListener("change", listener);
-      };
-    }
-
-    if (settings.theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-  }, [settings.theme]);
+    window.addEventListener("ezri-appearance-change", handler);
+    return () => window.removeEventListener("ezri-appearance-change", handler);
+  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;

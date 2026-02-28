@@ -188,7 +188,7 @@ export function NotificationSettings() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div
@@ -198,7 +198,7 @@ export function NotificationSettings() {
           >
             <Link 
               to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 transition-colors font-medium"
+              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200 mb-6 transition-colors font-medium"
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Settings
@@ -209,8 +209,8 @@ export function NotificationSettings() {
                 <Bell className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
-                <p className="text-gray-600">Manage alerts and reminders</p>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Notifications</h1>
+                <p className="text-gray-600 dark:text-slate-400">Manage alerts and reminders</p>
               </div>
             </div>
           </motion.div>
@@ -220,29 +220,29 @@ export function NotificationSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Notification Channels</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Notification Channels</h2>
 
             <div className="space-y-4">
               {/* Push Notifications */}
-              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
                   {notificationSettings.pushEnabled ? (
-                    <Bell className="w-5 h-5 text-blue-600" />
+                    <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   ) : (
-                    <BellOff className="w-5 h-5 text-gray-400" />
+                    <BellOff className="w-5 h-5 text-gray-400 dark:text-slate-500" />
                   )}
                   <div>
-                    <p className="font-medium text-gray-900">Push Notifications</p>
-                    <p className="text-sm text-gray-600">Real-time alerts on your device</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Push Notifications</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Real-time alerts on your device</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("pushEnabled")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    notificationSettings.pushEnabled ? "bg-blue-500" : "bg-gray-300"
+                    notificationSettings.pushEnabled ? "bg-blue-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -253,19 +253,19 @@ export function NotificationSettings() {
               </div>
 
               {/* Email Notifications */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-purple-600" />
+                  <Mail className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Email Notifications</p>
-                    <p className="text-sm text-gray-600">Receive updates via email</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Email Notifications</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Receive updates via email</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("emailEnabled")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    notificationSettings.emailEnabled ? "bg-purple-500" : "bg-gray-300"
+                    notificationSettings.emailEnabled ? "bg-purple-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -276,19 +276,19 @@ export function NotificationSettings() {
               </div>
 
               {/* SMS Notifications */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <MessageSquare className="w-5 h-5 text-green-600" />
+                  <MessageSquare className="w-5 h-5 text-green-600 dark:text-green-400" />
                   <div>
-                    <p className="font-medium text-gray-900">SMS Notifications</p>
-                    <p className="text-sm text-gray-600">Text message alerts</p>
+                    <p className="font-medium text-gray-900 dark:text-white">SMS Notifications</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Text message alerts</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("smsEnabled")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    notificationSettings.smsEnabled ? "bg-green-500" : "bg-gray-300"
+                    notificationSettings.smsEnabled ? "bg-green-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -305,21 +305,21 @@ export function NotificationSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6"
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <Moon className="w-5 h-5 text-indigo-600" />
+                <Moon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Quiet Hours</h2>
-                  <p className="text-sm text-gray-600">Pause notifications during sleep</p>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Quiet Hours</h2>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Pause notifications during sleep</p>
                 </div>
               </div>
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => toggleSetting("quietHoursEnabled")}
                 className={`w-14 h-8 rounded-full transition-colors ${
-                  notificationSettings.quietHoursEnabled ? "bg-indigo-500" : "bg-gray-300"
+                  notificationSettings.quietHoursEnabled ? "bg-indigo-500" : "bg-gray-300 dark:bg-slate-700"
                 }`}
               >
                 <motion.div
@@ -336,22 +336,22 @@ export function NotificationSettings() {
                 className="grid grid-cols-2 gap-4"
               >
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Start Time</label>
                   <input
                     type="time"
                     value={notificationSettings.quietStart}
                     onChange={(e) => updateTimeSetting('quietStart', e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">End Time</label>
                   <input
                     type="time"
                     value={notificationSettings.quietEnd}
                     onChange={(e) => updateTimeSetting('quietEnd', e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
               </motion.div>
@@ -363,9 +363,9 @@ export function NotificationSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Notification Types</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Notification Types</h2>
 
             <div className="space-y-3">
               {notificationCategories.map((category, index) => {
@@ -376,20 +376,20 @@ export function NotificationSettings() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.4 + index * 0.05 }}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <Icon className={`w-5 h-5 ${category.color}`} />
                       <div>
-                        <p className="font-medium text-gray-900">{category.title}</p>
-                        <p className="text-sm text-gray-600">{category.description}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{category.title}</p>
+                        <p className="text-sm text-gray-600 dark:text-slate-400">{category.description}</p>
                       </div>
                     </div>
                     <motion.button
                       whileTap={{ scale: 0.95 }}
                       onClick={() => toggleSetting(category.key)}
                       className={`w-14 h-8 rounded-full transition-colors ${
-                        notificationSettings[category.key] ? "bg-gradient-to-r from-blue-500 to-indigo-600" : "bg-gray-300"
+                        notificationSettings[category.key] ? "bg-gradient-to-r from-blue-500 to-indigo-600" : "bg-gray-300 dark:bg-slate-700"
                       }`}
                     >
                       <motion.div
@@ -424,7 +424,7 @@ export function NotificationSettings() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => updateAllSettings(false)}
-              className="px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium flex items-center justify-center gap-2"
+              className="px-4 py-3 rounded-xl bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 font-medium flex items-center justify-center gap-2"
             >
               <VolumeX className="w-4 h-4" />
               Disable All

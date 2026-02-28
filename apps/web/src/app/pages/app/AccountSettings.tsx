@@ -371,7 +371,7 @@ export function AccountSettings() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-300">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div
@@ -381,14 +381,14 @@ export function AccountSettings() {
           >
             <Link 
               to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+              className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Settings
             </Link>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Account Settings</h1>
-            <p className="text-gray-600">Manage your personal information and account details</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Account Settings</h1>
+            <p className="text-gray-600 dark:text-gray-400">Manage your personal information and account details</p>
           </motion.div>
 
           {/* Save Success Banner */}
@@ -397,10 +397,10 @@ export function AccountSettings() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="mb-6 bg-green-50 border-2 border-green-200 rounded-xl p-4 flex items-center gap-3"
+              className="mb-6 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4 flex items-center gap-3"
             >
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-green-700 font-medium">Settings saved successfully!</span>
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <span className="text-green-700 dark:text-green-300 font-medium">Settings saved successfully!</span>
             </motion.div>
           )}
 
@@ -409,9 +409,9 @@ export function AccountSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6 transition-colors duration-300"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Profile Picture</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Profile Picture</h2>
 
             <div className="flex items-center gap-6">
               <div className="relative">
@@ -434,15 +434,15 @@ export function AccountSettings() {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg border-2 border-gray-100 cursor-pointer"
+                  className="absolute bottom-0 right-0 p-2 bg-white dark:bg-slate-800 rounded-full shadow-lg border-2 border-gray-100 dark:border-slate-700 cursor-pointer"
                 >
-                  <Camera className="w-4 h-4 text-blue-600" />
+                  <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </motion.button>
               </div>
 
               <div className="flex-1">
-                <h3 className="font-bold text-gray-900 mb-1">Change Photo</h3>
-                <p className="text-sm text-gray-600 mb-3">Upload a new profile picture (JPG, PNG, max 5MB)</p>
+                <h3 className="font-bold text-gray-900 dark:text-white mb-1">Change Photo</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Upload a new profile picture (JPG, PNG, max 5MB)</p>
                 <div className="flex gap-2">
                   <input
                     type="file"
@@ -465,7 +465,7 @@ export function AccountSettings() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleRemovePhoto}
                     disabled={uploading || !profileData.avatar_url}
-                    className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 rounded-xl bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Remove
                   </motion.button>
@@ -479,14 +479,14 @@ export function AccountSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6 transition-colors duration-300"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Personal Information</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Personal Information</h2>
 
             <div className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     <User className="w-4 h-4 inline mr-1" />
                     First Name
                   </label>
@@ -494,12 +494,12 @@ export function AccountSettings() {
                     type="text"
                     value={profileData.firstName}
                     onChange={(e) => setProfileData({...profileData, firstName: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     <User className="w-4 h-4 inline mr-1" />
                     Last Name
                   </label>
@@ -507,13 +507,13 @@ export function AccountSettings() {
                     type="text"
                     value={profileData.lastName}
                     onChange={(e) => setProfileData({...profileData, lastName: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <Mail className="w-4 h-4 inline mr-1" />
                   Email Address
                 </label>
@@ -521,12 +521,12 @@ export function AccountSettings() {
                   type="email"
                   value={profileData.email}
                   onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <Phone className="w-4 h-4 inline mr-1" />
                   Phone Number
                 </label>
@@ -534,13 +534,13 @@ export function AccountSettings() {
                   type="tel"
                   value={profileData.phone}
                   onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                 />
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     <Calendar className="w-4 h-4 inline mr-1" />
                     Date of Birth
                   </label>
@@ -548,12 +548,12 @@ export function AccountSettings() {
                     type="date"
                     value={profileData.dateOfBirth}
                     onChange={(e) => setProfileData({...profileData, dateOfBirth: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     <MapPin className="w-4 h-4 inline mr-1" />
                     Location
                   </label>
@@ -561,18 +561,18 @@ export function AccountSettings() {
                     type="text"
                     value={profileData.location}
                     onChange={(e) => setProfileData({...profileData, location: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bio</label>
                 <textarea
                   value={profileData.bio}
                   onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
                   rows={3}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none transition-colors"
                 />
               </div>
             </div>
@@ -583,40 +583,40 @@ export function AccountSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6 transition-colors duration-300"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Security</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Security</h2>
 
             <div className="space-y-3">
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 onClick={() => setShowPasswordModal(true)}
-                className="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-colors"
+                className="w-full bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl p-4 flex items-center justify-between transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Key className="w-5 h-5 text-blue-600" />
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <Key className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">Change Password</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="font-medium text-gray-900 dark:text-white">Change Password</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {user?.updated_at 
                         ? `Last changed ${formatDistanceToNow(new Date(user.updated_at), { addSuffix: true })}`
                         : 'Never changed'}
                     </p>
                   </div>
                 </div>
-                <div className="text-blue-600">Change</div>
+                <div className="text-blue-600 dark:text-blue-400">Change</div>
               </motion.button>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 transition-colors duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-start gap-3">
-                    <CheckCircle className={`w-5 h-5 mt-0.5 ${mfaFactors.length > 0 ? 'text-green-600' : 'text-gray-400'}`} />
+                    <CheckCircle className={`w-5 h-5 mt-0.5 ${mfaFactors.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`} />
                     <div>
-                      <p className="font-medium text-blue-900 mb-1">Two-Factor Authentication</p>
-                      <p className="text-sm text-blue-700">
+                      <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">Two-Factor Authentication</p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
                         {mfaFactors.length > 0 
                           ? 'Enabled via authenticator app' 
                           : 'Add an extra layer of security to your account'}
@@ -627,14 +627,14 @@ export function AccountSettings() {
                   {mfaFactors.length > 0 ? (
                     <button 
                       onClick={handleDisableMfa}
-                      className="text-sm text-red-600 font-medium hover:text-red-700"
+                      className="text-sm text-red-600 dark:text-red-400 font-medium hover:text-red-700 dark:hover:text-red-300"
                     >
                       Disable
                     </button>
                   ) : (
                     <button 
                       onClick={handleEnrollMfa}
-                      className="text-sm text-blue-600 font-medium hover:text-blue-700"
+                      className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300"
                     >
                       Enable
                     </button>
@@ -649,17 +649,17 @@ export function AccountSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 mb-6"
+            className="bg-red-50 dark:bg-red-900/10 border-2 border-red-200 dark:border-red-900/30 rounded-2xl p-6 mb-6 transition-colors duration-300"
           >
-            <h2 className="text-xl font-bold text-red-900 mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-red-900 dark:text-red-200 mb-4 flex items-center gap-2">
               <AlertCircle className="w-5 h-5" />
               Danger Zone
             </h2>
 
-            <div className="bg-white rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-white dark:bg-slate-900 rounded-xl p-4 flex items-center justify-between transition-colors duration-300">
               <div>
-                <p className="font-medium text-gray-900 mb-1">Delete Account</p>
-                <p className="text-sm text-gray-600">Permanently delete your account and all data</p>
+                <p className="font-medium text-gray-900 dark:text-white mb-1">Delete Account</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Permanently delete your account and all data</p>
               </div>
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -696,14 +696,14 @@ export function AccountSettings() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl transition-colors duration-300"
               >
                 <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="w-8 h-8 text-red-600" />
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-500" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Account?</h3>
-                  <p className="text-gray-600 mb-4">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Delete Account?</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
                     This action cannot be undone. All your data, including sessions, journals, and progress will be permanently deleted.
                   </p>
                   <input
@@ -711,7 +711,7 @@ export function AccountSettings() {
                     value={deleteConfirmation}
                     onChange={(e) => setDeleteConfirmation(e.target.value)}
                     placeholder='Type "DELETE" to confirm'
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none transition-colors"
                   />
                 </div>
 
@@ -720,7 +720,7 @@ export function AccountSettings() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowDeleteModal(false)}
-                    className="flex-1 px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium"
+                    className="flex-1 px-4 py-3 rounded-xl bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-medium transition-colors"
                   >
                     Cancel
                   </motion.button>
@@ -752,16 +752,16 @@ export function AccountSettings() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl transition-colors duration-300"
               >
-                <h3 className="text-xl font-bold text-gray-900 mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
                   {mfaStep === 'enroll' ? 'Setup 2FA' : 'Verify Code'}
                 </h3>
 
                 {mfaStep === 'enroll' && mfaData ? (
                   <div className="space-y-6">
                     <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-4">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                         Scan this QR code with your authenticator app (like Google Authenticator or Authy)
                       </p>
                       <div className="flex justify-center mb-4">
@@ -769,11 +769,11 @@ export function AccountSettings() {
                           <img 
                             src={mfaData.qr_code.startsWith('data:') ? mfaData.qr_code : `data:image/svg+xml;utf-8,${encodeURIComponent(mfaData.qr_code)}`} 
                             alt="QR Code" 
-                            className="w-48 h-48" 
+                            className="w-48 h-48 bg-white p-2 rounded-lg" 
                           />
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 break-all">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
                         Secret: {mfaData.secret}
                       </p>
                     </div>
@@ -796,7 +796,7 @@ export function AccountSettings() {
                 {mfaStep === 'verify' && (
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Enter Verification Code
                       </label>
                       <input
@@ -804,7 +804,7 @@ export function AccountSettings() {
                         value={mfaCode}
                         onChange={(e) => setMfaCode(e.target.value)}
                         placeholder="000000"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-center text-2xl tracking-widest"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-center text-2xl tracking-widest transition-colors"
                         maxLength={6}
                       />
                     </div>
@@ -837,38 +837,38 @@ export function AccountSettings() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl transition-colors duration-300"
               >
-                <h3 className="text-xl font-bold text-gray-900 mb-6">Change Password</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Change Password</h3>
 
                 <div className="space-y-4 mb-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Password</label>
                     <input
                       type="password"
                       value={passwordState.currentPassword}
                       onChange={(e) => setPasswordState({...passwordState, currentPassword: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">New Password</label>
                     <input
                       type="password"
                       value={passwordState.newPassword}
                       onChange={(e) => setPasswordState({...passwordState, newPassword: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
                     <input
                       type="password"
                       value={passwordState.confirmPassword}
                       onChange={(e) => setPasswordState({...passwordState, confirmPassword: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -879,7 +879,7 @@ export function AccountSettings() {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowPasswordModal(false)}
                     disabled={passwordLoading}
-                    className="flex-1 px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium disabled:opacity-50"
+                    className="flex-1 px-4 py-3 rounded-xl bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-medium disabled:opacity-50 transition-colors"
                   >
                     Cancel
                   </motion.button>

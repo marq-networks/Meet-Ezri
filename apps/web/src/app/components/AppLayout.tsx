@@ -40,9 +40,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [appearance, setAppearance] = useState<{
     backgroundStyle: string;
     compactMode: boolean;
+    theme: string;
   }>({
     backgroundStyle: "gradient",
-    compactMode: false
+    compactMode: false,
+    theme: "light"
   });
 
   useEffect(() => {
@@ -55,16 +57,54 @@ export function AppLayout({ children }: AppLayoutProps) {
         const parsed = JSON.parse(saved);
         setAppearance({
           backgroundStyle: parsed.backgroundStyle || "gradient",
-          compactMode: Boolean(parsed.compactMode)
+          compactMode: Boolean(parsed.compactMode),
+          theme: parsed.theme || "light"
         });
       } catch {
         setAppearance({
           backgroundStyle: "gradient",
-          compactMode: false
+          compactMode: false,
+          theme: "light"
         });
       }
     }
   }, [appearanceStorageKey]);
+
+  // Apply theme class when appearance.theme changes
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+
+    const cleanup = () => {
+      root.classList.remove("dark");
+    };
+
+    if (appearance.theme === "auto") {
+      if (typeof window === "undefined" || !window.matchMedia) {
+        root.classList.remove("dark");
+        return cleanup;
+      }
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const applyTheme = (isDark: boolean) => {
+        if (isDark) root.classList.add("dark");
+        else root.classList.remove("dark");
+      };
+      applyTheme(mediaQuery.matches);
+      
+      const listener = (event: MediaQueryListEvent) => applyTheme(event.matches);
+      mediaQuery.addEventListener("change", listener);
+      return () => {
+        mediaQuery.removeEventListener("change", listener);
+        cleanup();
+      };
+    }
+
+    if (appearance.theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [appearance.theme]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -74,7 +114,8 @@ export function AppLayout({ children }: AppLayoutProps) {
       const detail = custom.detail || {};
       setAppearance({
         backgroundStyle: detail.backgroundStyle || "gradient",
-        compactMode: Boolean(detail.compactMode)
+        compactMode: Boolean(detail.compactMode),
+        theme: detail.theme || "light"
       });
     };
 
@@ -202,7 +243,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   whileTap={{ scale: 0.98 }}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     active
-                      ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg"
+                      ? "bg-gradient-to-r from-primary to-secondary dark:from-blue-600 dark:to-indigo-600 text-white shadow-lg"
                       : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200"
                   }`}
                 >

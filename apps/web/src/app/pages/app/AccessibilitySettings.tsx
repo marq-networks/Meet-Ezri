@@ -151,7 +151,7 @@ export function AccessibilitySettings() {
 
   return (
     <AppLayout>
-      <div className={`min-h-screen bg-gray-50 ${containerFontSize} ${containerTextSpacing}`}>
+      <div className={`min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300 ${containerFontSize} ${containerTextSpacing}`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <motion.div
@@ -161,7 +161,7 @@ export function AccessibilitySettings() {
           >
             <Link 
               to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 transition-colors font-medium"
+              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200 mb-6 transition-colors font-medium"
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Settings
@@ -172,8 +172,8 @@ export function AccessibilitySettings() {
                 <Eye className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Accessibility</h1>
-                <p className="text-gray-600">Customize for your needs</p>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Accessibility</h1>
+                <p className="text-gray-600 dark:text-slate-400">Customize for your needs</p>
               </div>
             </div>
           </motion.div>
@@ -183,13 +183,13 @@ export function AccessibilitySettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Text & Display</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Text & Display</h2>
 
             {/* Font Size */}
             <div className="mb-6">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
                 <Type className="w-4 h-4" />
                 Font Size
               </label>
@@ -202,12 +202,12 @@ export function AccessibilitySettings() {
                     onClick={() => setSettings({...settings, fontSize: size.value})}
                     className={`p-3 rounded-xl border-2 transition-all ${
                       settings.fontSize === size.value
-                        ? "border-green-500 bg-green-50"
-                        : "border-gray-200 bg-gray-50 hover:border-gray-300"
+                        ? "border-green-500 bg-green-50 dark:bg-green-900/20 text-green-900 dark:text-green-300"
+                        : "border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 text-gray-900 dark:text-slate-300"
                     }`}
                   >
                     <span className={size.size + " font-medium"}>Aa</span>
-                    <p className="text-xs text-gray-600 mt-1">{size.label}</p>
+                    <p className="text-xs text-gray-600 dark:text-slate-400 mt-1">{size.label}</p>
                   </motion.button>
                 ))}
               </div>
@@ -215,14 +215,14 @@ export function AccessibilitySettings() {
 
             {/* Text Spacing */}
             <div className="mb-4">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
                 <ZoomIn className="w-4 h-4" />
                 Text Spacing
               </label>
               <select
                 value={settings.textSpacing}
                 onChange={(e) => setSettings({...settings, textSpacing: e.target.value})}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 outline-none"
               >
                 <option value="compact">Compact</option>
                 <option value="normal">Normal</option>
@@ -232,19 +232,19 @@ export function AccessibilitySettings() {
             </div>
 
             {/* High Contrast */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
               <div className="flex items-center gap-3">
-                <Contrast className="w-5 h-5 text-gray-600" />
+                <Contrast className="w-5 h-5 text-gray-600 dark:text-slate-400" />
                 <div>
-                  <p className="font-medium text-gray-900">High Contrast Mode</p>
-                  <p className="text-sm text-gray-600">Increase color contrast</p>
+                  <p className="font-medium text-gray-900 dark:text-white">High Contrast Mode</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Increase color contrast</p>
                 </div>
               </div>
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => toggleSetting("highContrast")}
                 className={`w-14 h-8 rounded-full transition-colors ${
-                  settings.highContrast ? "bg-gray-900" : "bg-gray-300"
+                  settings.highContrast ? "bg-gray-900 dark:bg-slate-600" : "bg-gray-300 dark:bg-slate-700"
                 }`}
               >
                 <motion.div
@@ -260,25 +260,25 @@ export function AccessibilitySettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Motion & Animation</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Motion & Animation</h2>
 
             <div className="space-y-4">
               {/* Reduced Motion */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <PlayCircle className="w-5 h-5 text-purple-600" />
+                  <PlayCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Reduce Motion</p>
-                    <p className="text-sm text-gray-600">Minimize animations and transitions</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Reduce Motion</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Minimize animations and transitions</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("reducedMotion")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.reducedMotion ? "bg-purple-500" : "bg-gray-300"
+                    settings.reducedMotion ? "bg-purple-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -289,19 +289,19 @@ export function AccessibilitySettings() {
               </div>
 
               {/* Auto-play */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <Volume2 className="w-5 h-5 text-blue-600" />
+                  <Volume2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Auto-play Media</p>
-                    <p className="text-sm text-gray-600">Automatically play videos and audio</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Auto-play Media</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Automatically play videos and audio</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("autoPlay")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.autoPlay ? "bg-blue-500" : "bg-gray-300"
+                    settings.autoPlay ? "bg-blue-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -318,25 +318,25 @@ export function AccessibilitySettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-slate-800 mb-6"
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Assistive Features</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Assistive Features</h2>
 
             <div className="space-y-4">
               {/* Screen Reader */}
-              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <Volume2 className="w-5 h-5 text-blue-600" />
+                  <Volume2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Screen Reader Support</p>
-                    <p className="text-sm text-gray-600">Optimize for screen readers</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Screen Reader Support</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Optimize for screen readers</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("screenReader")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.screenReader ? "bg-blue-500" : "bg-gray-300"
+                    settings.screenReader ? "bg-blue-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -347,19 +347,19 @@ export function AccessibilitySettings() {
               </div>
 
               {/* Closed Captions */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <Subtitles className="w-5 h-5 text-green-600" />
+                  <Subtitles className="w-5 h-5 text-green-600 dark:text-green-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Closed Captions</p>
-                    <p className="text-sm text-gray-600">Show captions for video content</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Closed Captions</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Show captions for video content</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("closedCaptions")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.closedCaptions ? "bg-green-500" : "bg-gray-300"
+                    settings.closedCaptions ? "bg-green-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -370,19 +370,19 @@ export function AccessibilitySettings() {
               </div>
 
               {/* Keyboard Navigation */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <MousePointer className="w-5 h-5 text-purple-600" />
+                  <MousePointer className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Keyboard Navigation</p>
-                    <p className="text-sm text-gray-600">Navigate using keyboard only</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Keyboard Navigation</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Navigate using keyboard only</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("keyboardNav")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.keyboardNav ? "bg-purple-500" : "bg-gray-300"
+                    settings.keyboardNav ? "bg-purple-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -393,19 +393,19 @@ export function AccessibilitySettings() {
               </div>
 
               {/* Focus Indicators */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <Focus className="w-5 h-5 text-yellow-600" />
+                  <Focus className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Enhanced Focus Indicators</p>
-                    <p className="text-sm text-gray-600">Highlight focused elements clearly</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Enhanced Focus Indicators</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Highlight focused elements clearly</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("focusIndicators")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.focusIndicators ? "bg-yellow-500" : "bg-gray-300"
+                    settings.focusIndicators ? "bg-yellow-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -416,19 +416,19 @@ export function AccessibilitySettings() {
               </div>
 
               {/* Large Click Targets */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <Hand className="w-5 h-5 text-orange-600" />
+                  <Hand className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                   <div>
-                    <p className="font-medium text-gray-900">Large Click Targets</p>
-                    <p className="text-sm text-gray-600">Increase button and link sizes</p>
+                    <p className="font-medium text-gray-900 dark:text-white">Large Click Targets</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Increase button and link sizes</p>
                   </div>
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => toggleSetting("largeClickTargets")}
                   className={`w-14 h-8 rounded-full transition-colors ${
-                    settings.largeClickTargets ? "bg-orange-500" : "bg-gray-300"
+                    settings.largeClickTargets ? "bg-orange-500" : "bg-gray-300 dark:bg-slate-700"
                   }`}
                 >
                   <motion.div
@@ -445,17 +445,17 @@ export function AccessibilitySettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6"
+            className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-2xl p-6"
           >
             <div className="flex items-start gap-4">
-              <CheckCircle className="w-8 h-8 text-green-600 flex-shrink-0" />
+              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400 flex-shrink-0" />
               <div>
-                <h3 className="font-bold text-green-900 mb-2">WCAG 2.1 AA Compliant</h3>
-                <p className="text-sm text-green-700 mb-3">
+                <h3 className="font-bold text-green-900 dark:text-green-100 mb-2">WCAG 2.1 AA Compliant</h3>
+                <p className="text-sm text-green-700 dark:text-green-300 mb-3">
                   Ezri is designed to meet Web Content Accessibility Guidelines (WCAG) 2.1 Level AA standards. 
                   We're committed to making mental health support accessible to everyone.
                 </p>
-                <button className="text-sm text-green-600 hover:text-green-700 font-medium underline">
+                <button className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium underline">
                   Learn more about our accessibility commitment
                 </button>
               </div>

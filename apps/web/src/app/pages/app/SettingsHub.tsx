@@ -67,20 +67,37 @@ export function SettingsHub() {
 
   // Sync state from profile and localStorage
   useEffect(() => {
-    // 1. Appearance (LocalStorage)
-    const savedAppearance = localStorage.getItem(appearanceStorageKey);
-    const isDarkMode = savedAppearance ? JSON.parse(savedAppearance).theme === 'dark' : false;
+    const syncSettings = () => {
+      // 1. Appearance (LocalStorage)
+      const savedAppearance = localStorage.getItem(appearanceStorageKey);
+      const isDarkMode = savedAppearance ? JSON.parse(savedAppearance).theme === 'dark' : false;
 
-    // 2. Notifications (Profile)
-    const prefs = profile?.notification_preferences || {};
-    
-    setQuickSettings(prev => prev.map(setting => {
-        if (setting.key === 'darkMode') return { ...setting, enabled: isDarkMode };
-        if (setting.key === 'pushEnabled') return { ...setting, enabled: prefs.pushEnabled ?? true };
-        if (setting.key === 'smsEnabled') return { ...setting, enabled: prefs.smsEnabled ?? false };
-        if (setting.key === 'emailEnabled') return { ...setting, enabled: prefs.emailEnabled ?? true };
+      // 2. Notifications (Profile)
+      const prefs = profile?.notification_preferences || {};
+      
+      setQuickSettings(prev => prev.map(setting => {
+          if (setting.key === 'darkMode') return { ...setting, enabled: isDarkMode };
+          if (setting.key === 'pushEnabled') return { ...setting, enabled: prefs.pushEnabled ?? true };
+          if (setting.key === 'smsEnabled') return { ...setting, enabled: prefs.smsEnabled ?? false };
+          if (setting.key === 'emailEnabled') return { ...setting, enabled: prefs.emailEnabled ?? true };
+          return setting;
+      }));
+    };
+
+    syncSettings();
+
+    // Listen for appearance changes from other components
+    const handleAppearanceChange = (event: Event) => {
+      const custom = event as CustomEvent<any>;
+      const detail = custom.detail || {};
+      setQuickSettings(prev => prev.map(setting => {
+        if (setting.key === 'darkMode') return { ...setting, enabled: detail.theme === 'dark' };
         return setting;
-    }));
+      }));
+    };
+
+    window.addEventListener("ezri-appearance-change", handleAppearanceChange);
+    return () => window.removeEventListener("ezri-appearance-change", handleAppearanceChange);
   }, [profile, appearanceStorageKey]);
 
   const toggleQuickSetting = async (key: string) => {
@@ -99,7 +116,7 @@ export function SettingsHub() {
             const newTheme = currentSettings.theme === 'dark' ? 'light' : 'dark';
             
             const newSettings = { ...currentSettings, theme: newTheme };
-            localStorage.setItem('ezri_appearance_settings', JSON.stringify(newSettings));
+            localStorage.setItem(appearanceStorageKey, JSON.stringify(newSettings));
             
             // Apply immediately
             if (newTheme === 'dark') {

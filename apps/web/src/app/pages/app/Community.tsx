@@ -225,13 +225,13 @@ export function Community() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
             <Link 
               to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 transition-colors font-medium"
+              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200 mb-6 transition-colors font-medium"
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Settings
@@ -243,8 +243,8 @@ export function Community() {
                   <Users className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Community</h1>
-                  <p className="text-gray-600">Connect, share, and support each other</p>
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Community</h1>
+                  <p className="text-gray-600 dark:text-slate-400">Connect, share, and support each other</p>
                 </div>
               </div>
               <motion.button
@@ -261,30 +261,30 @@ export function Community() {
             {/* Stats Bar */}
             <div className="grid grid-cols-4 gap-4">
               <AnimatedCard delay={0.1}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-                  <p className="text-2xl font-bold text-gray-900">{stats.members.toLocaleString()}</p>
-                  <p className="text-sm text-gray-600">Members</p>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 text-center shadow-sm">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.members.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Members</p>
                 </div>
               </AnimatedCard>
               <AnimatedCard delay={0.15}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-                  <p className="text-2xl font-bold text-gray-900">{stats.posts.toLocaleString()}</p>
-                  <p className="text-sm text-gray-600">Posts</p>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 text-center shadow-sm">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.posts.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Posts</p>
                 </div>
               </AnimatedCard>
               <AnimatedCard delay={0.2}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-                  <p className="text-2xl font-bold text-gray-900">{stats.groups}</p>
-                  <p className="text-sm text-gray-600">Groups</p>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 text-center shadow-sm">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.groups}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Groups</p>
                 </div>
               </AnimatedCard>
               <AnimatedCard delay={0.25}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center shadow-sm">
-                  <p className="text-2xl font-bold text-green-600 flex items-center justify-center gap-2">
-                    <span className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 text-center shadow-sm">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-500 flex items-center justify-center gap-2">
+                    <span className="w-2 h-2 bg-green-600 dark:bg-green-500 rounded-full animate-pulse" />
                     {stats.activeNow}
                   </p>
-                  <p className="text-sm text-gray-600">Active Now</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Active Now</p>
                 </div>
               </AnimatedCard>
             </div>
@@ -309,7 +309,7 @@ export function Community() {
                     className={`px-6 py-3 rounded-xl flex items-center gap-2 font-semibold transition-all ${
                       isActive
                         ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md'
-                        : 'bg-white text-gray-700 border border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-500 hover:bg-gray-50 dark:hover:bg-slate-700'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -320,20 +320,20 @@ export function Community() {
             </div>
 
             <div className="flex-1 relative">
-              <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              <Search className="w-5 h-5 text-gray-400 dark:text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search posts, groups, or topics..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-xl pl-12 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 transition-all"
               />
             </div>
 
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-all"
+              className="px-4 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all"
             >
               <Filter className="w-5 h-5" />
             </motion.button>
@@ -344,18 +344,18 @@ export function Community() {
             <div className="lg:col-span-2 space-y-6">
               {activeTab === 'feed' && postsData.map((post, index) => (
                 <AnimatedCard key={post.id} delay={index * 0.05}>
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 hover:border-purple-400 hover:shadow-lg transition-all">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-lg transition-all">
                     {/* Post Header */}
                     <div className="flex items-start gap-4 mb-4">
                       <div className="text-4xl">{post.author.avatar}</div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-bold text-gray-900">{post.author.name}</h3>
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{post.author.name}</h3>
                           <span className={`text-xs px-2 py-1 rounded-full ${getRoleBadge(post.author.role).bg} ${getRoleBadge(post.author.role).text}`}>
                             {getRoleBadge(post.author.role).label}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
                           <span>{post.category}</span>
                           <span>•</span>
                           <Clock className="w-4 h-4" />
@@ -365,20 +365,20 @@ export function Community() {
                     </div>
 
                     {/* Post Content */}
-                    <p className="text-gray-700 mb-4 leading-relaxed">{post.content}</p>
+                    <p className="text-gray-700 dark:text-slate-300 mb-4 leading-relaxed">{post.content}</p>
 
                     {/* Tags */}
                     <div className="flex flex-wrap gap-2 mb-4">
                       {post.tags.map((tag) => (
-                        <span key={tag} className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-full">
+                        <span key={tag} className="text-xs px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
                           #{tag}
                         </span>
                       ))}
                     </div>
 
                     {/* Post Stats & Actions */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                      <div className="flex items-center gap-6 text-sm text-gray-600">
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-slate-800">
+                      <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-slate-400">
                         <div className="flex items-center gap-2">
                           <Eye className="w-4 h-4" />
                           {post.views}
@@ -399,8 +399,8 @@ export function Community() {
                           whileTap={{ scale: 0.9 }}
                           className={`p-2 rounded-lg transition-all ${
                             post.isLiked
-                              ? 'bg-red-100 text-red-600'
-                              : 'bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600'
+                              ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                              : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400'
                           }`}
                           onClick={() => handleLikePost(post.id)}
                         >
@@ -409,7 +409,7 @@ export function Community() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-purple-50 hover:text-purple-600 transition-all"
+                          className="p-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 transition-all"
                           onClick={() => handleCommentPost(post.id)}
                         >
                           <MessageCircle className="w-5 h-5" />
@@ -417,7 +417,7 @@ export function Community() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                          className="p-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
                           onClick={() => handleSharePost(post.id)}
                         >
                           <Share2 className="w-5 h-5" />
@@ -430,19 +430,19 @@ export function Community() {
 
               {activeTab === 'groups' && groups.map((group, index) => (
                 <AnimatedCard key={group.id} delay={index * 0.05}>
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 hover:border-purple-400 hover:shadow-lg transition-all">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-lg transition-all">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-xl font-bold text-gray-900">{group.name}</h3>
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">{group.name}</h3>
                           {group.privacy === 'private' ? (
-                            <Lock className="w-4 h-4 text-gray-600" />
+                            <Lock className="w-4 h-4 text-gray-600 dark:text-slate-400" />
                           ) : (
-                            <Globe className="w-4 h-4 text-green-600" />
+                            <Globe className="w-4 h-4 text-green-600 dark:text-green-500" />
                           )}
                         </div>
-                        <p className="text-gray-600 mb-3">{group.description}</p>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <p className="text-gray-600 dark:text-slate-400 mb-3">{group.description}</p>
+                        <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-slate-400">
                           <span className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
                             {group.members.toLocaleString()} members
@@ -458,7 +458,7 @@ export function Community() {
                         whileTap={{ scale: 0.95 }}
                         className={`px-6 py-2 rounded-xl font-semibold transition-all ${
                           group.isJoined
-                            ? 'bg-gray-100 text-gray-700 border-2 border-gray-300'
+                            ? 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-2 border-gray-300 dark:border-slate-700'
                             : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
                         }`}
                       >
@@ -473,13 +473,13 @@ export function Community() {
                 <div className="space-y-4">
                   {trendingTopics.map((topic, index) => (
                     <AnimatedCard key={topic.tag} delay={index * 0.05}>
-                      <div className="bg-white rounded-2xl border border-gray-200 p-6 hover:border-purple-400 hover:shadow-lg transition-all">
+                      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-lg transition-all">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-1">#{topic.tag}</h3>
-                            <p className="text-gray-600">{topic.posts} posts</p>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">#{topic.tag}</h3>
+                            <p className="text-gray-600 dark:text-slate-400">{topic.posts} posts</p>
                           </div>
-                          <TrendingUp className="w-8 h-8 text-purple-600" />
+                          <TrendingUp className="w-8 h-8 text-purple-600 dark:text-purple-500" />
                         </div>
                       </div>
                     </AnimatedCard>
@@ -492,9 +492,9 @@ export function Community() {
             <div className="space-y-6">
               {/* Trending Topics */}
               <AnimatedCard delay={0.3}>
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-500" />
                     Trending Topics
                   </h3>
                   <div className="space-y-3">

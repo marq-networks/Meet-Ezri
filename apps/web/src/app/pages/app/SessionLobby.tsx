@@ -381,7 +381,7 @@ export function SessionLobby() {
                       onClick={() => setSelectedDuration(duration)}
                       className={`p-4 rounded-xl border-2 transition-all ${
                         selectedDuration === duration
-                          ? "border-primary bg-primary text-white shadow-lg"
+                          ? "border-primary bg-primary text-primary-foreground shadow-lg"
                           : "border-border hover:border-primary/50"
                       }`}
                     >

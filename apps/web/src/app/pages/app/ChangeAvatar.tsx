@@ -106,13 +106,13 @@ export function ChangeAvatar() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
             <Link 
               to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 transition-colors font-medium"
+              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200 mb-6 transition-colors font-medium"
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Settings
@@ -123,8 +123,8 @@ export function ChangeAvatar() {
                 <Brain className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Change AI Companion</h1>
-                <p className="text-gray-600">Switch to a different AI companion for your sessions</p>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Change AI Companion</h1>
+                <p className="text-gray-600 dark:text-slate-400">Switch to a different AI companion for your sessions</p>
               </div>
             </div>
           </div>
@@ -132,36 +132,36 @@ export function ChangeAvatar() {
           {/* Current Avatar */}
           {currentAvatar && (
             <AnimatedCard delay={0.1}>
-              <div className="bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl border-2 border-purple-300 p-6 mb-8">
+              <div className="bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-2xl border-2 border-purple-300 dark:border-purple-700 p-6 mb-8">
                 <div className="flex items-center gap-3 mb-4">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                  <h2 className="text-xl font-bold text-gray-900">Current AI Companion</h2>
+                  <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Current AI Companion</h2>
                 </div>
 
                 <div className="flex items-start gap-6">
                   <div className="text-7xl">{currentAvatar.image}</div>
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{currentAvatar.name}</h3>
-                    <p className="text-gray-700 mb-3">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{currentAvatar.name}</h3>
+                    <p className="text-gray-700 dark:text-slate-300 mb-3">
                       {currentAvatar.gender} • {currentAvatar.ageRange} years
                     </p>
-                    <p className="text-gray-700 mb-4 leading-relaxed">{currentAvatar.description}</p>
+                    <p className="text-gray-700 dark:text-slate-300 mb-4 leading-relaxed">{currentAvatar.description}</p>
                     
                     <div className="flex flex-wrap gap-2 mb-4">
                       {currentAvatar.specialty.map((spec) => (
                         <span
                           key={spec}
-                          className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium"
+                          className="px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-sm rounded-full font-medium"
                         >
                           {spec}
                         </span>
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-6 text-sm text-gray-700">
+                    <div className="flex items-center gap-6 text-sm text-gray-700 dark:text-slate-400">
                       <div className="flex items-center gap-2">
                         <Star className="w-4 h-4 text-yellow-500" fill="currentColor" />
-                        <span className="font-semibold">{currentAvatar.rating}</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">{currentAvatar.rating}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4" />
@@ -180,11 +180,11 @@ export function ChangeAvatar() {
 
           {/* Available Avatars */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <RefreshCw className="w-6 h-6 text-purple-600" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <RefreshCw className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               Choose a New AI Companion
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-slate-400 mb-6">
               Select a different AI companion that better fits your needs. Your session history will be preserved.
             </p>
 
@@ -203,10 +203,10 @@ export function ChangeAvatar() {
                       disabled={isCurrent}
                       className={`relative w-full rounded-2xl border-2 transition-all overflow-hidden text-left ${
                         isCurrent
-                          ? "border-green-300 bg-green-50 cursor-not-allowed opacity-70"
+                          ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 cursor-not-allowed opacity-70"
                           : isSelected
-                          ? "border-purple-500 bg-purple-50 shadow-xl"
-                          : "border-gray-200 bg-white hover:border-purple-300 hover:shadow-md"
+                          ? "border-purple-500 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-xl"
+                          : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-purple-300 dark:hover:border-purple-500 hover:shadow-md"
                       }`}
                     >
                       {/* Current Badge */}
@@ -235,14 +235,14 @@ export function ChangeAvatar() {
                         <div className="flex items-start gap-4 mb-4">
                           <div className="text-6xl">{avatar.image}</div>
                           <div className="flex-1">
-                            <h3 className="text-lg font-bold text-gray-900 mb-1">{avatar.name}</h3>
-                            <p className="text-sm text-gray-600 mb-2">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{avatar.name}</h3>
+                            <p className="text-sm text-gray-600 dark:text-slate-400 mb-2">
                               {avatar.gender} • {avatar.ageRange} years
                             </p>
-                            <div className="flex items-center gap-3 text-xs text-gray-600">
+                            <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-slate-500">
                               <div className="flex items-center gap-1">
                                 <Star className="w-4 h-4 text-yellow-500" fill="currentColor" />
-                                <span className="font-semibold">{avatar.rating}</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">{avatar.rating}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <Users className="w-4 h-4" />
@@ -254,20 +254,20 @@ export function ChangeAvatar() {
 
                         {/* Personality */}
                         <div className="mb-3">
-                          <p className="text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                          <p className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                             <Heart className="w-3 h-3" /> Personality
                           </p>
-                          <p className="text-sm text-gray-700">{avatar.personality}</p>
+                          <p className="text-sm text-gray-700 dark:text-slate-400">{avatar.personality}</p>
                         </div>
 
                         {/* Specialties */}
                         <div className="mb-3">
-                          <p className="text-xs font-semibold text-gray-700 mb-2">Specializes In:</p>
+                          <p className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Specializes In:</p>
                           <div className="flex flex-wrap gap-2">
                             {avatar.specialty.map((spec) => (
                               <span
                                 key={spec}
-                                className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium"
+                                className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full font-medium"
                               >
                                 {spec}
                               </span>
@@ -276,13 +276,13 @@ export function ChangeAvatar() {
                         </div>
 
                         {/* Description */}
-                        <p className="text-sm text-gray-700 mb-3 leading-relaxed">
+                        <p className="text-sm text-gray-700 dark:text-slate-400 mb-3 leading-relaxed">
                           {avatar.description}
                         </p>
 
                         {/* Voice Info */}
-                        <div className="pt-3 border-t border-gray-200">
-                          <div className="flex items-center gap-4 text-xs text-gray-600">
+                        <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
+                          <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-slate-500">
                             <div className="flex items-center gap-1">
                               <Volume2 className="w-3 h-3" />
                               <span>{avatar.voiceType}</span>
@@ -303,16 +303,16 @@ export function ChangeAvatar() {
 
           {/* Switch History */}
           <AnimatedCard delay={0.5}>
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Switch History</h3>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Switch History</h3>
               <div className="space-y-3">
                 {switchHistory.map((record, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-800">
                     <div>
-                      <p className="text-sm text-gray-700">
-                        <span className="font-semibold">{record.from}</span> → <span className="font-semibold">{record.to}</span>
+                      <p className="text-sm text-gray-700 dark:text-slate-300">
+                        <span className="font-semibold text-gray-900 dark:text-white">{record.from}</span> → <span className="font-semibold text-gray-900 dark:text-white">{record.to}</span>
                       </p>
-                      <p className="text-xs text-gray-600 mt-1">
+                      <p className="text-xs text-gray-600 dark:text-slate-500 mt-1">
                         {new Date(record.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>

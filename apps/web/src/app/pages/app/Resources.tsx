@@ -221,13 +221,13 @@ export function Resources() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
             <Link 
               to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 transition-colors font-medium"
+              className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200 mb-6 transition-colors font-medium"
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Settings
@@ -238,50 +238,50 @@ export function Resources() {
                 <BookOpen className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Resources Library</h1>
-                <p className="text-gray-600">Curated content for your wellness journey</p>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Resources Library</h1>
+                <p className="text-gray-600 dark:text-slate-400">Curated content for your wellness journey</p>
               </div>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <AnimatedCard delay={0.1}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <BookOpen className="w-6 h-6 text-blue-600" />
-                    <span className="text-2xl font-bold text-gray-900">{stats.totalResources}</span>
+                    <BookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalResources}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Total Resources</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Total Resources</p>
                 </div>
               </AnimatedCard>
 
               <AnimatedCard delay={0.15}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <Heart className="w-6 h-6 text-red-600" />
-                    <span className="text-2xl font-bold text-gray-900">{stats.favorites}</span>
+                    <Heart className="w-6 h-6 text-red-600 dark:text-red-400" />
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{stats.favorites}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Favorites</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Favorites</p>
                 </div>
               </AnimatedCard>
 
               <AnimatedCard delay={0.2}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <Award className="w-6 h-6 text-green-600" />
-                    <span className="text-2xl font-bold text-gray-900">{stats.completed}</span>
+                    <Award className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{stats.completed}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Completed</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Completed</p>
                 </div>
               </AnimatedCard>
 
               <AnimatedCard delay={0.25}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <Clock className="w-6 h-6 text-purple-600" />
-                    <span className="text-2xl font-bold text-gray-900">{stats.hoursSpent}h</span>
+                    <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{stats.hoursSpent}h</span>
                   </div>
-                  <p className="text-sm text-gray-600">Time Spent</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Time Spent</p>
                 </div>
               </AnimatedCard>
             </div>
@@ -303,7 +303,7 @@ export function Resources() {
                     className={`px-4 py-2 rounded-xl flex items-center gap-2 font-semibold transition-all ${
                       isActive
                         ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md'
-                        : 'bg-white text-gray-700 border border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                        : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-800 hover:border-purple-300 hover:bg-gray-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -316,23 +316,23 @@ export function Resources() {
             {/* Search & Category */}
             <div className="flex gap-4">
               <div className="flex-1 relative">
-                <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <Search className="w-5 h-5 text-gray-400 dark:text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search resources..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl pl-12 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                  className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 transition-all"
                 />
               </div>
 
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 transition-all"
               >
                 {categories.map((category) => (
-                  <option key={category} value={category} className="bg-white">
+                  <option key={category} value={category} className="bg-white dark:bg-slate-900">
                     {category}
                   </option>
                 ))}
@@ -349,10 +349,10 @@ export function Resources() {
                 <AnimatedCard key={resource.id} delay={index * 0.05}>
                   <motion.div
                     whileHover={{ scale: 1.02 }}
-                    className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-purple-400 hover:shadow-lg transition-all"
+                    className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden hover:border-purple-400 hover:shadow-lg transition-all"
                   >
                     {/* Thumbnail */}
-                    <div className="relative h-48 bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+                    <div className="relative h-48 bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center">
                       <span className="text-6xl">{resource.thumbnail}</span>
                       <div className="absolute top-4 right-4">
                         <motion.button
@@ -361,7 +361,7 @@ export function Resources() {
                           className={`p-2 rounded-lg transition-all ${
                             resource.isFavorite
                               ? 'bg-red-500 text-white'
-                              : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
+                              : 'bg-white/80 dark:bg-slate-900/80 text-gray-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-900 hover:text-red-500'
                           }`}
                           onClick={() => handleToggleFavorite(resource.id)}
                         >
@@ -369,9 +369,9 @@ export function Resources() {
                         </motion.button>
                       </div>
                       <div className="absolute top-4 left-4">
-                        <div className="bg-white/90 backdrop-blur-xl px-3 py-1 rounded-lg flex items-center gap-2 shadow-sm">
-                          <TypeIcon className="w-4 h-4 text-purple-600" />
-                          <span className="text-sm font-semibold text-purple-900 capitalize">{resource.type}</span>
+                        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl px-3 py-1 rounded-lg flex items-center gap-2 shadow-sm">
+                          <TypeIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                          <span className="text-sm font-semibold text-purple-900 dark:text-purple-300 capitalize">{resource.type}</span>
                         </div>
                       </div>
                     </div>
@@ -379,17 +379,17 @@ export function Resources() {
                     {/* Content */}
                     <div className="p-6">
                       <div className="flex items-start justify-between mb-3">
-                        <h3 className="text-lg font-bold text-gray-900 pr-2 line-clamp-2">{resource.title}</h3>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white pr-2 line-clamp-2">{resource.title}</h3>
                         <div className="flex items-center gap-1 text-yellow-500">
                           <Star className="w-4 h-4" fill="currentColor" />
                           <span className="text-sm font-semibold">{resource.rating}</span>
                         </div>
                       </div>
 
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">{resource.description}</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-4 line-clamp-2">{resource.description}</p>
 
                       {/* Meta Info */}
-                      <div className="flex items-center justify-between mb-4 text-sm text-gray-500">
+                      <div className="flex items-center justify-between mb-4 text-sm text-gray-500 dark:text-slate-500">
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4" />
                           <span>{resource.duration}</span>
@@ -403,7 +403,7 @@ export function Resources() {
                       {/* Tags */}
                       <div className="flex flex-wrap gap-2 mb-4">
                         {resource.tags.slice(0, 2).map((tag) => (
-                          <span key={tag} className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-lg">
+                          <span key={tag} className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg">
                             {tag}
                           </span>
                         ))}
@@ -426,7 +426,7 @@ export function Resources() {
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          className="px-4 py-2 bg-gray-100 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-200 transition-all"
+                          className="px-4 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all"
                           onClick={() => handleBookmarkResource(resource)}
                         >
                           <Bookmark className="w-5 h-5" />
@@ -434,7 +434,7 @@ export function Resources() {
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          className="px-4 py-2 bg-gray-100 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-200 transition-all"
+                          className="px-4 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all"
                           onClick={() => handleDownloadResource(resource)}
                         >
                           <Download className="w-5 h-5" />
@@ -446,15 +446,6 @@ export function Resources() {
               );
             })}
           </div>
-
-          {/* Empty State */}
-          {filteredResources.length === 0 && (
-            <div className="text-center py-16">
-              <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">No resources found</h3>
-              <p className="text-gray-600">Try adjusting your filters or search query</p>
-            </div>
-          )}
         </div>
       </div>
     </AppLayout>
