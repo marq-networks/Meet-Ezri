@@ -366,8 +366,8 @@ export function AccountSettings() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
       </AppLayout>
     );

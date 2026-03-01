@@ -387,7 +387,7 @@ export function UserProfile() {
                     <motion.div
                       whileHover={{ scale: 1.05 }}
                       onClick={() => !isUploading && document.getElementById('profile-image-upload')?.click()}
-                      className="w-32 h-32 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-5xl cursor-pointer relative overflow-hidden"
+                      className="w-32 h-32 bg-gradient-to-br from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 rounded-full flex items-center justify-center text-5xl cursor-pointer relative overflow-hidden"
                     >
                       {isUploading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
@@ -413,7 +413,7 @@ export function UserProfile() {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => document.getElementById('profile-image-upload')?.click()}
-                      className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-colors"
+                      className="absolute bottom-0 right-0 p-2 bg-blue-600 dark:bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-700 dark:hover:bg-blue-400 transition-colors"
                     >
                       <Edit className="w-4 h-4" />
                     </motion.button>
