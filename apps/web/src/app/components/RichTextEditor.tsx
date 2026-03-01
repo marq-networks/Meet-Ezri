@@ -68,13 +68,13 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writing..
   };
 
   return (
-    <div className={cn("border border-gray-300 rounded-lg overflow-hidden bg-white", className)}>
+    <div className={cn("border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800", className)}>
       {/* Toolbar */}
-      <div className="bg-gray-50 border-b border-gray-300 p-2">
+      <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700 p-2">
         <div className="flex flex-wrap items-center gap-1">
           {toolbarButtons.map((button, index) => {
             if (button.label === "divider") {
-              return <div key={index} className="w-px h-6 bg-gray-300 mx-1" />;
+              return <div key={index} className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1" />;
             }
 
             const Icon = button.icon!;
@@ -85,15 +85,15 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writing..
                 whileTap={{ scale: 0.95 }}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleFormat(button.action!)}
-                className="p-2 rounded hover:bg-gray-200 transition-colors"
+                className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 title={button.label}
               >
-                <Icon className="w-4 h-4 text-gray-700" />
+                <Icon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
               </motion.button>
             );
           })}
 
-          <div className="w-px h-6 bg-gray-300 mx-1" />
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1" />
 
           {/* Undo/Redo */}
           <motion.button
@@ -101,52 +101,52 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writing..
             whileTap={{ scale: 0.95 }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => document.execCommand("undo")}
-            className="p-2 rounded hover:bg-gray-200 transition-colors"
+            className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             title="Undo"
           >
-            <Undo className="w-4 h-4 text-gray-700" />
+            <Undo className="w-4 h-4 text-gray-700 dark:text-gray-300" />
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => document.execCommand("redo")}
-            className="p-2 rounded hover:bg-gray-200 transition-colors"
+            className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             title="Redo"
           >
-            <Redo className="w-4 h-4 text-gray-700" />
+            <Redo className="w-4 h-4 text-gray-700 dark:text-gray-300" />
           </motion.button>
 
-          <div className="w-px h-6 bg-gray-300 mx-1" />
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1" />
 
           {/* Media Buttons */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onMouseDown={(e) => e.preventDefault()}
-            className="p-2 rounded hover:bg-gray-200 transition-colors"
+            className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             title="Insert Image"
           >
-            <Image className="w-4 h-4 text-gray-700" />
+            <Image className="w-4 h-4 text-gray-700 dark:text-gray-300" />
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onMouseDown={(e) => e.preventDefault()}
-            className="p-2 rounded hover:bg-gray-200 transition-colors"
+            className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             title="Attach File"
           >
-            <Paperclip className="w-4 h-4 text-gray-700" />
+            <Paperclip className="w-4 h-4 text-gray-700 dark:text-gray-300" />
           </motion.button>
         </div>
       </div>
 
       {/* Mood Selector */}
       {!hideMoodSelector && (
-        <div className="bg-blue-50 border-b border-gray-300 p-3">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-gray-300 dark:border-gray-700 p-3">
           <div className="flex items-center gap-2">
-            <Smile className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">How are you feeling?</span>
+            <Smile className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">How are you feeling?</span>
             <div className="flex gap-2 ml-2">
               {moods.map((mood) => (
                 <motion.button
@@ -175,12 +175,12 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writing..
         contentEditable
         suppressContentEditableWarning
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
-        className="min-h-[300px] p-4 focus:outline-none text-gray-900 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+        className="min-h-[300px] p-4 focus:outline-none text-gray-900 dark:text-gray-100 empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 dark:empty:before:text-gray-500"
         data-placeholder={placeholder}
       />
 
       {/* Footer Stats */}
-      <div className="bg-gray-50 border-t border-gray-300 px-4 py-2 flex items-center justify-between text-xs text-gray-500">
+      <div className="bg-gray-50 dark:bg-gray-900 border-t border-gray-300 dark:border-gray-700 px-4 py-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-4">
           <span>{value ? value.replace(/<[^>]*>/g, '').split(/\s+/).filter(Boolean).length : 0} words</span>
           <span>{value ? value.replace(/<[^>]*>/g, '').length : 0} characters</span>

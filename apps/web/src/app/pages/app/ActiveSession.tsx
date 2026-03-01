@@ -1249,9 +1249,11 @@ export function ActiveSession() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleEndSession}
-                  className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-medium"
+                  disabled={isUploading}
+                  className={`flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-medium flex items-center justify-center gap-2 ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
-                  End Session
+                  {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                  {isUploading ? "Ending..." : "End Session"}
                 </motion.button>
               </div>
             </motion.div>

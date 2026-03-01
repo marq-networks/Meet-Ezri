@@ -108,7 +108,7 @@ export function MoodCheckIn() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
             >
-              <Card className="p-6 bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
+              <Card className="p-6 bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20 dark:from-primary/20 dark:to-secondary/20 dark:border-primary/30">
                 <p className="text-sm">
                   💡 <span className="font-medium">Tip:</span> Regular check-ins help you understand your emotional patterns better
                 </p>
@@ -160,8 +160,8 @@ export function MoodCheckIn() {
                     onClick={() => setSelectedMood(mood.value)}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       selectedMood === mood.value
-                        ? "border-primary bg-primary/10 shadow-lg"
-                        : "border-border hover:border-primary/50"
+                        ? "border-primary bg-primary/10 dark:bg-primary/20 shadow-lg"
+                        : "border-border hover:border-primary/50 dark:hover:border-primary/50 bg-card dark:bg-card"
                     }`}
                   >
                     <motion.div
@@ -248,8 +248,8 @@ export function MoodCheckIn() {
                     onClick={() => toggleActivity(activity.value)}
                     className={`p-3 rounded-lg border-2 transition-all ${
                       selectedActivities.includes(activity.value)
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
+                        ? "border-primary bg-primary/10 dark:bg-primary/20"
+                        : "border-border hover:border-primary/50 dark:hover:border-primary/50 bg-card dark:bg-card"
                     }`}
                   >
                     <div className="text-2xl mb-1">{activity.emoji}</div>
@@ -275,7 +275,7 @@ export function MoodCheckIn() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="What's on your mind? You can write freely here..."
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none bg-background dark:bg-gray-800 text-foreground"
               />
             </Card>
           </motion.div>
@@ -286,7 +286,7 @@ export function MoodCheckIn() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+            <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-3">
                 <Sparkles className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                 <div>
@@ -309,6 +309,7 @@ export function MoodCheckIn() {
               <Button
                 onClick={handleSubmit}
                 disabled={!selectedMood || isSubmitting}
+                isLoading={isSubmitting}
                 className="w-full h-14 text-lg group relative overflow-hidden"
               >
                 <motion.div
@@ -318,15 +319,9 @@ export function MoodCheckIn() {
                   transition={{ duration: 0.3 }}
                 />
                 <span className="relative z-10 flex items-center justify-center gap-2">
-                  {isSubmitting ? (
-                    "Submitting..."
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      Complete Check-In
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    </>
-                  )}
+                  <CheckCircle className="w-5 h-5" />
+                  Complete Check-In
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </Button>
             </motion.div>

@@ -40,6 +40,8 @@ export function EmergencyContacts() {
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
@@ -150,18 +152,22 @@ export function EmergencyContacts() {
   const handleDeleteContact = async (id: string) => {
     if (confirm("Are you sure you want to delete this emergency contact?")) {
       try {
+        setDeletingId(id);
         await api.emergencyContacts.delete(id);
         setContacts(contacts.filter(c => c.id !== id));
         toast.success("Contact deleted successfully");
       } catch (error) {
         console.error('Failed to delete contact:', error);
         toast.error("Failed to delete contact");
+      } finally {
+        setDeletingId(null);
       }
     }
   };
 
   const toggleTrustedContact = async (contact: EmergencyContact) => {
     try {
+      setTogglingId(contact.id);
       const updatedContact = await api.emergencyContacts.update(contact.id, {
         is_trusted: !contact.is_trusted
       });
@@ -170,6 +176,8 @@ export function EmergencyContacts() {
     } catch (error) {
       console.error('Failed to update trusted status:', error);
       toast.error("Failed to update status");
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -276,29 +284,29 @@ export function EmergencyContacts() {
           transition={{ delay: 0.1 }}
           className="mb-6 space-y-4"
         >
-          <Card className="p-4 bg-blue-50 border-blue-200">
+          <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-blue-900 mb-1">About Emergency Contacts</h3>
-                <p className="text-sm text-blue-800">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">About Emergency Contacts</h3>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
                   These contacts may be notified if you're in crisis or need immediate support. Make sure to inform them that they're listed as emergency contacts.
                 </p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-4 bg-purple-50 border-purple-200">
+          <Card className="p-4 bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
             <div className="flex items-start gap-3">
-              <Shield className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+              <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-purple-900 mb-1">
+                <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">
                   Trusted Contacts ({trustedContactsCount})
                 </h3>
-                <p className="text-sm text-purple-800 mb-2">
+                <p className="text-sm text-purple-800 dark:text-purple-200 mb-2">
                   Trusted contacts can receive automatic check-in notifications when our safety system detects you may need support.
                 </p>
-                <div className="flex items-center gap-2 text-xs text-purple-700 bg-purple-100 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-purple-700 dark:text-purple-200 bg-purple-100 dark:bg-purple-900/40 rounded-lg px-3 py-2">
                   <Bell className="w-4 h-4" />
                   <span>Privacy-safe messages • No medical details shared • You stay in control</span>
                 </div>
@@ -316,8 +324,8 @@ export function EmergencyContacts() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + index * 0.05 }}
             >
-              <Card className={`p-6 shadow-lg hover:shadow-xl transition-all group ${
-                contact.is_trusted ? 'border-2 border-purple-200 bg-purple-50/30' : ''
+              <Card className={`p-6 shadow-lg hover:shadow-xl transition-all group dark:bg-gray-800 ${
+                contact.is_trusted ? 'border-2 border-purple-200 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-900/10' : ''
               }`}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -363,14 +371,17 @@ export function EmergencyContacts() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => toggleTrustedContact(contact)}
+                      disabled={togglingId === contact.id}
                       className={`p-2 rounded-lg transition-colors ${
                         contact.is_trusted 
                           ? 'bg-purple-100 hover:bg-purple-200' 
                           : 'bg-gray-100 hover:bg-gray-200'
-                      }`}
+                      } ${togglingId === contact.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                       title={contact.is_trusted ? 'Remove from trusted contacts' : 'Add to trusted contacts'}
                     >
-                      {contact.is_trusted ? (
+                      {togglingId === contact.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                      ) : contact.is_trusted ? (
                         <Bell className="w-4 h-4 text-purple-600" />
                       ) : (
                         <BellOff className="w-4 h-4 text-gray-600" />
@@ -383,6 +394,7 @@ export function EmergencyContacts() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => handleEditContact(contact)}
+                        disabled={deletingId === contact.id}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <Edit className="w-4 h-4 text-gray-600" />
@@ -391,9 +403,14 @@ export function EmergencyContacts() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => handleDeleteContact(contact.id)}
+                        disabled={deletingId === contact.id}
                         className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                       >
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        {deletingId === contact.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        )}
                       </motion.button>
                     </div>
                   </div>
@@ -443,28 +460,28 @@ export function EmergencyContacts() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Name *</label>
-                    <div className="flex items-center gap-2 p-3 border border-gray-300 rounded-lg">
+                    <div className="flex items-center gap-2 p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
                       <User className="w-4 h-4 text-gray-400" />
                       <input
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="Contact name"
-                        className="flex-1 outline-none bg-transparent"
+                        className="flex-1 outline-none bg-transparent dark:text-white"
                       />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium mb-2">Relationship</label>
-                    <div className="flex items-center gap-2 p-3 border border-gray-300 rounded-lg">
+                    <div className="flex items-center gap-2 p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
                       <Heart className="w-4 h-4 text-gray-400" />
                       <input
                         type="text"
                         value={formData.relationship}
                         onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
                         placeholder="e.g., Mother, Friend, Companion"
-                        className="flex-1 outline-none bg-transparent"
+                        className="flex-1 outline-none bg-transparent dark:text-white"
                       />
                     </div>
                   </div>

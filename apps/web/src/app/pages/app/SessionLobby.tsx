@@ -61,6 +61,7 @@ export function SessionLobby() {
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
   const [isStarting, setIsStarting] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
 
@@ -166,6 +167,7 @@ export function SessionLobby() {
       return;
     }
 
+    setIsScheduling(true);
     try {
       const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
       await api.sessions.schedule({
@@ -191,6 +193,8 @@ export function SessionLobby() {
         return;
       }
       toast.error(message);
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -461,13 +465,13 @@ export function SessionLobby() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.6 + index * 0.05 }}
                       onClick={() => toggleChecklist(index)}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
                     >
                       <div
                         className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                           item.checked
                             ? "bg-green-500 border-green-500"
-                            : "border-gray-300"
+                            : "border-gray-300 dark:border-gray-600"
                         }`}
                       >
                         {item.checked && (
@@ -549,14 +553,14 @@ export function SessionLobby() {
                   <h3 className="font-bold">Session Settings</h3>
                 </div>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Volume2 className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm">Voice</span>
                     </div>
                     <span className="text-sm font-medium">{selectedVoice}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm">Avatar</span>
@@ -594,8 +598,8 @@ export function SessionLobby() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.5 + index * 0.1 }}
                       whileHover={{ x: 5 }}
-                      className={`p-3 bg-gray-50 rounded-lg transition-colors ${
-                        session.isExpired ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-100 cursor-pointer"
+                      className={`p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg transition-colors ${
+                        session.isExpired ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer"
                       }`}
                     >
                       <div className="flex items-center gap-3 mb-2">
@@ -626,12 +630,12 @@ export function SessionLobby() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5 }}
             >
-              <Card className="p-6 shadow-xl bg-gradient-to-br from-amber-100 to-orange-100 border-amber-200">
+              <Card className="p-6 shadow-xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 border-amber-200 dark:border-amber-800">
                 <div className="flex items-start gap-2 mb-3">
-                  <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <h3 className="font-bold text-amber-900">Session Tip</h3>
+                  <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <h3 className="font-bold text-amber-900 dark:text-amber-200">Session Tip</h3>
                 </div>
-                <p className="text-sm text-amber-800">
+                <p className="text-sm text-amber-800 dark:text-amber-300">
                   Try to be present and honest during your session. There's no right or wrong way to feel.
                 </p>
               </Card>
@@ -659,7 +663,7 @@ export function SessionLobby() {
                   onClick={(e) => e.stopPropagation()}
                   className="w-full max-w-2xl flex flex-col max-h-[85vh]"
                 >
-                  <Card className="flex flex-col shadow-2xl bg-white overflow-hidden">
+                  <Card className="flex flex-col shadow-2xl bg-white dark:bg-gray-900 overflow-hidden">
                     {/* Header - Fixed */}
                     <div className="flex items-center justify-between p-6 border-b shrink-0">
                       <div>
@@ -672,7 +676,7 @@ export function SessionLobby() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => setShowCustomizeModal(false)}
-                        className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       >
                         <X className="w-5 h-5" />
                       </motion.button>
@@ -698,7 +702,7 @@ export function SessionLobby() {
                               onClick={() => setTempSelectedVoice(voice.name)}
                               className={`p-4 rounded-xl border-2 transition-all text-left relative ${
                                 tempSelectedVoice === voice.name
-                                  ? "border-primary bg-primary/10 shadow-lg"
+                                  ? "border-primary bg-primary/10 dark:bg-primary/20 shadow-lg"
                                   : "border-border hover:border-primary/50"
                               }`}
                             >
@@ -742,7 +746,7 @@ export function SessionLobby() {
                               onClick={() => setTempSelectedAvatar(avatar.name)}
                               className={`p-4 rounded-xl border-2 transition-all text-center relative ${
                                 tempSelectedAvatar === avatar.name
-                                  ? "border-primary bg-primary/10 shadow-lg"
+                                  ? "border-primary bg-primary/10 dark:bg-primary/20 shadow-lg"
                                   : "border-border hover:border-primary/50"
                               }`}
                             >
@@ -767,7 +771,7 @@ export function SessionLobby() {
                     </div>
 
                     {/* Footer Buttons - Fixed */}
-                    <div className="flex items-center justify-end gap-3 p-6 border-t shrink-0 bg-gray-50/50">
+                    <div className="flex items-center justify-end gap-3 p-6 border-t shrink-0 bg-gray-50/50 dark:bg-gray-800/50">
                       <Button
                         variant="outline"
                         onClick={() => setShowCustomizeModal(false)}
@@ -809,7 +813,7 @@ export function SessionLobby() {
                   onClick={(e) => e.stopPropagation()}
                   className="w-full max-w-2xl flex flex-col max-h-[85vh]"
                 >
-                  <Card className="flex flex-col shadow-2xl bg-white overflow-hidden">
+                  <Card className="flex flex-col shadow-2xl bg-white dark:bg-gray-900 overflow-hidden">
                     {/* Header - Fixed */}
                     <div className="flex items-center justify-between p-6 border-b shrink-0">
                       <div>
@@ -822,7 +826,7 @@ export function SessionLobby() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => setShowScheduleModal(false)}
-                        className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       >
                         <X className="w-5 h-5" />
                       </motion.button>
@@ -837,20 +841,20 @@ export function SessionLobby() {
                           <h3 className="font-bold text-lg">Date & Time</h3>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="p-4 rounded-xl border-2 transition-all text-left relative">
+                          <div className="p-4 rounded-xl border-2 dark:border-gray-700 transition-all text-left relative bg-gray-50 dark:bg-gray-800/50">
                             <input
                               type="date"
                               value={scheduleDate}
                               onChange={(e) => setScheduleDate(e.target.value)}
-                              className="w-full p-2 border-none outline-none"
+                              className="w-full p-2 border-none outline-none bg-transparent dark:text-white"
                             />
                           </div>
-                          <div className="p-4 rounded-xl border-2 transition-all text-left relative">
+                          <div className="p-4 rounded-xl border-2 dark:border-gray-700 transition-all text-left relative bg-gray-50 dark:bg-gray-800/50">
                             <input
                               type="time"
                               value={scheduleTime}
                               onChange={(e) => setScheduleTime(e.target.value)}
-                              className="w-full p-2 border-none outline-none"
+                              className="w-full p-2 border-none outline-none bg-transparent dark:text-white"
                             />
                           </div>
                         </div>
@@ -858,16 +862,18 @@ export function SessionLobby() {
                     </div>
 
                     {/* Footer Buttons - Fixed */}
-                    <div className="flex items-center justify-end gap-3 p-6 border-t shrink-0 bg-gray-50/50">
+                    <div className="flex items-center justify-end gap-3 p-6 border-t shrink-0 bg-gray-50/50 dark:bg-gray-800/50 dark:border-gray-800">
                       <Button
                         variant="outline"
                         onClick={() => setShowScheduleModal(false)}
+                        disabled={isScheduling}
                       >
                         Cancel
                       </Button>
                       <Button
                         className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                         onClick={handleScheduleSession}
+                        isLoading={isScheduling}
                       >
                         <Check className="w-4 h-4 mr-2" />
                         Schedule

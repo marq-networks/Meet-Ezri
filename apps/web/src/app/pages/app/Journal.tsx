@@ -14,8 +14,10 @@ import {
   Lock,
   Edit,
   Trash2,
+  X,
   Filter,
-  Download
+  Download,
+  Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -78,6 +80,9 @@ export function Journal() {
   const [filterDateRange, setFilterDateRange] = useState<"all" | "week" | "month" | "year">("all");
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingFavoriteId, setTogglingFavoriteId] = useState<string | null>(null);
 
   const moods = [
     { value: "happy", emoji: "😊" },
@@ -130,12 +135,15 @@ export function Journal() {
   const handleToggleFavorite = async (entryId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      setTogglingFavoriteId(entryId);
       await api.journal.toggleFavorite(entryId);
       setEntries(prev => prev.map(entry => 
         entry.id === entryId ? { ...entry, favorite: !entry.favorite } : entry
       ));
     } catch (error) {
       console.error("Failed to toggle favorite", error);
+    } finally {
+      setTogglingFavoriteId(null);
     }
   };
 
@@ -147,6 +155,7 @@ export function Journal() {
     if (!session) return;
     
     try {
+      setIsSaving(true);
       const entryData = {
         title: newEntryTitle,
         content: newEntryContent,
@@ -170,6 +179,8 @@ export function Journal() {
     } catch (error) {
       console.error("Failed to save journal entry", error);
       alert("Failed to save entry. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -199,11 +210,14 @@ export function Journal() {
   const handleDeleteEntry = async (entryId: string) => {
     if (confirm("Are you sure you want to delete this journal entry?")) {
       try {
+        setDeletingId(entryId);
         await api.journal.delete(entryId);
         setEntries(entries.filter(e => e.id !== entryId));
       } catch (error) {
         console.error("Failed to delete journal entry", error);
         alert("Failed to delete entry.");
+      } finally {
+        setDeletingId(null);
       }
     }
   };
@@ -369,10 +383,10 @@ export function Journal() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowExportModal(true)}
-                className="flex items-center gap-2 px-4 py-3 bg-white border-2 border-gray-300 hover:border-gray-400 rounded-lg shadow-md hover:shadow-lg transition-all"
+                className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 rounded-lg shadow-md hover:shadow-lg transition-all"
               >
-                <Download className="w-5 h-5 text-gray-700" />
-                <span className="hidden sm:inline text-gray-700 font-medium">Export</span>
+                <Download className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                <span className="hidden sm:inline text-gray-700 dark:text-gray-300 font-medium">Export</span>
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -401,7 +415,7 @@ export function Journal() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search your entries..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
             </div>
             <motion.button
@@ -410,8 +424,8 @@ export function Journal() {
               onClick={() => setFilterFavorites(!filterFavorites)}
               className={`px-4 py-3 border rounded-lg transition-colors flex items-center gap-2 ${
                 filterFavorites 
-                  ? "bg-red-50 border-red-200 text-red-500" 
-                  : "border-gray-300 hover:bg-gray-50 text-gray-600"
+                  ? "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-500 dark:text-red-400" 
+                  : "border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
               }`}
             >
               <Heart className={`w-5 h-5 ${filterFavorites ? "fill-current" : ""}`} />
@@ -421,9 +435,9 @@ export function Journal() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowFilterModal(true)}
-              className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              <Filter className="w-5 h-5 text-gray-600" />
+              <Filter className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </motion.button>
           </div>
         </motion.div>
@@ -452,9 +466,9 @@ export function Journal() {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => setShowNewEntry(false)}
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     >
-                      ✕
+                      <X className="w-6 h-6" />
                     </motion.button>
                   </div>
 
@@ -466,7 +480,7 @@ export function Journal() {
                         value={newEntryTitle}
                         onChange={(e) => setNewEntryTitle(e.target.value)}
                         placeholder="Give your entry a title..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       />
                     </div>
 
@@ -481,8 +495,8 @@ export function Journal() {
                             onClick={() => setSelectedMood(mood.emoji)}
                             className={`text-4xl p-2 rounded-lg transition-all flex-shrink-0 ${
                               selectedMood === mood.emoji
-                                ? "bg-primary/10 ring-2 ring-primary"
-                                : "hover:bg-gray-100"
+                                ? "bg-primary/10 ring-2 ring-primary dark:bg-primary/20"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
                             }`}
                           >
                             {mood.emoji}
@@ -515,8 +529,15 @@ export function Journal() {
                       >
                         Cancel
                       </Button>
-                      <Button onClick={handleSaveEntry} className="flex-1">
-                        Save Entry
+                      <Button onClick={handleSaveEntry} className="flex-1" disabled={isSaving}>
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Entry"
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -533,8 +554,8 @@ export function Journal() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card className="p-4 text-center shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50">
-              <div className="text-3xl font-bold text-primary mb-1">{totalEntries}</div>
+            <Card className="p-4 text-center shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 dark:border-blue-800">
+              <div className="text-3xl font-bold text-primary dark:text-blue-400 mb-1">{totalEntries}</div>
               <div className="text-sm text-muted-foreground">Total Entries</div>
             </Card>
           </motion.div>
@@ -544,8 +565,8 @@ export function Journal() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
           >
-            <Card className="p-4 text-center shadow-lg bg-gradient-to-br from-purple-50 to-pink-50">
-              <div className="text-3xl font-bold text-purple-600 mb-1">{streak}</div>
+            <Card className="p-4 text-center shadow-lg bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 dark:border-purple-800">
+              <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-1">{streak}</div>
               <div className="text-sm text-muted-foreground">Day Streak</div>
             </Card>
           </motion.div>
@@ -555,8 +576,8 @@ export function Journal() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="p-4 text-center shadow-lg bg-gradient-to-br from-amber-50 to-orange-50">
-              <div className="text-3xl font-bold text-amber-600 mb-1">{entriesThisWeek}</div>
+            <Card className="p-4 text-center shadow-lg bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 dark:border-amber-800">
+              <div className="text-3xl font-bold text-amber-600 dark:text-amber-400 mb-1">{entriesThisWeek}</div>
               <div className="text-sm text-muted-foreground">This Week</div>
             </Card>
           </motion.div>
@@ -601,25 +622,35 @@ export function Journal() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={(e) => handleToggleFavorite(entry.id, e)}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+                        disabled={togglingFavoriteId === entry.id}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors z-10 disabled:opacity-50"
                       >
-                         <Heart className={`w-5 h-5 ${entry.favorite ? "text-red-500 fill-red-500" : "text-gray-400"}`} />
+                         {togglingFavoriteId === entry.id ? (
+                           <Loader2 className="w-5 h-5 animate-spin text-red-500" />
+                         ) : (
+                           <Heart className={`w-5 h-5 ${entry.favorite ? "text-red-500 fill-red-500" : "text-gray-400 dark:text-gray-500"}`} />
+                         )}
                       </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-100 rounded-lg transition-all"
+                        className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
                         onClick={() => handleEditEntry(entry.id)}
                       >
-                        <Edit className="w-4 h-4 text-gray-600" />
+                        <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                       </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 rounded-lg transition-all"
+                        className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"
                         onClick={() => handleDeleteEntry(entry.id)}
+                        disabled={deletingId === entry.id}
                       >
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        {deletingId === entry.id ? (
+                          <Loader2 className="w-4 h-4 text-red-500 dark:text-red-400 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+                        )}
                       </motion.button>
                     </div>
                   </div>
@@ -677,7 +708,7 @@ export function Journal() {
                 onClick={(e) => e.stopPropagation()}
                 className="w-full max-w-md"
               >
-                <Card className="p-6 shadow-2xl bg-white">
+                <Card className="p-6 shadow-2xl bg-white dark:bg-gray-900">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
@@ -688,9 +719,9 @@ export function Journal() {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => setShowFilterModal(false)}
-                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                      className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     >
-                      ✕
+                      <X className="w-5 h-5" />
                     </motion.button>
                   </div>
 

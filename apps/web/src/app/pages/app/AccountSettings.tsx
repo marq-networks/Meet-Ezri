@@ -44,7 +44,8 @@ export function AccountSettings() {
   const initials = `${profileData.firstName[0] || ""}${profileData.lastName[0] || ""}`.toUpperCase();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
@@ -160,6 +161,7 @@ export function AccountSettings() {
 
   const handleDisableMfa = async () => {
     try {
+      setMfaLoading(true);
       // For simplicity, we just unenroll the first factor found
       const factorId = mfaFactors[0]?.id;
       if (!factorId) return;
@@ -174,6 +176,8 @@ export function AccountSettings() {
       fetchMfaStatus();
     } catch (error: any) {
       toast.error(error.message || 'Failed to disable MFA');
+    } finally {
+      setMfaLoading(false);
     }
   };
 
@@ -286,7 +290,7 @@ export function AccountSettings() {
       if (!event.target.files || event.target.files.length === 0) {
         return;
       }
-      setUploading(true);
+      setIsUploading(true);
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
       const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
@@ -313,13 +317,13 @@ export function AccountSettings() {
       console.error('Error uploading avatar:', error);
       toast.error('Error uploading avatar');
     } finally {
-      setUploading(false);
+      setIsUploading(false);
     }
   };
 
   const handleRemovePhoto = async () => {
     try {
-      setUploading(true);
+      setIsRemoving(true);
       setProfileData(prev => ({ ...prev, avatar_url: "" }));
       
       await api.updateProfile({ avatar_url: null });
@@ -329,7 +333,7 @@ export function AccountSettings() {
       console.error('Error removing avatar:', error);
       toast.error('Error removing avatar');
     } finally {
-      setUploading(false);
+      setIsRemoving(false);
     }
   };
 
@@ -455,19 +459,21 @@ export function AccountSettings() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isUploading || isRemoving}
+                    className="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    {uploading ? 'Uploading...' : 'Upload Photo'}
+                    {isUploading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {isUploading ? 'Uploading...' : 'Upload Photo'}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleRemovePhoto}
-                    disabled={uploading || !profileData.avatar_url}
-                    className="px-4 py-2 rounded-xl bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isUploading || isRemoving || !profileData.avatar_url}
+                    className="px-4 py-2 rounded-xl bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Remove
+                    {isRemoving && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {isRemoving ? 'Removing...' : 'Remove'}
                   </motion.button>
                 </div>
               </div>
@@ -627,15 +633,19 @@ export function AccountSettings() {
                   {mfaFactors.length > 0 ? (
                     <button 
                       onClick={handleDisableMfa}
-                      className="text-sm text-red-600 dark:text-red-400 font-medium hover:text-red-700 dark:hover:text-red-300"
+                      disabled={mfaLoading}
+                      className="text-sm text-red-600 dark:text-red-400 font-medium hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50 flex items-center gap-2"
                     >
+                      {mfaLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                       Disable
                     </button>
                   ) : (
                     <button 
                       onClick={handleEnrollMfa}
-                      className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300"
+                      disabled={mfaLoading}
+                      className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50 flex items-center gap-2"
                     >
+                      {mfaLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                       Enable
                     </button>
                   )}
@@ -678,10 +688,11 @@ export function AccountSettings() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleSave}
-            className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold shadow-lg flex items-center justify-center gap-2"
+            disabled={saving}
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-5 h-5" />
-            Save Changes
+            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+            {saving ? 'Saving...' : 'Save Changes'}
           </motion.button>
 
           {/* Delete Account Modal */}

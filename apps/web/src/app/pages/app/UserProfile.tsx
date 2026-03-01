@@ -28,7 +28,8 @@ import {
   Pill,
   Target,
   Zap,
-  Users
+  Users,
+  Loader2
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -43,6 +44,9 @@ export function UserProfile() {
   const { signOut, user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [joinedAt, setJoinedAt] = useState<string>("");
   const [formData, setFormData] = useState({
@@ -129,6 +133,7 @@ export function UserProfile() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && user) {
+      setIsUploading(true);
       try {
         const fileExt = file.name.split('.').pop();
         const filePath = `${user.id}/${Math.random()}.${fileExt}`;
@@ -154,12 +159,15 @@ export function UserProfile() {
       } catch (error) {
         console.error('Error uploading image:', error);
         toast.error("Error uploading image");
+      } finally {
+        setIsUploading(false);
       }
     }
   };
 
   const handleSaveProfile = async () => {
     if (isEditing) {
+      setIsSaving(true);
       try {
         const updatedProfile = await api.updateProfile({
           full_name: formData.name,
@@ -198,6 +206,8 @@ export function UserProfile() {
       } catch (error) {
         console.error("Profile update error:", error);
         toast.error("Failed to update profile");
+      } finally {
+        setIsSaving(false);
       }
     } else {
       setIsEditing(true);
@@ -206,8 +216,15 @@ export function UserProfile() {
 
   const handleLogout = async () => {
     if (confirm('Are you sure you want to log out?')) {
-      await signOut();
-      navigate('/login');
+      setIsLoggingOut(true);
+      try {
+        await signOut();
+        navigate('/login');
+      } catch (error) {
+        console.error("Logout error:", error);
+        toast.error("Failed to log out");
+        setIsLoggingOut(false);
+      }
     }
   };
 
@@ -369,9 +386,14 @@ export function UserProfile() {
                     />
                     <motion.div
                       whileHover={{ scale: 1.05 }}
-                      onClick={() => document.getElementById('profile-image-upload')?.click()}
+                      onClick={() => !isUploading && document.getElementById('profile-image-upload')?.click()}
                       className="w-32 h-32 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-5xl cursor-pointer relative overflow-hidden"
                     >
+                      {isUploading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+                          <Loader2 className="w-8 h-8 text-white animate-spin" />
+                        </div>
+                      )}
                       {profileImage ? (
                         <img src={profileImage} alt="Profile" className="w-full h-full object-cover rounded-full" />
                       ) : (
@@ -424,6 +446,7 @@ export function UserProfile() {
                   onClick={handleSaveProfile}
                   variant="outline"
                   className="w-full"
+                  isLoading={isSaving}
                 >
                   <Edit className="w-4 h-4 mr-2" />
                   {isEditing ? "Save Changes" : "Edit Profile"}
@@ -449,9 +472,9 @@ export function UserProfile() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.4 + index * 0.05 }}
                           whileHover={{ x: 5 }}
-                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group"
+                          className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer group"
                         >
-                          <div className="p-2 bg-white rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
+                          <div className="p-2 bg-white dark:bg-gray-900 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
                             <Icon className="w-4 h-4" />
                           </div>
                           <div className="flex-1">
@@ -495,18 +518,18 @@ export function UserProfile() {
                       <Label className="mb-2 block">Full Name</Label>
                       <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
                         isEditing 
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
-                          : 'border-gray-300'
+                          ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20' 
+                          : 'border-gray-300 dark:border-gray-700'
                       }`}>
-                        <User className="w-4 h-4 text-gray-400" />
+                        <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <input
                           type="text"
                           value={formData.name}
-                          disabled={!isEditing}
+                          disabled={!isEditing || isSaving}
                           onChange={(e) =>
                             setFormData({ ...formData, name: e.target.value })
                           }
-                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed"
+                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed text-gray-900 dark:text-gray-100"
                         />
                       </div>
                     </div>
@@ -515,18 +538,18 @@ export function UserProfile() {
                       <Label className="mb-2 block">Email</Label>
                       <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
                         isEditing 
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
-                          : 'border-gray-300'
+                          ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20' 
+                          : 'border-gray-300 dark:border-gray-700'
                       }`}>
-                        <Mail className="w-4 h-4 text-gray-400" />
+                        <Mail className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <input
                           type="email"
                           value={formData.email}
-                          disabled={!isEditing}
+                          disabled={!isEditing || isSaving}
                           onChange={(e) =>
                             setFormData({ ...formData, email: e.target.value })
                           }
-                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed"
+                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed text-gray-900 dark:text-gray-100"
                         />
                       </div>
                     </div>
@@ -535,18 +558,18 @@ export function UserProfile() {
                       <Label className="mb-2 block">Phone</Label>
                       <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
                         isEditing 
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
-                          : 'border-gray-300'
+                          ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20' 
+                          : 'border-gray-300 dark:border-gray-700'
                       }`}>
-                        <Phone className="w-4 h-4 text-gray-400" />
+                        <Phone className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <input
                           type="tel"
                           value={formData.phone}
-                          disabled={!isEditing}
+                          disabled={!isEditing || isSaving}
                           onChange={(e) =>
                             setFormData({ ...formData, phone: e.target.value })
                           }
-                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed"
+                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed text-gray-900 dark:text-gray-100"
                         />
                       </div>
                     </div>
@@ -555,18 +578,18 @@ export function UserProfile() {
                       <Label className="mb-2 block">Age</Label>
                       <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
                         isEditing 
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
-                          : 'border-gray-300'
+                          ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20' 
+                          : 'border-gray-300 dark:border-gray-700'
                       }`}>
-                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <Calendar className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <input
                           type="text"
                           value={formData.birthday}
-                          disabled={!isEditing}
+                          disabled={!isEditing || isSaving}
                           onChange={(e) =>
                             setFormData({ ...formData, birthday: e.target.value })
                           }
-                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed"
+                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed text-gray-900 dark:text-gray-100"
                           placeholder="Age"
                         />
                       </div>
@@ -576,18 +599,18 @@ export function UserProfile() {
                       <Label className="mb-2 block">Pronouns</Label>
                       <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
                         isEditing 
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
-                          : 'border-gray-300'
+                          ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20' 
+                          : 'border-gray-300 dark:border-gray-700'
                       }`}>
-                        <User className="w-4 h-4 text-gray-400" />
+                        <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <input
                           type="text"
                           value={formData.pronouns}
-                          disabled={!isEditing}
+                          disabled={!isEditing || isSaving}
                           onChange={(e) =>
                             setFormData({ ...formData, pronouns: e.target.value })
                           }
-                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed"
+                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed text-gray-900 dark:text-gray-100"
                         />
                       </div>
                     </div>
@@ -596,18 +619,18 @@ export function UserProfile() {
                       <Label className="mb-2 block">Location/Timezone</Label>
                       <div className={`flex items-center gap-2 p-3 border rounded-lg transition-all ${
                         isEditing 
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
-                          : 'border-gray-300'
+                          ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20' 
+                          : 'border-gray-300 dark:border-gray-700'
                       }`}>
-                        <MapPin className="w-4 h-4 text-gray-400" />
+                        <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         <input
                           type="text"
                           value={formData.location}
-                          disabled={!isEditing}
+                          disabled={!isEditing || isSaving}
                           onChange={(e) =>
                             setFormData({ ...formData, location: e.target.value })
                           }
-                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed"
+                          className="flex-1 outline-none bg-transparent disabled:cursor-not-allowed text-gray-900 dark:text-gray-100"
                         />
                       </div>
                     </div>
@@ -627,13 +650,14 @@ export function UserProfile() {
                   <div className="flex items-center gap-2">
                     <Activity className="w-5 h-5 text-primary" />
                     <h3 className="font-bold text-lg">Wellness Profile</h3>
+                    {isSaving && <Loader2 className="w-4 h-4 animate-spin ml-2 text-primary" />}
                   </div>
                 </div>
                 
                 <div className="space-y-6">
                   {/* Therapy & Medication */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <Users className="w-4 h-4 text-purple-500" />
                         <span className="font-semibold text-sm">Therapy Status</span>
@@ -641,8 +665,9 @@ export function UserProfile() {
                       {isEditing ? (
                         <select
                           value={formData.in_therapy}
+                          disabled={isSaving}
                           onChange={(e) => setFormData({ ...formData, in_therapy: e.target.value })}
-                          className="w-full p-2 border rounded-md bg-white text-sm"
+                          className="w-full p-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-sm disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 dark:text-gray-100"
                         >
                           <option value="">Select...</option>
                           <option value="Yes">Yes</option>
@@ -651,10 +676,10 @@ export function UserProfile() {
                           <option value="Thinking about it">Thinking about it</option>
                         </select>
                       ) : (
-                        <p className="text-sm text-gray-700">{formData.in_therapy || "Not specified"}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{formData.in_therapy || "Not specified"}</p>
                       )}
                     </div>
-                    <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <Pill className="w-4 h-4 text-blue-500" />
                         <span className="font-semibold text-sm">Medication</span>
@@ -662,8 +687,9 @@ export function UserProfile() {
                       {isEditing ? (
                          <select
                           value={formData.on_medication}
+                          disabled={isSaving}
                           onChange={(e) => setFormData({ ...formData, on_medication: e.target.value })}
-                          className="w-full p-2 border rounded-md bg-white text-sm"
+                          className="w-full p-2 border dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <option value="">Select...</option>
                           <option value="Yes">Yes</option>
@@ -671,7 +697,7 @@ export function UserProfile() {
                           <option value="Prefer not to say">Prefer not to say</option>
                         </select>
                       ) : (
-                        <p className="text-sm text-gray-700">{formData.on_medication || "Not specified"}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{formData.on_medication || "Not specified"}</p>
                       )}
                     </div>
                   </div>
@@ -686,11 +712,12 @@ export function UserProfile() {
                       <div className="space-y-2">
                         <textarea
                           value={formData.selected_goals.join(', ')}
+                          disabled={isSaving}
                           onChange={(e) => setFormData({ 
                             ...formData, 
                             selected_goals: e.target.value.split(',').map(s => s.trim())
                           })}
-                          className="w-full p-2 border rounded-md text-sm min-h-[80px]"
+                          className="w-full p-2 border dark:border-gray-700 rounded-md text-sm min-h-[80px] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                           placeholder="Enter goals separated by commas (e.g., Better sleep, Less anxiety)"
                         />
                         <p className="text-xs text-muted-foreground">Separate goals with commas</p>
@@ -720,11 +747,12 @@ export function UserProfile() {
                       <div className="space-y-2">
                          <textarea
                           value={formData.selected_triggers.join(', ')}
+                          disabled={isSaving}
                           onChange={(e) => setFormData({ 
                             ...formData, 
                             selected_triggers: e.target.value.split(',').map(s => s.trim())
                           })}
-                          className="w-full p-2 border rounded-md text-sm min-h-[80px]"
+                          className="w-full p-2 border dark:border-gray-700 rounded-md text-sm min-h-[80px] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                           placeholder="Enter triggers separated by commas (e.g., Work stress, Social anxiety)"
                         />
                         <p className="text-xs text-muted-foreground">Separate triggers with commas</p>
@@ -733,7 +761,7 @@ export function UserProfile() {
                       <div className="flex flex-wrap gap-2">
                         {formData.selected_triggers.length > 0 ? (
                           formData.selected_triggers.map((trigger, i) => (
-                            <Badge key={i} variant="outline" className="px-3 py-1 border-orange-200 bg-orange-50 text-orange-800">
+                            <Badge key={i} variant="outline" className="px-3 py-1 border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 text-orange-800 dark:text-orange-300">
                               {trigger}
                             </Badge>
                           ))
@@ -766,8 +794,9 @@ export function UserProfile() {
                       <input
                         type="text"
                         value={formData.emergency_contact_name}
+                        disabled={isSaving}
                         onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
-                        className="w-full mt-1 p-2 border rounded-lg border-primary bg-primary/5 ring-2 ring-primary/20 outline-none"
+                        className="w-full mt-1 p-2 border rounded-lg border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20 outline-none text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="Contact Name"
                       />
                     ) : (
@@ -780,8 +809,9 @@ export function UserProfile() {
                       <input
                         type="text"
                         value={formData.emergency_contact_relationship}
+                        disabled={isSaving}
                         onChange={(e) => setFormData({ ...formData, emergency_contact_relationship: e.target.value })}
-                        className="w-full mt-1 p-2 border rounded-lg border-primary bg-primary/5 ring-2 ring-primary/20 outline-none"
+                        className="w-full mt-1 p-2 border rounded-lg border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20 outline-none text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="Relationship"
                       />
                     ) : (
@@ -794,13 +824,14 @@ export function UserProfile() {
                       <input
                         type="tel"
                         value={formData.emergency_contact_phone}
+                        disabled={isSaving}
                         onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
-                        className="w-full mt-1 p-2 border rounded-lg border-primary bg-primary/5 ring-2 ring-primary/20 outline-none"
+                        className="w-full mt-1 p-2 border rounded-lg border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20 outline-none text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="Contact Phone"
                       />
                     ) : (
                       <div className="flex items-center gap-2 mt-1">
-                        <Phone className="w-3 h-3 text-gray-400" />
+                        <Phone className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                         <p className="font-medium">{formData.emergency_contact_phone || "Not set"}</p>
                       </div>
                     )}
@@ -826,13 +857,13 @@ export function UserProfile() {
                         <Link key={itemIndex} to={item.link}>
                           <motion.div
                             whileHover={{ x: 5 }}
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group"
                           >
                             <div className="flex items-center gap-3">
-                              <Icon className="w-5 h-5 text-gray-600 group-hover:text-primary transition-colors" />
+                              <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-primary transition-colors" />
                               <span className="font-medium">{item.label}</span>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
+                            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-primary transition-colors" />
                           </motion.div>
                         </Link>
                       );
@@ -848,23 +879,32 @@ export function UserProfile() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
             >
-              <Card className="p-6 shadow-xl border-red-200">
-                <h3 className="font-bold text-lg mb-4 text-red-600">Danger Zone</h3>
+              <Card className="p-6 shadow-xl border-red-200 dark:border-red-900/50">
+                <h3 className="font-bold text-lg mb-4 text-red-600 dark:text-red-400">Danger Zone</h3>
                 <div className="space-y-3">
                   <motion.button
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
-                    className="w-full flex items-center justify-between p-3 border-2 border-red-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-all group"
+                    disabled={isLoggingOut}
+                    className="w-full flex items-center justify-between p-3 border-2 border-red-200 dark:border-red-900/50 rounded-lg hover:border-red-300 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleLogout}
                   >
                     <div className="flex items-center gap-3">
-                      <LogOut className="w-5 h-5 text-red-500 group-hover:text-red-600" />
+                      {isLoggingOut ? (
+                        <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
+                      ) : (
+                        <LogOut className="w-5 h-5 text-red-500 dark:text-red-400 group-hover:text-red-600 dark:group-hover:text-red-300" />
+                      )}
                       <div className="text-left">
-                        <p className="font-bold text-red-600">Log Out</p>
-                        <p className="text-xs text-red-400">End your current session</p>
+                        <p className="font-bold text-red-600 dark:text-red-400">
+                          {isLoggingOut ? 'Logging Out...' : 'Log Out'}
+                        </p>
+                        <p className="text-xs text-red-400 dark:text-red-500">End your current session</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-red-300 group-hover:text-red-500" />
+                    {!isLoggingOut && (
+                      <ChevronRight className="w-5 h-5 text-red-300 dark:text-red-700 group-hover:text-red-500 dark:group-hover:text-red-400" />
+                    )}
                   </motion.button>
                   
                   {/* Delete Account Button - Hidden by default or separate logic */}

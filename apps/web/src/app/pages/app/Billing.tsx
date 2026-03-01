@@ -139,13 +139,13 @@ export function Billing() {
 
   const [showPAYGModal, setShowPAYGModal] = useState(false);
   const [paygMinutes, setPaygMinutes] = useState(60);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
 
   const paygCost = currentPlan.payAsYouGoRate ? (currentPlan.payAsYouGoRate * paygMinutes) : 0;
 
   const handleBuyPAYG = async () => {
     if (paygCost <= 0) return;
-    setIsProcessing(true);
+    setProcessingAction('buy_credits');
     try {
       const response = await api.billing.buyCredits({
         credits: paygMinutes
@@ -156,13 +156,13 @@ export function Billing() {
     } catch (error) {
       console.error('Failed to start credit purchase:', error);
       alert('Failed to start purchase. Please try again.');
-      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
   const handleSubscribe = async (planId: PlanTier) => {
     if (planId === 'trial') return; 
-    setIsProcessing(true);
+    setProcessingAction(`subscribe_${planId}`);
     try {
       const response = await api.billing.createSubscription({ plan_type: planId });
       if (response.checkoutUrl) {
@@ -171,12 +171,12 @@ export function Billing() {
     } catch (error) {
       console.error('Failed to start subscription:', error);
       alert('Failed to start subscription. Please try again.');
-      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
   const handleManageBilling = async () => {
-     setIsProcessing(true);
+     setProcessingAction('manage_billing');
      try {
        const response = await api.billing.createPortalSession();
        if (response.portalUrl) {
@@ -185,7 +185,7 @@ export function Billing() {
      } catch (error) {
        console.error('Failed to open billing portal:', error);
        alert('Failed to open billing portal. Please try again.');
-       setIsProcessing(false);
+       setProcessingAction(null);
      }
   };
 
@@ -193,7 +193,7 @@ export function Billing() {
     if (userSubscription.planId === 'trial') return;
     const confirmed = window.confirm("Are you sure you want to cancel your subscription? You will keep access until the end of the current billing period.");
     if (!confirmed) return;
-    setIsProcessing(true);
+    setProcessingAction('cancel_subscription');
     try {
       await api.billing.cancelSubscription();
       alert("Your subscription has been cancelled. It will remain active until the end of the current billing period.");
@@ -201,7 +201,7 @@ export function Billing() {
     } catch (error) {
       console.error('Failed to cancel subscription:', error);
       alert('Failed to cancel subscription. Please try again.');
-      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
@@ -270,7 +270,7 @@ export function Billing() {
             Manage your plan, view usage, and purchase additional minutes
           </p>
           {searchParams.get('success') && (
-            <div className="mt-4 p-4 bg-green-50 text-green-700 rounded-lg border border-green-200 flex items-center gap-2">
+            <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg border border-green-200 dark:border-green-800 flex items-center gap-2">
               <Check className="w-5 h-5" />
               Subscription updated successfully!
             </div>
@@ -278,7 +278,7 @@ export function Billing() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card className="p-6 md:col-span-2 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+          <Card className="p-6 md:col-span-2 border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -291,7 +291,7 @@ export function Billing() {
                   </div>
                 </div>
                 <div className="flex items-baseline gap-2 mt-2">
-                  <span className="text-3xl font-bold text-purple-700">
+                  <span className="text-3xl font-bold text-purple-700 dark:text-purple-300">
                     ${currentPlan.price}
                   </span>
                   <span className="text-muted-foreground">/month</span>
@@ -301,7 +301,8 @@ export function Billing() {
                 <div className="flex flex-col gap-2 items-end">
                   <Button 
                     onClick={handleManageBilling}
-                    disabled={isProcessing}
+                    isLoading={processingAction === 'manage_billing'}
+                    disabled={processingAction !== null}
                     className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
@@ -310,8 +311,9 @@ export function Billing() {
                   <Button
                     variant="outline"
                     onClick={handleCancelSubscription}
-                    disabled={isProcessing}
-                    className="border-red-200 text-red-600 hover:bg-red-400"
+                    isLoading={processingAction === 'cancel_subscription'}
+                    disabled={processingAction !== null}
+                    className="border-red-200 text-red-600 hover:bg-red-400 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
                   >
                     Cancel Plan
                   </Button>
@@ -320,8 +322,8 @@ export function Billing() {
             </div>
 
             {/* Renewal Info */}
-            <div className="flex items-center gap-2 p-3 bg-white/60 backdrop-blur-sm rounded-lg border border-purple-200">
-              <Calendar className="w-4 h-4 text-purple-600" />
+            <div className="flex items-center gap-2 p-3 bg-white/60 dark:bg-black/40 backdrop-blur-sm rounded-lg border border-purple-200 dark:border-purple-800">
+              <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span className="text-sm">
                 <span className="font-medium">
                   {userSubscription.planId === 'trial' ? 'Expires in ' : 'Renews in '} 
@@ -336,22 +338,22 @@ export function Billing() {
           </Card>
 
           {/* Credits Remaining Card */}
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
+          <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-2 border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2 mb-3">
-              <Clock className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-blue-900">Minutes Remaining</h3>
+              <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="font-semibold text-blue-900 dark:text-blue-100">Minutes Remaining</h3>
             </div>
             <div className="mb-4">
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-blue-700">
+                <span className="text-4xl font-bold text-blue-700 dark:text-blue-300">
                   {userSubscription.creditsRemaining}
                 </span>
-                <span className="text-lg text-blue-600">
+                <span className="text-lg text-blue-600 dark:text-blue-400">
                   / {userSubscription.creditsTotal} min
                 </span>
               </div>
               {userSubscription.payAsYouGoCredits > 0 && (
-                <p className="text-sm text-blue-600 mt-1">
+                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
                   + {userSubscription.payAsYouGoCredits} PAYG minutes
                 </p>
               )}
@@ -359,7 +361,7 @@ export function Billing() {
 
             {/* Usage Progress Bar */}
             <div className="mb-4">
-              <div className="w-full h-3 bg-blue-200 rounded-full overflow-hidden">
+              <div className="w-full h-3 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${usagePercentage}%` }}
@@ -374,15 +376,15 @@ export function Billing() {
               <ArrowLeft className="w-4 h-4" />
               Back to Settings
             </Link>
-              <p className="text-xs text-blue-600 mt-2">
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
                 {usagePercentage.toFixed(0)}% used this billing cycle
               </p>
             </div>
 
             {userSubscription.creditsRemaining <= 50 && (
-              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-amber-700">
+              <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">
                   Running low on minutes. Consider purchasing more or upgrading your plan.
                 </p>
               </div>
@@ -391,33 +393,33 @@ export function Billing() {
         </div>
 
         {currentPlan.payAsYouGoRate && (
-          <Card className="p-6 mb-8 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200">
+          <Card className="p-6 mb-8 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-2 border-green-200 dark:border-green-800">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-3">
-                  <Zap className="w-6 h-6 text-green-600" />
-                  <h3 className="text-xl font-bold text-green-900">Pay-As-You-Go Available</h3>
+                  <Zap className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  <h3 className="text-xl font-bold text-green-900 dark:text-green-100">Pay-As-You-Go Available</h3>
                 </div>
-                <p className="text-green-700 mb-4">
+                <p className="text-green-700 dark:text-green-300 mb-4">
                   Need more minutes this month? Purchase additional time at your discounted rate of 
                   <span className="font-bold"> $5 per 25 minutes</span> (${currentPlan.payAsYouGoRate}/min).
                 </p>
                 <div className="grid sm:grid-cols-3 gap-3">
-                  <div className="p-3 bg-white/60 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-700">25 minutes</p>
-                    <p className="text-lg font-bold text-green-800">
+                  <div className="p-3 bg-white/60 dark:bg-black/40 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-green-700 dark:text-green-300">25 minutes</p>
+                    <p className="text-lg font-bold text-green-800 dark:text-green-200">
                       ${(currentPlan.payAsYouGoRate * 25).toFixed(2)}
                     </p>
                   </div>
-                  <div className="p-3 bg-white/60 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-700">50 minutes</p>
-                    <p className="text-lg font-bold text-green-800">
+                  <div className="p-3 bg-white/60 dark:bg-black/40 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-green-700 dark:text-green-300">50 minutes</p>
+                    <p className="text-lg font-bold text-green-800 dark:text-green-200">
                       ${(currentPlan.payAsYouGoRate * 50).toFixed(2)}
                     </p>
                   </div>
-                  <div className="p-3 bg-white/60 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-700">100 minutes</p>
-                    <p className="text-lg font-bold text-green-800">
+                  <div className="p-3 bg-white/60 dark:bg-black/40 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-green-700 dark:text-green-300">100 minutes</p>
+                    <p className="text-lg font-bold text-green-800 dark:text-green-200">
                       ${(currentPlan.payAsYouGoRate * 100).toFixed(2)}
                     </p>
                   </div>
@@ -439,7 +441,7 @@ export function Billing() {
           <Card className="p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-purple-600" />
+                <History className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 <h3 className="text-xl font-bold">Billing History & Invoices</h3>
               </div>
             </div>
@@ -451,7 +453,7 @@ export function Billing() {
                   {billingHistory.map((entry) => (
                     <div
                       key={entry.id}
-                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border"
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-border"
                     >
                       <div>
                         <p className="font-medium capitalize">
@@ -486,7 +488,7 @@ export function Billing() {
                   {invoices.map((invoice) => (
                     <div
                       key={invoice.id}
-                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border"
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-border"
                     >
                       <div>
                         <p className="font-medium">
@@ -546,7 +548,7 @@ export function Billing() {
         <Card className="p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <History className="w-5 h-5 text-purple-600" />
+              <History className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               <h3 className="text-xl font-bold">Recent Sessions</h3>
             </div>
             <Button variant="outline" size="sm">
@@ -559,7 +561,7 @@ export function Billing() {
             {userSubscription.usageHistory.map((record) => (
               <div 
                 key={record.id}
-                className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-border hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
@@ -610,8 +612,8 @@ export function Billing() {
                   key={planId}
                   className={`p-4 rounded-xl border-2 transition-all ${
                     isCurrent 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-border bg-muted/30 hover:border-purple-300'
+                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
+                      : 'border-border bg-muted/30 hover:border-purple-300 dark:hover:border-purple-700'
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-3`}>
@@ -641,7 +643,7 @@ export function Billing() {
                   )}
 
                   {isCurrent ? (
-                    <div className="flex items-center justify-center gap-2 py-2 bg-purple-100 text-purple-700 rounded-lg font-medium">
+                    <div className="flex items-center justify-center gap-2 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-lg font-medium">
                       <Check className="w-4 h-4" />
                       Current Plan
                     </div>
@@ -650,7 +652,8 @@ export function Billing() {
                       className="w-full" 
                       variant={planId === 'pro' ? 'default' : 'outline'}
                       onClick={() => handleSubscribe(planId)}
-                      disabled={isProcessing}
+                      isLoading={processingAction === `subscribe_${planId}`}
+                      disabled={processingAction !== null}
                     >
                       {SUBSCRIPTION_PLANS[planId].price > currentPlan.price ? 'Upgrade' : 'Switch'}
                       <ChevronRight className="w-4 h-4 ml-1" />
@@ -671,41 +674,42 @@ export function Billing() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowPAYGModal(false)}
+            onClick={() => !processingAction && setShowPAYGModal(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-background rounded-2xl p-8 max-w-md w-full border-2 border-green-500/30 shadow-2xl"
+              className="bg-white dark:bg-slate-900 rounded-2xl p-8 max-w-md w-full border-2 border-green-500/30 shadow-2xl"
             >
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ShoppingCart className="w-8 h-8 text-white" />
+                <div className="w-16 h-16 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-100 dark:border-green-800">
+                  <ShoppingCart className="w-8 h-8 text-green-600 dark:text-green-400" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2">Buy Additional Minutes</h3>
-                <p className="text-muted-foreground">
-                  Your rate: <span className="font-bold text-green-600">${currentPlan.payAsYouGoRate}/minute</span>
+                <h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Buy Additional Minutes</h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Your rate: <span className="font-bold text-green-600 dark:text-green-400">${currentPlan.payAsYouGoRate}/minute</span>
                 </p>
               </div>
 
               {/* Minutes Selector */}
               <div className="mb-6">
-                <label className="block text-sm font-medium mb-3">How many minutes?</label>
+                <label className="block text-sm font-medium mb-3 text-gray-900 dark:text-white">How many minutes?</label>
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   {[25, 50, 100].map((mins) => (
                     <button
                       key={mins}
                       onClick={() => setPaygMinutes(mins)}
+                      disabled={processingAction !== null}
                       className={`p-3 rounded-xl border-2 transition-all ${
                         paygMinutes === mins
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-border hover:border-green-300'
-                      }`}
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-900 dark:text-green-100'
+                          : 'border-gray-200 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white'
+                      } ${processingAction !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <p className="font-bold">{mins}</p>
-                      <p className="text-xs text-muted-foreground">minutes</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">minutes</p>
                     </button>
                   ))}
                 </div>
@@ -717,26 +721,27 @@ export function Billing() {
                     max="250"
                     step="25"
                     value={paygMinutes}
+                    disabled={processingAction !== null}
                     onChange={(e) => setPaygMinutes(Number(e.target.value))}
-                    className="flex-1"
+                    className="flex-1 accent-green-600 dark:accent-green-500"
                   />
-                  <span className="font-mono font-bold text-lg w-16">{paygMinutes}m</span>
+                  <span className="font-mono font-bold text-lg w-16 text-right text-gray-900 dark:text-white">{paygMinutes}m</span>
                 </div>
               </div>
 
               {/* Cost Summary */}
-              <div className="mb-6 p-4 bg-green-50 rounded-xl border-2 border-green-200">
+              <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border-2 border-green-200 dark:border-green-800">
                 <div className="flex justify-between mb-2">
-                  <span className="text-muted-foreground">Minutes:</span>
-                  <span className="font-semibold">{paygMinutes}</span>
+                  <span className="text-gray-500 dark:text-gray-400">Minutes:</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{paygMinutes}</span>
                 </div>
                 <div className="flex justify-between mb-2">
-                  <span className="text-muted-foreground">Rate:</span>
-                  <span className="font-semibold">${currentPlan.payAsYouGoRate}/min</span>
+                  <span className="text-gray-500 dark:text-gray-400">Rate:</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">${currentPlan.payAsYouGoRate}/min</span>
                 </div>
-                <div className="border-t border-green-300 pt-2 mt-2 flex justify-between">
-                  <span className="font-bold text-green-900">Total:</span>
-                  <span className="text-2xl font-bold text-green-700">${paygCost.toFixed(2)}</span>
+                <div className="border-t border-green-300 dark:border-green-700 pt-2 mt-2 flex justify-between">
+                  <span className="font-bold text-green-900 dark:text-green-100">Total:</span>
+                  <span className="text-2xl font-bold text-green-700 dark:text-green-300">${paygCost.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -746,11 +751,14 @@ export function Billing() {
                   variant="outline"
                   onClick={() => setShowPAYGModal(false)}
                   className="flex-1"
+                  disabled={processingAction !== null}
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleBuyPAYG}
+                  isLoading={processingAction === 'buy_credits'}
+                  disabled={processingAction !== null}
                   className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                 >
                   Purchase

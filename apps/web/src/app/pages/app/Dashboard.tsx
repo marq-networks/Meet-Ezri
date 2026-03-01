@@ -387,9 +387,9 @@ export function Dashboard() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.7 + index * 0.1 }}
                       whileHover={{ x: 5 }}
-                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                     >
-                      <div className={`p-2 rounded-lg bg-gray-100 ${insight.color}`}>
+                      <div className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-800 ${insight.color}`}>
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="flex-1">
@@ -430,7 +430,7 @@ export function Dashboard() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.8 + index * 0.05 }}
                     whileHover={{ x: 5 }}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                   >
                     <span className="text-2xl">{activity.emoji}</span>
                     <div className="flex-1">

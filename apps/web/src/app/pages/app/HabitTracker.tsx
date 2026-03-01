@@ -21,6 +21,7 @@ import {
 import { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { api } from "../../../lib/api";
+import { toast } from "sonner";
 import { format, isToday, isSameDay, subDays, startOfWeek, endOfWeek, isWithinInterval, differenceInDays } from "date-fns";
 
 interface HabitLog {
@@ -46,6 +47,8 @@ export function HabitTracker() {
   const { session } = useAuth();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showNewHabit, setShowNewHabit] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [habitFormData, setHabitFormData] = useState({
@@ -205,13 +208,17 @@ export function HabitTracker() {
 
   const handleCreateHabit = async () => {
     try {
+      setIsSaving(true);
       await api.habits.create(habitFormData);
       fetchHabits();
       setShowNewHabit(false);
       resetForm();
+      toast.success("Habit created successfully");
     } catch (error: any) {
       console.error("Failed to create habit", error);
-      alert(error.message || "Failed to create habit");
+      toast.error(error.message || "Failed to create habit");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -219,24 +226,32 @@ export function HabitTracker() {
     if (!editingHabit) return;
     
     try {
+      setIsSaving(true);
       await api.habits.update(editingHabit.id, habitFormData);
       fetchHabits();
       setShowNewHabit(false);
       resetForm();
+      toast.success("Habit updated successfully");
     } catch (error: any) {
       console.error("Failed to update habit", error);
-      alert(error.message || "Failed to update habit");
+      toast.error(error.message || "Failed to update habit");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDeleteHabit = async (id: string) => {
     if (confirm("Are you sure you want to delete this habit?")) {
       try {
+        setIsDeleting(id);
         await api.habits.delete(id);
         setHabits(habits.filter(h => h.id !== id));
+        toast.success("Habit deleted");
       } catch (error) {
         console.error("Failed to delete habit", error);
-        alert("Failed to delete habit");
+        toast.error("Failed to delete habit");
+      } finally {
+        setIsDeleting(null);
       }
     }
   };
@@ -278,9 +293,11 @@ export function HabitTracker() {
     const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
     const targetDate = new Date(startOfCurrentWeek);
     targetDate.setDate(targetDate.getDate() + index);
-
     // Prevent toggling future dates
     if (targetDate > today) return;
+
+    // Set to noon to avoid timezone edge cases when converting to ISO string
+    targetDate.setHours(12, 0, 0, 0);
 
     // Optimistic update
     const newHabits = [...habits];
@@ -294,7 +311,8 @@ export function HabitTracker() {
       if (isCompleted) {
         await api.habits.uncomplete(habitId, format(targetDate, 'yyyy-MM-dd'));
       } else {
-        await api.habits.complete(habitId, format(targetDate, 'yyyy-MM-dd'));
+        // Use ISO string for strict backend validation
+        await api.habits.complete(habitId, targetDate.toISOString());
       }
       fetchHabits();
     } catch (error) {
@@ -386,49 +404,49 @@ export function HabitTracker() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50">
+            <Card className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-blue-500 rounded-xl">
                   <Check className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-blue-600">{completedToday}/{totalHabits}</p>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{completedToday}/{totalHabits}</p>
                   <p className="text-xs text-muted-foreground">Today</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 bg-gradient-to-br from-orange-50 to-red-50">
+            <Card className="p-4 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-orange-500 rounded-xl">
                   <Flame className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-orange-600">{longestStreak}</p>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{longestStreak}</p>
                   <p className="text-xs text-muted-foreground">Best Streak</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 bg-gradient-to-br from-purple-50 to-pink-50">
+            <Card className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-purple-500 rounded-xl">
                   <TrendingUp className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-purple-600">{completionRate}%</p>
+                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{completionRate}%</p>
                   <p className="text-xs text-muted-foreground">Completion</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 bg-gradient-to-br from-green-50 to-emerald-50">
+            <Card className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-green-500 rounded-xl">
                   <Trophy className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-green-600">{totalHabits}</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{totalHabits}</p>
                   <p className="text-xs text-muted-foreground">Active Habits</p>
                 </div>
               </div>
@@ -455,7 +473,7 @@ export function HabitTracker() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.15 + index * 0.05 }}
               >
-                <Card className={`p-4 transition-all ${
+                <Card className={`p-4 transition-all dark:bg-gray-800 ${
                   habit.completedToday ? "ring-2 ring-green-500 shadow-lg" : "hover:shadow-md"
                 }`}>
                   <div className="flex items-center gap-4">
@@ -467,7 +485,7 @@ export function HabitTracker() {
                       className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
                         habit.completedToday
                           ? "bg-green-500 text-white shadow-lg"
-                          : "bg-gray-100 hover:bg-gray-200"
+                          : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
                       }`}
                     >
                       {habit.completedToday ? (
@@ -481,7 +499,7 @@ export function HabitTracker() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-2xl">{habit.icon}</span>
-                        <h3 className={`font-bold ${habit.completedToday ? "text-green-700" : ""}`}>
+                        <h3 className={`font-bold dark:text-white ${habit.completedToday ? "text-green-700 dark:text-green-400" : ""}`}>
                           {habit.name}
                         </h3>
                       </div>
@@ -520,8 +538,8 @@ export function HabitTracker() {
                             completed
                               ? `bg-gradient-to-br ${habit.color} text-white`
                               : isFuture 
-                                ? "bg-gray-50 text-gray-300 cursor-not-allowed"
-                                : "bg-gray-100 hover:bg-gray-200 text-gray-500"
+                                ? "bg-gray-50 dark:bg-gray-900 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
                           }`}
                           title={`${weekDays[i]} - ${format(date, 'MMM d')}`}
                         >
@@ -538,18 +556,24 @@ export function HabitTracker() {
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        className="p-2 hover:bg-gray-100 rounded-lg"
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50"
                         onClick={() => handleEditHabit(habit)}
+                        disabled={!!isDeleting}
                       >
-                        <Edit className="w-4 h-4 text-gray-600" />
+                        <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                       </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        className="p-2 hover:bg-red-50 rounded-lg"
+                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50"
                         onClick={() => handleDeleteHabit(habit.id)}
+                        disabled={!!isDeleting}
                       >
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        {isDeleting === habit.id ? (
+                          <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        )}
                       </motion.button>
                     </div>
                   </div>
@@ -618,25 +642,25 @@ export function HabitTracker() {
                 <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">1</span>
                 </div>
-                <p className="text-sm text-gray-700">Start small - focus on tiny, manageable habits</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">Start small - focus on tiny, manageable habits</p>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">2</span>
                 </div>
-                <p className="text-sm text-gray-700">Stack habits - link new habits to existing routines</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">Stack habits - link new habits to existing routines</p>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">3</span>
                 </div>
-                <p className="text-sm text-gray-700">Track consistently - don't break the chain!</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">Track consistently - don't break the chain!</p>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-primary text-xs font-bold">4</span>
                 </div>
-                <p className="text-sm text-gray-700">Celebrate wins - reward yourself for milestones</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">Celebrate wins - reward yourself for milestones</p>
               </div>
             </div>
           </Card>
@@ -662,7 +686,7 @@ export function HabitTracker() {
                 exit={{ opacity: 0, scale: 0.9, y: 50 }}
                 className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-2xl z-50"
               >
-                <Card className="p-6 max-h-[90vh] overflow-y-auto">
+                <Card className="p-6 max-h-[90vh] overflow-y-auto dark:bg-gray-900">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-2xl font-bold flex items-center gap-2">
                       <Target className="w-6 h-6 text-primary" />
@@ -673,7 +697,7 @@ export function HabitTracker() {
                         setShowNewHabit(false);
                         resetForm();
                       }}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -681,7 +705,7 @@ export function HabitTracker() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Habit Name
                       </label>
                       <input
@@ -689,13 +713,13 @@ export function HabitTracker() {
                         value={habitFormData.name}
                         onChange={(e) => setHabitFormData({ ...habitFormData, name: e.target.value })}
                         placeholder="e.g., Morning Exercise"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Icon (Emoji)
                         </label>
                         <input
@@ -703,18 +727,18 @@ export function HabitTracker() {
                           value={habitFormData.icon}
                           onChange={(e) => setHabitFormData({ ...habitFormData, icon: e.target.value })}
                           placeholder="🎯"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-2xl text-center"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-2xl text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Frequency
                         </label>
                         <select
                           value={habitFormData.frequency}
                           onChange={(e) => setHabitFormData({ ...habitFormData, frequency: e.target.value as "daily" | "weekly" })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         >
                           <option value="daily">Daily</option>
                           <option value="weekly">Weekly</option>
@@ -723,7 +747,7 @@ export function HabitTracker() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Category
                       </label>
                       <input
@@ -731,12 +755,12 @@ export function HabitTracker() {
                         value={habitFormData.category}
                         onChange={(e) => setHabitFormData({ ...habitFormData, category: e.target.value })}
                         placeholder="e.g., Physical, Mental, Social"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Color Theme
                       </label>
                       <div className="grid grid-cols-3 gap-2">
@@ -772,6 +796,7 @@ export function HabitTracker() {
                           resetForm();
                         }}
                         className="flex-1"
+                        disabled={isSaving}
                       >
                         Cancel
                       </Button>
@@ -782,6 +807,7 @@ export function HabitTracker() {
                         }}
                         className="flex-1"
                         disabled={!habitFormData.name || !habitFormData.category}
+                        isLoading={isSaving}
                       >
                         <Check className="w-4 h-4 mr-2" />
                         {editingHabit ? "Update Habit" : "Create Habit"}

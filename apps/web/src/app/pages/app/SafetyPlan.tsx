@@ -159,12 +159,12 @@ export function SafetyPlan() {
           transition={{ delay: 0.1 }}
           className="mb-6"
         >
-          <Card className="p-4 bg-purple-50 border-purple-200">
+          <Card className="p-4 bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
             <div className="flex items-start gap-3">
-              <BookOpen className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+              <BookOpen className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-purple-900 mb-1">What is a Safety Plan?</h3>
-                <p className="text-sm text-purple-800">
+                <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">What is a Safety Plan?</h3>
+                <p className="text-sm text-purple-800 dark:text-purple-200">
                   A safety plan is a personalized, practical plan to help you recognize warning signs and use coping strategies when you're in distress. It can help you stay safe during difficult times.
                 </p>
               </div>
@@ -230,13 +230,13 @@ export function SafetyPlan() {
                         key={itemIndex}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="flex items-start justify-between p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors"
+                        className="flex items-start justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       >
                         <div className="flex items-start gap-3">
                           <div className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold mt-0.5 flex-shrink-0">
                             {itemIndex + 1}
                           </div>
-                          <p className="text-sm">{item}</p>
+                          <p className="text-sm text-foreground">{item}</p>
                         </div>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
@@ -258,7 +258,7 @@ export function SafetyPlan() {
                         onChange={(e) => setNewItem(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleAddItem(section.id)}
                         placeholder={section.placeholder}
-                        className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="flex-1 p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
                         autoFocus
                       />
                       <Button onClick={() => handleAddItem(section.id)}>
@@ -298,10 +298,10 @@ export function SafetyPlan() {
           transition={{ delay: 0.8 }}
           className="mt-8"
         >
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50">
+          <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold mb-1">Keep Your Safety Plan Accessible</h3>
+                <h3 className="font-bold mb-1 text-foreground">Keep Your Safety Plan Accessible</h3>
                 <p className="text-sm text-muted-foreground">
                   Print or save a copy so you can access it when you need it most
                 </p>
