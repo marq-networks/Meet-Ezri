@@ -186,9 +186,9 @@ export function AppLayout({ children }: AppLayoutProps) {
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors relative"
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors relative group"
               >
-                <Bell className="w-5 h-5 text-gray-600" />
+                <Bell className="w-5 h-5 text-gray-600 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 )}
@@ -199,9 +199,9 @@ export function AppLayout({ children }: AppLayoutProps) {
               <motion.button
                 whileHover={{ scale: 1.1, rotate: 90 }}
                 whileTap={{ scale: 0.9 }}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors group"
               >
-                <Settings className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                <Settings className="w-5 h-5 text-gray-600 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors" />
               </motion.button>
             </Link>
 
