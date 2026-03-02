@@ -207,6 +207,9 @@ export async function createCreditPurchaseSession(userId: string, email: string,
       credits: data.credits.toString(),
       planType,
     },
+    invoice_creation: {
+      enabled: true,
+    },
     success_url: `${CLIENT_URL}/app/billing?success=true&credits=${data.credits}`,
     cancel_url: `${CLIENT_URL}/app/billing?canceled=true`,
   });

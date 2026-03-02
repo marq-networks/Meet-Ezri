@@ -83,9 +83,12 @@ export function Billing() {
         const plan = SUBSCRIPTION_PLANS[planId];
         const now = new Date();
         
-        const totalAvailableCredits = profile?.credits || 0;
-        const payAsYouGoCredits = Math.max(0, totalAvailableCredits - plan.credits);
-        const creditsRemaining = Math.min(totalAvailableCredits, plan.credits);
+        const subscriptionCredits = profile?.credits || 0;
+        const purchasedCredits = profile?.purchased_credits || 0;
+        const totalAvailableCredits = subscriptionCredits + purchasedCredits;
+        
+        const creditsRemaining = subscriptionCredits;
+        const payAsYouGoCredits = purchasedCredits;
 
         const usageHistory: UsageRecord[] = sessionsData
           .filter((s: any) => s.status === 'completed')

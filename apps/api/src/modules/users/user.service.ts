@@ -202,8 +202,8 @@ export async function getProfile(userId: string) {
       total_journals: journalEntriesCount,
       streak_days: streakDays
     },
-    credits_remaining: profileResult.credits || 0,
-    credits_total: planDetails?.credits || 30,
+    credits_remaining: (profileResult.credits || 0) + (profileResult.purchased_credits || 0),
+    credits_total: (planDetails?.credits || 30) + (profileResult.purchased_credits || 0),
     subscription_plan: planType,
     subscriptions: activeSubscription ? [activeSubscription] : [],
     mood_entries: recentMoods,
@@ -223,9 +223,9 @@ export async function getProfile(userId: string) {
 export async function getCredits(userId: string) {
   const profile = await prisma.profiles.findUnique({
     where: { id: userId },
-    select: { credits: true }
+    select: { credits: true, purchased_credits: true }
   });
-  return { credits: profile?.credits || 0 };
+  return { credits: (profile?.credits || 0) + (profile?.purchased_credits || 0) };
 }
 
 export async function updateProfile(userId: string, data: UpdateProfileInput) {

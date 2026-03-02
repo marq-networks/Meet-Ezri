@@ -71,20 +71,202 @@ export function ActiveSession() {
   const isMutedRef = useRef(isMuted);
   const isSessionPausedRef = useRef(false);
   const scriptStepRef = useRef(0);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const isEzriSpeakingRef = useRef(false);
+  const speechEndTimeoutRef = useRef<number | null>(null);
+  const transcriptRef = useRef<{role: string, content: string, timestamp: number}[]>([]);
+
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
+
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const lastSpeechStartRef = useRef(0);
+
+  const [currentSubtitle, setCurrentSubtitle] = useState<string | null>(null);
+
+  // Audio Visualizer
+  useEffect(() => {
+    if (!stream) return;
+    
+    let animationFrameId: number;
+    let audioContext: AudioContext;
+
+    try {
+        audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        const updateAudioLevel = () => {
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / bufferLength;
+            // Normalize for visualization (0-50 range roughly)
+            setAudioLevel(average); 
+            animationFrameId = requestAnimationFrame(updateAudioLevel);
+        };
+        
+        updateAudioLevel();
+    } catch (e) {
+        console.error("Audio visualizer error:", e);
+    }
+    
+    return () => {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        if (audioContext && audioContext.state !== 'closed') {
+            audioContext.close();
+        }
+    };
+  }, [stream]);
 
   const speakAvatar = (text: string) => {
+    // Debug toast
+    console.log("speakAvatar called with:", text);
+    setCurrentSubtitle(text);
+    
     if (isSoundOff) return;
     if (typeof window === "undefined") return;
     const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
-    if (!synth) return;
+    if (!synth) {
+        toast.error("Speech synthesis not supported");
+        return;
+    }
     try {
-      synth.cancel();
+      // Cancel any ongoing speech first
+      if (synth.speaking || synth.pending) {
+        // Prevent old onend from clearing our new subtitle
+        currentUtteranceRef.current = null;
+        synth.cancel();
+      }
+      
       const utterance = new SpeechSynthesisUtterance(text);
+      // Keep reference to prevent garbage collection
+      currentUtteranceRef.current = utterance;
+      
       utterance.rate = 1;
       utterance.pitch = 1;
+      
+      // Select voice if available
+      const voices = synth.getVoices();
+      const preferredVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) || 
+                             voices.find(v => v.lang.startsWith('en'));
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      // Calculate estimated duration for safety timeout (avg 2.5 words/sec + buffer)
+      const wordCount = text.split(/\s+/).length;
+      const estimatedDurationMs = Math.max(3000, (wordCount / 2.5) * 1000 + 2000);
+
+      utterance.onstart = () => {
+        console.log("Speech started");
+        setIsEzriSpeaking(true);
+        isEzriSpeakingRef.current = true;
+        
+        // Stop recognition while speaking to prevent self-triggering
+        if (recognitionRef.current && isListening) {
+          try {
+            recognitionRef.current.stop();
+          } catch (e) {
+            // Ignore stop errors
+          }
+        }
+        
+        if (speechEndTimeoutRef.current) {
+            window.clearTimeout(speechEndTimeoutRef.current);
+        }
+        // Safety timeout to reset state if onend never fires
+        speechEndTimeoutRef.current = window.setTimeout(() => {
+            console.warn(`Speech synthesis timed out after ${estimatedDurationMs}ms, forcing reset`);
+            if (isEzriSpeakingRef.current) {
+                setIsEzriSpeaking(false);
+                isEzriSpeakingRef.current = false;
+                if (currentUtteranceRef.current === utterance) {
+                    currentUtteranceRef.current = null;
+                    setCurrentSubtitle(null);
+                }
+                // Force cancel to be safe
+                synth.cancel();
+                // Restart recognition
+                if (recognitionRef.current && !isListening) {
+                    try { recognitionRef.current.start(); } catch(e) {}
+                }
+            }
+        }, estimatedDurationMs);
+      };
+      
+      utterance.onend = () => {
+        if (speechEndTimeoutRef.current) {
+            window.clearTimeout(speechEndTimeoutRef.current);
+        }
+        setIsEzriSpeaking(false);
+        isEzriSpeakingRef.current = false;
+        
+        if (currentUtteranceRef.current === utterance) {
+            currentUtteranceRef.current = null;
+            setCurrentSubtitle(null);
+        }
+        
+        // Restart recognition after speaking
+        if (recognitionRef.current && !isListening) {
+             try {
+               recognitionRef.current.start();
+             } catch (e) {
+               console.error("Failed to restart recognition after speech:", e);
+             }
+        }
+      };
+      
+      utterance.onerror = (e) => {
+        console.error("Speech synthesis error:", e);
+        if (speechEndTimeoutRef.current) {
+            window.clearTimeout(speechEndTimeoutRef.current);
+        }
+        setIsEzriSpeaking(false);
+        isEzriSpeakingRef.current = false;
+        
+        if (currentUtteranceRef.current === utterance) {
+            currentUtteranceRef.current = null;
+            setCurrentSubtitle(null);
+        }
+        
+        // Restart recognition after error
+        if (recognitionRef.current && !isListening) {
+             try {
+               recognitionRef.current.start();
+             } catch (e) {
+               console.error("Failed to restart recognition after error:", e);
+             }
+        }
+      };
+
       synth.speak(utterance);
+      
+      // Force resume in case it was paused/stuck (Chrome bug workaround)
+      if (synth.paused) {
+        synth.resume();
+      }
     } catch (error) {
       console.error("Failed to play avatar audio:", error);
+      setIsEzriSpeaking(false);
+      isEzriSpeakingRef.current = false;
+      // Ensure recognition is running
+      if (recognitionRef.current && !isListening) {
+          try { recognitionRef.current.start(); } catch(e) {}
+      }
     }
   };
 
@@ -156,22 +338,52 @@ export function ActiveSession() {
     }
 
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.lang = 'en-US';
 
+    recognition.onstart = () => {
+      console.log("Speech recognition started");
+      lastSpeechStartRef.current = Date.now();
+      setIsListening(true);
+      toast.info("Microphone Active");
+    };
+
+    recognition.onsoundstart = () => {
+        console.log("SpeechRecognition: Sound detected");
+    };
+    
+    recognition.onsoundend = () => {
+        console.log("SpeechRecognition: Sound ended");
+    };
+
     recognition.onresult = (event: any) => {
-      if (isMutedRef.current || isSessionPausedRef.current) {
+      if (isMutedRef.current || isSessionPausedRef.current || isEzriSpeakingRef.current) {
+        if (isEzriSpeakingRef.current) console.log("Ignored speech: Ezri is speaking");
         return;
       }
+      
       const current = event.resultIndex;
-      const transcriptText = event.results[current][0].transcript;
+      const result = event.results[current];
+      const transcriptText = result[0].transcript;
+      const isFinal = result.isFinal;
       
       if (transcriptText.trim()) {
         const trimmed = transcriptText.trim();
-        const lowerTrimmed = trimmed.toLowerCase();
         
-        console.log("Heard:", lowerTrimmed, "Current Step:", scriptStepRef.current);
+        // Show interim results for feedback
+          if (!isFinal) {
+               console.log("Interim:", trimmed);
+               toast(`Listening: "${trimmed}"`, { id: 'speech-interim' });
+               return;
+          }
+ 
+         const lowerTrimmed = trimmed.toLowerCase();
+         
+         console.log("Heard (Final):", lowerTrimmed, "Current Step:", scriptStepRef.current);
+         // Visual feedback
+         toast.success(`Heard: "${trimmed}"`, { id: 'speech-interim', duration: 2000 });
 
         setTranscript(prev => {
           const lastEntry = prev[prev.length - 1];
@@ -189,62 +401,137 @@ export function ActiveSession() {
           ];
         });
         
-        setIsEzriSpeaking(true);
+        // Don't set isEzriSpeaking(true) here immediately, wait for speakAvatar
         if (speechTimeoutRef.current) {
           window.clearTimeout(speechTimeoutRef.current);
         }
         
-        // Script logic
-        let assistantText = `I heard you say: "${trimmed}"`;
+        // Script logic with Fallbacks
+        let assistantText = "";
         const currentStep = scriptStepRef.current;
+        let nextStep = currentStep;
 
+        // COMMAND: Echo/Repeat/Test (User requested feature for testing)
+        if (lowerTrimmed === "repeat question" || lowerTrimmed === "what did you say" || lowerTrimmed === "say that again") {
+             // Find last assistant message
+             const lastAssistant = transcriptRef.current.slice().reverse().find(t => t.role === "assistant");
+             if (lastAssistant) {
+                 assistantText = lastAssistant.content;
+             } else {
+                 assistantText = "I haven't said anything yet.";
+             }
+             nextStep = currentStep;
+        }
+        else if (lowerTrimmed.includes("repeat") || lowerTrimmed.startsWith("say ")) {
+             assistantText = trimmed;
+             nextStep = currentStep; // Stay on current step
+        }
+        else if (lowerTrimmed.includes("hear me") || lowerTrimmed.includes("listening")) {
+             assistantText = `Yes, I can hear you. I heard: "${trimmed}".`;
+             nextStep = currentStep;
+        }
+        else if (lowerTrimmed === "test" || lowerTrimmed.includes("testing")) {
+             assistantText = "Test received. I am listening and ready.";
+             nextStep = currentStep;
+        }
         // "Draining Day" Script
-        if (currentStep === 0) {
-            if (lowerTrimmed.includes("hi") || lowerTrimmed.includes("hello") || lowerTrimmed.includes("hey")) {
-                assistantText = "Hey. How’s today treating you?";
-                scriptStepRef.current = 1;
-            }
+        else if (currentStep === 0) {
+            assistantText = "Hey. How’s today treating you?";
+            nextStep = 1;
         } else if (currentStep === 1) {
-            if (lowerTrimmed.includes("long") || lowerTrimmed.includes("busy") || lowerTrimmed.includes("draining") || lowerTrimmed.includes("tough") || lowerTrimmed.includes("hard")) {
+            // Context: "How's today treating you?"
+            if (lowerTrimmed.match(/(long|busy|draining|tough|hard|bad|terrible|awful|stress|tired|exhausted|shitty|crap|sad|rough|difficult)/)) {
                 assistantText = "Long as in busy… or long as in draining?";
-                scriptStepRef.current = 2;
+                nextStep = 2;
+            } else if (lowerTrimmed.match(/(good|great|fine|okay|ok|well|nice|awesome|amazing|happy|calm|peaceful|alright|not bad)/)) {
+                assistantText = "I'm glad to hear that. Even on good days, it helps to pause. What's been the best part?";
+                nextStep = 10; // Branch for positive day
+            } else {
+                // Fallback: Assume it might be complex or negative if not explicitly good
+                assistantText = `I hear you saying "${trimmed}". Sometimes days just blur together. Would you say it's been more draining, or just busy?`;
+                nextStep = 2; // Advance to next step anyway to keep conversation moving
             }
         } else if (currentStep === 2) {
-            if (lowerTrimmed.includes("draining") || lowerTrimmed.includes("exhausting") || lowerTrimmed.includes("tired") || lowerTrimmed.includes("both")) {
+            // Context: "Long as in busy... or draining?"
+            if (lowerTrimmed.match(/(draining|exhausting|tired|both|heavy|mental|emotional|soul|spirit)/)) {
                 assistantText = "That kind of day sticks to you. What took most of your energy?";
-                scriptStepRef.current = 3;
+                nextStep = 3;
+            } else if (lowerTrimmed.match(/(busy|work|lot|time|rushed|hurried|chaos|crazy|hectic)/)) {
+                assistantText = "Busyness can be its own kind of heavy. What took up most of your time?";
+                nextStep = 3;
+            } else {
+                assistantText = `Yeah, "${trimmed}" adds up. What took the most energy out of you today?`;
+                nextStep = 3;
             }
         } else if (currentStep === 3) {
-            if (lowerTrimmed.includes("work") || lowerTrimmed.includes("meeting") || lowerTrimmed.includes("job") || lowerTrimmed.includes("boss") || lowerTrimmed.includes("colleague") || lowerTrimmed.includes("email")) {
+            // Context: "What took most of your energy?"
+            if (lowerTrimmed.match(/(work|meeting|job|boss|colleague|email|deadline|project|client|customer)/)) {
                 assistantText = "Too many conversations and not enough breathing space?";
-                scriptStepRef.current = 4;
+                nextStep = 4;
+            } else {
+                assistantText = "That sounds heavy. Does it feel like you didn't have enough breathing space?";
+                nextStep = 4;
             }
         } else if (currentStep === 4) {
-            if (lowerTrimmed.includes("exactly") || lowerTrimmed.includes("yes") || lowerTrimmed.includes("yeah") || lowerTrimmed.includes("right") || lowerTrimmed.includes("totally") || lowerTrimmed.includes("definitely")) {
+            // Context: "Not enough breathing space?"
+            if (lowerTrimmed.match(/(exactly|yes|yeah|yep|right|totally|definitely|sure|absolutely|maybe|sort of|kind of)/)) {
                 assistantText = "Yeah. That builds up. Did anything today feel even slightly good?";
-                scriptStepRef.current = 5;
+                nextStep = 5;
+            } else {
+                assistantText = "I understand. Amidst all that, did anything today feel even slightly good?";
+                nextStep = 5;
             }
         } else if (currentStep === 5) {
-            if (lowerTrimmed.includes("coffee") || lowerTrimmed.includes("friend") || lowerTrimmed.includes("lunch") || lowerTrimmed.includes("break") || lowerTrimmed.includes("walk") || lowerTrimmed.includes("tea")) {
+            // Context: "Did anything feel good?"
+            if (lowerTrimmed.match(/(coffee|friend|lunch|break|walk|tea|sun|weather|music|song|food|meal|dinner|sleep|nap|cat|dog|pet|kids|child|partner|spouse)/)) {
                 assistantText = "There it is. What about it felt different from the rest of the day?";
-                scriptStepRef.current = 6;
+                nextStep = 6;
+            } else if (lowerTrimmed.match(/(no|nothing|not really|nope|none|nada)/)) {
+                 assistantText = "That's honest. Sometimes we just need to get through it. If you could have 20 minutes of calm tonight, what would you do?";
+                 nextStep = 7;
+            } else {
+                assistantText = "It's important to notice those moments. What about it felt different?";
+                nextStep = 6;
             }
         } else if (currentStep === 6) {
-            if (lowerTrimmed.includes("calm") || lowerTrimmed.includes("peace") || lowerTrimmed.includes("quiet") || lowerTrimmed.includes("relax") || lowerTrimmed.includes("pressure") || lowerTrimmed.includes("slow")) {
+            // Context: "What felt different?"
+            if (lowerTrimmed.match(/(calm|peace|quiet|relax|pressure|slow|happy|joy|smile|laugh|fun|safe|warm)/)) {
                 assistantText = "So calm exists in your day. It just gets crowded out. If tonight had even 20 minutes of that same calm… what would you do?";
-                scriptStepRef.current = 7;
+                nextStep = 7;
+            } else {
+                 assistantText = "That feeling is worth holding onto. If tonight had even 20 minutes of that... what would you do?";
+                 nextStep = 7;
             }
         } else if (currentStep === 7) {
-            if (lowerTrimmed.includes("sit") || lowerTrimmed.includes("quiet") || lowerTrimmed.includes("phone") || lowerTrimmed.includes("nothing") || lowerTrimmed.includes("read") || lowerTrimmed.includes("sleep") || lowerTrimmed.includes("rest")) {
+            // Context: "What would you do with 20 mins?"
+            if (lowerTrimmed.match(/(sit|quiet|phone|nothing|read|sleep|rest|bath|shower|meditate|tv|watch|movie|game|play|music|listen)/)) {
                 assistantText = "That sounds like your nervous system asking for a reset. You don’t need to solve your whole life tonight. Just protect those 20 minutes.";
-                scriptStepRef.current = 8;
+                nextStep = 8;
+            } else {
+                assistantText = "That sounds exactly like what you need. A reset. You don’t need to solve everything tonight. Just protect those 20 minutes.";
+                nextStep = 8;
             }
         } else if (currentStep === 8) {
-            if (lowerTrimmed.includes("need") || lowerTrimmed.includes("yeah") || lowerTrimmed.includes("yes") || lowerTrimmed.includes("good") || lowerTrimmed.includes("okay") || lowerTrimmed.includes("right")) {
-                assistantText = "Good. Then let’s make that the goal for today. Nothing dramatic. Just quiet.";
-                scriptStepRef.current = 9; // End of script
-            }
+             // Context: "Protect those 20 mins."
+             assistantText = "Good. Then let’s make that the goal for today. Nothing dramatic. Just quiet.";
+             nextStep = 9; // End of script
+        } else if (currentStep === 10) {
+             // Positive branch: "What's been the best part?"
+             assistantText = "That sounds lovely. Holding onto that feeling can help carry you through the rest of the week.";
+             nextStep = 9;
         }
+
+        // If no assistant text generated (e.g. unexpected step), use a generic prompt
+        if (!assistantText) {
+             if (trimmed.endsWith("?")) {
+                 assistantText = `I heard you ask: "${trimmed}". Let's focus on your day for now.`;
+             } else {
+                 assistantText = `I heard: "${trimmed}". Please go on.`;
+             }
+        }
+
+        // Update step ref
+        scriptStepRef.current = nextStep;
 
         speechTimeoutRef.current = window.setTimeout(() => {
           setTranscript(prev => [
@@ -256,25 +543,36 @@ export function ActiveSession() {
             },
           ]);
           speakAvatar(assistantText);
-          setIsEzriSpeaking(false);
         }, 1500);
       }
     };
 
     recognition.onerror = (event: any) => {
       console.error("Speech recognition error", event.error);
-      // Restart on error if needed? usually onend handles it
+      if (event.error !== 'no-speech') {
+        setIsListening(false);
+      }
     };
     
     recognition.onend = () => {
-      // Auto-restart if permissions are still granted
-      if (permissionsGranted) {
-        console.log("Speech recognition ended, restarting...");
-        try {
-          recognition.start();
-        } catch (e) {
-          console.error("Failed to restart speech recognition", e);
-        }
+      setIsListening(false);
+      // Auto-restart if permissions are still granted and NOT speaking
+      if (permissionsGranted && !isEzriSpeakingRef.current) {
+        // Prevent rapid loops: if session started < 1s ago, add longer delay
+        const sessionDuration = Date.now() - lastSpeechStartRef.current;
+        const restartDelay = sessionDuration < 1000 ? 2000 : 500;
+        
+        console.log(`Speech recognition ended (ran for ${sessionDuration}ms), restarting in ${restartDelay}ms...`);
+        
+        setTimeout(() => {
+            try {
+              if (!isEzriSpeakingRef.current && recognitionRef.current) {
+                 recognitionRef.current.start();
+              }
+            } catch (e) {
+              console.error("Failed to restart speech recognition", e);
+            }
+        }, restartDelay);
       }
     };
 
@@ -291,8 +589,63 @@ export function ActiveSession() {
         recognition.stop();
       } catch (e) {
       }
+      setIsListening(false);
+      recognitionRef.current = null;
     };
   }, [permissionsGranted]);
+
+  // Watchdog to ensure recognition stays alive and check audio input
+  useEffect(() => {
+    if (!permissionsGranted) return;
+    
+    const watchdog = setInterval(() => {
+        // Recognition Restart Logic
+        if (!isListening && !isEzriSpeakingRef.current && recognitionRef.current) {
+            console.log("Watchdog: Recognition stopped unexpectedly, restarting...");
+            try {
+                recognitionRef.current.start();
+            } catch (e) {
+                // Ignore errors like "already started"
+            }
+        }
+        
+        // Audio Level Check (if "Listening" but silent for too long)
+        if (isListening && audioLevel < 2 && !isEzriSpeakingRef.current) {
+            // Only warn occasionally or just log for now
+            console.warn("Watchdog: Microphone seems silent despite 'Listening' state.");
+        }
+    }, 5000);
+    
+    return () => clearInterval(watchdog);
+  }, [permissionsGranted, isListening, audioLevel]);
+
+  // Initial Greeting - Start conversation automatically
+  useEffect(() => {
+    if (permissionsGranted && scriptStepRef.current === 0 && transcript.length === 0) {
+      const initialText = "Hey. How’s today treating you?";
+      
+      // Delay slightly to ensure audio context is ready and user is settled
+      const timer = setTimeout(() => {
+        // Update script step to expect answer about day
+        scriptStepRef.current = 1;
+        
+        // Update transcript
+        setTranscript(prev => [
+          ...prev,
+          {
+            role: "assistant",
+            content: initialText,
+            timestamp: Date.now(),
+          },
+        ]);
+        
+        // Speak
+        speakAvatar(initialText);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [permissionsGranted, transcript.length]);
   
   // Media Stream Initialization
   useEffect(() => {
@@ -595,7 +948,34 @@ export function ActiveSession() {
               className="text-white hover:bg-white/10"
               onClick={() => {
                 const step = scriptStepRef.current;
-                toast.info(`Current Script Step: ${step}`);
+                const last = transcript.length > 0 ? transcript[transcript.length - 1].content : "none";
+                const speaking = isEzriSpeakingRef.current;
+                
+                // Force Reset Logic
+                setIsEzriSpeaking(false);
+                isEzriSpeakingRef.current = false;
+                if (currentUtteranceRef.current) {
+                    window.speechSynthesis.cancel();
+                    currentUtteranceRef.current = null;
+                }
+                
+                // Restart Media and Recognition
+                if (stream) {
+                    stream.getTracks().forEach(t => t.stop());
+                    setStream(null);
+                }
+                
+                // Allow a brief moment for cleanup before restarting
+                setTimeout(() => {
+                    if (recognitionRef.current) {
+                        try { recognitionRef.current.abort(); } catch(e) {}
+                    }
+                    // Re-trigger media permission flow if needed, or just let useEffect handle it
+                    setPermissionsGranted(true); 
+                    window.location.reload(); // Hard reset might be safer for stuck audio context
+                }, 100);
+
+                toast.info("Resetting Session...");
               }}
             >
               <Settings className="w-4 h-4" />
@@ -792,20 +1172,55 @@ export function ActiveSession() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-green-300">
-                  <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Circle className="w-3 h-3 fill-current" />
-                  </motion.div>
-                  <span className="text-sm font-medium">Listening</span>
-                </div>
+            {/* Audio Visualizer */}
+            <div className="flex items-end gap-[2px] h-4">
+               {[1, 2, 3].map((bar) => (
+                  <motion.div 
+                    key={bar}
+                    className="w-1 bg-green-400 rounded-t-sm"
+                    animate={{ 
+                        height: Math.max(4, Math.min(16, (audioLevel / 2) * bar)) 
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  />
+               ))}
+            </div>
+            
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Circle className={`w-3 h-3 ${isListening ? 'fill-current' : 'fill-transparent stroke-current'}`} />
+            </motion.div>
+            <span className="text-sm font-medium">
+                {isListening ? "Listening" : "Connecting..."} 
+                {audioLevel > 10 && <span className="text-xs ml-1 text-green-200">({Math.round(audioLevel)})</span>}
+            </span>
+          </div>
               )}
             </motion.div>
           </div>
         </motion.div>
 
-        {/* User's Camera Feed (Picture-in-Picture) */}
+        {/* Subtitles Overlay */}
+          <AnimatePresence>
+            {currentSubtitle && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute bottom-8 left-0 right-0 px-8 flex justify-center z-40 pointer-events-none"
+              >
+                <div className="bg-black/70 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 max-w-2xl text-center shadow-xl">
+                  <p className="text-white text-lg font-medium leading-relaxed">
+                    {currentSubtitle}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* User's Camera Feed (Picture-in-Picture) */}
         <motion.div
           initial={{ opacity: 0, x: 100 }}
           animate={{ opacity: 1, x: 0 }}

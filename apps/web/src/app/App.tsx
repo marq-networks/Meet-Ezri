@@ -167,6 +167,8 @@ import { NoDeviceAccess } from '@/app/pages/errors/NoDeviceAccess';
 // Demo Page
 import { Phase1Demo } from '@/app/pages/Phase1Demo';
 
+import { ThemeManager } from '@/app/components/ThemeManager';
+
 function NetworkWatcher() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -206,17 +208,23 @@ export default function App() {
     let accentKey = "pink";
 
     if (typeof window !== "undefined" && typeof window.localStorage !== "undefined") {
-      const saved = window.localStorage.getItem("ezri_appearance_settings");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.theme) {
-            theme = parsed.theme;
+      const pathname = window.location.pathname;
+      // Only apply saved theme for app routes, ensuring public pages stay light by default
+      const isAppRoute = pathname.startsWith("/app") || pathname.startsWith("/admin") || pathname.startsWith("/onboarding");
+      
+      if (isAppRoute) {
+        const saved = window.localStorage.getItem("ezri_appearance_settings");
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed.theme) {
+              theme = parsed.theme;
+            }
+            if (parsed.accentColor) {
+              accentKey = parsed.accentColor;
+            }
+          } catch {
           }
-          if (parsed.accentColor) {
-            accentKey = parsed.accentColor;
-          }
-        } catch {
         }
       }
     }
@@ -259,6 +267,7 @@ export default function App() {
       <NotificationsProvider>
       <SafetyProvider>
         <BrowserRouter>
+        <ThemeManager />
         <NetworkWatcher />
         <MobileMetaTags />
         <Toaster />
