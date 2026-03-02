@@ -225,7 +225,11 @@ export async function getCredits(userId: string) {
     where: { id: userId },
     select: { credits: true, purchased_credits: true }
   });
-  return { credits: (profile?.credits || 0) + (profile?.purchased_credits || 0) };
+  return { 
+    credits: (profile?.credits || 0) + (profile?.purchased_credits || 0),
+    subscription: profile?.credits || 0,
+    purchased: profile?.purchased_credits || 0
+  };
 }
 
 export async function updateProfile(userId: string, data: UpdateProfileInput) {

@@ -75,15 +75,53 @@ async function handleCheckoutSessionCompleted(session: any) {
   // Handle one-time credit purchase
   if (session.metadata?.type === 'credits') {
     const credits = parseInt(session.metadata.credits || '0', 10);
+    const amountTotal = session.amount_total || 0; // Amount in cents
+    
+    request.log.info({ 
+      sessionId: session.id, 
+      userId, 
+      credits, 
+      amount: amountTotal 
+    }, 'Processing credit purchase webhook');
+
     if (credits > 0) {
-      await prisma.profiles.update({
-        where: { id: userId },
-        data: {
-          purchased_credits: {
-            increment: credits
-          }
-        }
+      // Idempotency check using payment_transactions table
+      const existingTx = await prisma.payment_transactions.findUnique({
+        where: { stripe_session_id: session.id }
       });
+
+      if (existingTx) {
+        request.log.info({ sessionId: session.id }, 'Transaction already processed');
+        return;
+      }
+
+      // Use a transaction to ensure atomicity
+      await prisma.$transaction(async (tx) => {
+        // Record the transaction
+        await tx.payment_transactions.create({
+          data: {
+            user_id: userId,
+            stripe_session_id: session.id,
+            amount: amountTotal,
+            currency: session.currency || 'usd',
+            credits_amount: credits,
+            status: 'completed',
+            metadata: session.metadata || {},
+          }
+        });
+
+        // Update user credits
+        await tx.profiles.update({
+          where: { id: userId },
+          data: {
+            purchased_credits: {
+              increment: credits
+            }
+          }
+        });
+      });
+      
+      request.log.info({ userId, credits }, 'Successfully added purchased credits');
     }
     return;
   }

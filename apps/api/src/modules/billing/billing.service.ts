@@ -630,3 +630,72 @@ export async function syncSubscriptionWithStripe(userId: string) {
 
   return updatedSub;
 }
+
+export async function syncPaygCredits(userId: string) {
+  const profile = await prisma.profiles.findUnique({ where: { id: userId } });
+  
+  if (!profile?.stripe_customer_id) {
+    return { added: 0, transactions: 0 };
+  }
+
+  // List successful checkout sessions
+  const sessions = await stripe.checkout.sessions.list({
+    customer: profile.stripe_customer_id,
+    limit: 100,
+    expand: ['data.line_items'],
+  });
+
+  let addedCredits = 0;
+  let processedTransactions = 0;
+
+  for (const session of sessions.data) {
+    // Only process paid sessions
+    if (session.payment_status !== 'paid') continue;
+
+    // Check for credits metadata
+    const isCreditPurchase = session.metadata?.type === 'credits';
+    
+    if (!isCreditPurchase) continue;
+
+    const credits = parseInt(session.metadata?.credits || '0', 10);
+    if (credits <= 0) continue;
+
+    // Check if already processed
+    const existingTx = await prisma.payment_transactions.findUnique({
+      where: { stripe_session_id: session.id }
+    });
+
+    if (existingTx) continue;
+
+    // Process new transaction
+    await prisma.$transaction(async (tx) => {
+      // Record transaction
+      await tx.payment_transactions.create({
+        data: {
+          user_id: userId,
+          stripe_session_id: session.id,
+          amount: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          credits_amount: credits,
+          status: 'completed',
+          metadata: session.metadata || {},
+        }
+      });
+
+      // Update user credits
+      await tx.profiles.update({
+        where: { id: userId },
+        data: {
+          purchased_credits: {
+            increment: credits
+          }
+        }
+      });
+    });
+
+    addedCredits += credits;
+    processedTransactions++;
+  }
+
+  return { added: addedCredits, transactions: processedTransactions };
+}

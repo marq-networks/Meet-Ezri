@@ -62,19 +62,31 @@ export function Billing() {
       try {
         if (searchParams.get('success') === 'true') {
           try {
-            await api.billing.syncSubscription();
+            await Promise.all([
+              api.billing.syncSubscription(),
+              api.billing.syncCredits()
+            ]);
           } catch (syncError) {
-            console.error('Failed to sync subscription after checkout success:', syncError);
+            console.error('Failed to sync billing data after checkout success:', syncError);
           }
         }
 
-        await refreshProfile();
+        let latestProfile = profile;
+        try {
+           const refreshed = await refreshProfile();
+           if (refreshed) {
+             latestProfile = refreshed;
+           }
+        } catch (e) {
+          console.error("Error refreshing profile:", e);
+        }
 
-        const [subData, sessionsData, historyData, invoiceData] = await Promise.all([
+        const [subData, sessionsData, historyData, invoiceData, creditsData] = await Promise.all([
           api.billing.getSubscription(),
           api.sessions.list(),
           api.billing.getHistory(),
-          api.billing.getInvoices()
+          api.billing.getInvoices(),
+          api.getCredits()
         ]);
 
         const rawPlanId = subData.plan_type;
@@ -83,8 +95,9 @@ export function Billing() {
         const plan = SUBSCRIPTION_PLANS[planId];
         const now = new Date();
         
-        const subscriptionCredits = profile?.credits || 0;
-        const purchasedCredits = profile?.purchased_credits || 0;
+        // Use credits data from the dedicated endpoint which bypasses cache
+        const subscriptionCredits = creditsData.subscription ?? latestProfile?.credits ?? 0;
+        const purchasedCredits = creditsData.purchased ?? latestProfile?.purchased_credits ?? 0;
         const totalAvailableCredits = subscriptionCredits + purchasedCredits;
         
         const creditsRemaining = subscriptionCredits;
@@ -145,6 +158,24 @@ export function Billing() {
   const [processingAction, setProcessingAction] = useState<string | null>(null);
 
   const paygCost = currentPlan.payAsYouGoRate ? (currentPlan.payAsYouGoRate * paygMinutes) : 0;
+
+  const handleSyncCredits = async () => {
+    setProcessingAction('sync_credits');
+    try {
+      const result = await api.billing.syncCredits();
+      if (result.added > 0) {
+        alert(`Synced ${result.added} credits from past purchases.`);
+        window.location.reload();
+      } else {
+        // Just refresh the data silently if nothing new found, but show a toast if possible (using alert for now)
+        // Or just let it be silent.
+      }
+    } catch (error) {
+      console.error('Failed to sync credits:', error);
+    } finally {
+      setProcessingAction(null);
+    }
+  };
 
   const handleBuyPAYG = async () => {
     if (paygCost <= 0) return;
@@ -342,50 +373,76 @@ export function Billing() {
 
           {/* Credits Remaining Card */}
           <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-2 border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100">Minutes Remaining</h3>
-            </div>
-            <div className="mb-4">
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-blue-700 dark:text-blue-300">
-                  {userSubscription.creditsRemaining}
-                </span>
-                <span className="text-lg text-blue-600 dark:text-blue-400">
-                  / {userSubscription.creditsTotal} min
-                </span>
-              </div>
-              {userSubscription.payAsYouGoCredits > 0 && (
-                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                  + {userSubscription.payAsYouGoCredits} PAYG minutes
-                </p>
-              )}
+              <h3 className="font-semibold text-blue-900 dark:text-blue-100">Minutes Balance</h3>
             </div>
 
-            {/* Usage Progress Bar */}
-            <div className="mb-4">
-              <div className="w-full h-3 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${usagePercentage}%` }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {/* Plan Minutes */}
+              <div className="p-4 bg-white/60 dark:bg-black/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Monthly Plan</p>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-3xl font-bold text-blue-900 dark:text-blue-100">
+                    {userSubscription.creditsRemaining}
+                  </span>
+                  <span className="text-sm text-blue-600/80 dark:text-blue-400/80">
+                    / {userSubscription.creditsTotal} min
+                  </span>
+                </div>
+                {/* Progress Bar */}
+                <div className="w-full h-2 bg-blue-100 dark:bg-blue-900/50 rounded-full overflow-hidden mb-1">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${usagePercentage}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className="h-full bg-blue-500 rounded-full"
+                  />
+                </div>
+                <p className="text-xs text-blue-500 dark:text-blue-400">
+                  {usagePercentage.toFixed(0)}% used
+                </p>
               </div>
-               <Link 
+
+              {/* PAYG Minutes */}
+              <div className="p-4 bg-green-50/50 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-900/30 group relative">
+                <div className="flex justify-between items-start mb-1">
+                  <p className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">Pay-As-You-Go</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={handleSyncCredits}
+                    disabled={processingAction === 'sync_credits'}
+                    title="Check for missing purchases"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${processingAction === 'sync_credits' ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-3xl font-bold text-green-900 dark:text-green-100">
+                    {userSubscription.payAsYouGoCredits}
+                  </span>
+                  <span className="text-sm text-green-600/80 dark:text-green-400/80">
+                    min available
+                  </span>
+                </div>
+                <p className="text-xs text-green-600/80 dark:text-green-400/80">
+                  These minutes never expire
+                </p>
+              </div>
+            </div>
+
+            <Link 
               to="/app/settings" 
-              className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-6 transition-colors"
+              className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-2 transition-colors text-sm"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Settings
             </Link>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                {usagePercentage.toFixed(0)}% used this billing cycle
-              </p>
-            </div>
 
-            {userSubscription.creditsRemaining <= 50 && (
-              <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+            {(userSubscription.creditsRemaining + userSubscription.payAsYouGoCredits) <= 50 && (
+              <div className="flex items-start gap-2 p-3 mt-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
                 <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-amber-700 dark:text-amber-400">
                   Running low on minutes. Consider purchasing more or upgrading your plan.

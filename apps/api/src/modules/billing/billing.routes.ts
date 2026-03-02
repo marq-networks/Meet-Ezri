@@ -71,6 +71,22 @@ export async function billingRoutes(app: FastifyInstance) {
   );
 
   app.post(
+    '/sync-credits',
+    {
+      schema: {
+        response: {
+          200: z.object({
+            added: z.number(),
+            transactions: z.number(),
+          }),
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    billingController.syncPaygHandler
+  );
+
+  app.post(
     '/portal',
     {
       schema: {

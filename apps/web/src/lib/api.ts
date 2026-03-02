@@ -141,6 +141,7 @@ export const api = {
     const res = await fetch(`${API_URL}/users/credits`, {
       method: 'GET',
       headers,
+      cache: 'no-store',
     });
     return handleResponse(res, 'Failed to fetch credits');
   },
@@ -952,6 +953,16 @@ export const api = {
         body: JSON.stringify(data),
       });
       return handleResponse(res, 'Failed to create credit purchase session');
+    },
+
+    async syncCredits() {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/billing/sync-credits`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({}),
+      });
+      return handleResponse(res, 'Failed to sync credits');
     },
 
     async createPortalSession() {

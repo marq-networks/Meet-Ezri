@@ -14,6 +14,7 @@ import {
   getInvoicesForUser,
   getAllInvoices,
   getAllPaygTransactions,
+  syncPaygCredits,
 } from './billing.service';
 import { CreateSubscriptionInput, UpdateSubscriptionInput, CreateCreditPurchaseInput } from './billing.schema';
 
@@ -64,6 +65,15 @@ export async function createCreditPurchaseHandler(
 ) {
   const user = request.user as UserPayload;
   const result = await createCreditPurchaseSession(user.sub, user.email || '', request.body);
+  return reply.code(200).send(result);
+}
+
+export async function syncPaygHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const user = request.user as UserPayload;
+  const result = await syncPaygCredits(user.sub);
   return reply.code(200).send(result);
 }
 

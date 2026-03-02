@@ -11,7 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   signOut: () => Promise<void>;
   hasRole: (role: string | string[]) => boolean;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -134,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await api.getMe();
       setProfile(data);
+      return data;
     } catch (error: any) {
       console.error('Error fetching profile:', error);
       if (error.message === 'Profile not found') {
@@ -141,19 +142,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Attempt to initialize profile if it doesn't exist
           const newProfile = await api.initProfile();
           setProfile(newProfile);
+          return newProfile;
         } catch (initError) {
           console.error('Failed to initialize profile:', initError);
           // Do not sign out here. Allow the user to proceed to onboarding
           // where the profile can be created via completeOnboarding.
         }
       }
+      return null;
     } finally {
       setIsLoading(false);
     }
   };
 
   const refreshProfile = async () => {
-    await fetchProfile();
+    return await fetchProfile();
   };
 
   const signOut = async () => {
