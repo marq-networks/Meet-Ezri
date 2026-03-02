@@ -41,10 +41,53 @@ export function AppLayout({ children }: AppLayoutProps) {
     backgroundStyle: string;
     compactMode: boolean;
     theme: string;
-  }>({
-    backgroundStyle: "gradient",
-    compactMode: false,
-    theme: "light"
+  }>(() => {
+    // Initial state setup to avoid flash of wrong theme
+    const defaults = {
+      backgroundStyle: "gradient",
+      compactMode: false,
+      theme: "light"
+    };
+
+    if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+      return defaults;
+    }
+
+    // Try to get user-specific key if possible, otherwise fallback
+    // Note: This runs before useMemo for appearanceStorageKey, so we replicate the logic slightly
+    // but simplified since we might not have user object fully ready yet.
+    // However, since this component is usually behind ProtectedRoute, user should be loaded.
+    // But hooks order matters. We can't access appearanceStorageKey here as it's defined above.
+    // We'll try to read it dynamically.
+    
+    // We can't easily access the computed appearanceStorageKey inside the useState initializer
+    // because it depends on `user` which might change. 
+    // BUT, we can try to read from the most likely key if we have the user ID from props or context.
+    
+    // Actually, let's just use the `appearanceStorageKey` computed value in a useEffect, 
+    // but for INITIAL render, we can try to guess or just read the generic one if user ID isn't ready.
+    // If we are behind ProtectedRoute, user.id IS ready.
+    
+    // Let's rely on the fact that `appearanceStorageKey` is computed from `user.id`.
+    // If `user` is present, we can construct the key.
+    
+    const key = user?.id ? `ezri_appearance_settings_${user.id}` : "ezri_appearance_settings";
+    const saved = window.localStorage.getItem(key);
+    
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          backgroundStyle: parsed.backgroundStyle || "gradient",
+          compactMode: Boolean(parsed.compactMode),
+          theme: parsed.theme || "light"
+        };
+      } catch {
+        return defaults;
+      }
+    }
+    
+    return defaults;
   });
 
   useEffect(() => {
@@ -104,6 +147,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     } else {
       root.classList.remove("dark");
     }
+    
+    // Do NOT return cleanup here. ThemeManager handles removal on route change.
+    // Returning cleanup causes flash when this component updates or re-renders.
   }, [appearance.theme]);
 
   useEffect(() => {

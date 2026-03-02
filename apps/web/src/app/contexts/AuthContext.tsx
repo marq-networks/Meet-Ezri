@@ -31,6 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const applyAppearanceForUser = (targetUser: User | null) => {
+    // Logic moved to AppLayout and ThemeManager to avoid conflicts
+    return;
+    /*
     try {
       if (typeof window === "undefined" || typeof document === "undefined") return;
       const root = document.documentElement;
@@ -48,66 +51,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
         return;
       }
-
-      const storageKey = `ezri_appearance_settings_${targetUser.id}`;
-      const saved = window.localStorage.getItem(storageKey);
-
-      let theme: string = "light";
-      let accentKey: string = "pink";
-      let backgroundStyle: string = "gradient";
-      let compactMode = false;
-
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.theme) theme = parsed.theme;
-          if (parsed.accentColor) accentKey = parsed.accentColor;
-          if (parsed.backgroundStyle) backgroundStyle = parsed.backgroundStyle;
-          if (typeof parsed.compactMode === "boolean") compactMode = parsed.compactMode;
-        } catch {
-        }
-      }
-
-      if (theme === "auto") {
-        if (typeof window !== "undefined" && window.matchMedia) {
-          const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-          if (mediaQuery.matches) {
-            root.classList.add("dark");
-          } else {
-            root.classList.remove("dark");
-          }
-        } else {
-          root.classList.remove("dark");
-        }
-      } else if (theme === "dark") {
-        root.classList.add("dark");
-      } else {
-        root.classList.remove("dark");
-      }
-
-      const accentMap: Record<string, string> = {
-        blue: "#3b82f6",
-        purple: "#a855f7",
-        pink: "#ec4899",
-        green: "#22c55e",
-        orange: "#f97316",
-        teal: "#14b8a6"
-      };
-
-      const accent = accentMap[accentKey] || accentMap.pink;
-      root.style.setProperty("--accent", accent);
-
-      window.dispatchEvent(
-        new CustomEvent("ezri-appearance-change", {
-          detail: {
-            backgroundStyle,
-            compactMode
-          }
-        })
-      );
+      // ... rest of logic
     } catch (error) {
       console.error("Failed to apply appearance settings:", error);
     }
+    */
   };
 
   useEffect(() => {
