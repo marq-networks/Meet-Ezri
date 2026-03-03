@@ -6,6 +6,7 @@ import jwt from '@fastify/jwt';
 import dotenv from 'dotenv';
 // import './types/fastify'; // Import type augmentation
 import authPlugin from './plugins/auth';
+import rateLimit from './plugins/simple-rate-limit';
 import { userRoutes } from './modules/users/user.routes';
 import { emailRoutes } from './modules/email/email.routes';
 import { systemSettingsRoutes } from './modules/system-settings/system-settings.routes';
@@ -87,6 +88,11 @@ app.register(cors, {
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+});
+
+app.register(rateLimit, {
+  max: 300, // 300 requests per minute per IP
+  timeWindow: 60 * 1000
 });
 
 app.register(rawBody, {

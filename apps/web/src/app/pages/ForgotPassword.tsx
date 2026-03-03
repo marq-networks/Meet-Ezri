@@ -27,12 +27,19 @@ export function ForgotPassword() {
         ? `${window.location.origin}/reset-password?context=admin`
         : `${window.location.origin}/reset-password`;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo,
+      // Use backend API instead of direct Supabase call for password reset
+      // This allows us to use custom SMTP via the backend
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/email/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, redirectTo }),
       });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to send reset email");
       }
 
       setIsSubmitted(true);

@@ -58,8 +58,7 @@ export async function getUsersHandler(
     request.log.error(error);
     return reply.code(500).send({ 
       message: 'Failed to fetch users',
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 }

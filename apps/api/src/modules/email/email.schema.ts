@@ -17,3 +17,10 @@ export const sendEmailSchema = z
   );
 
 export type SendEmailInput = z.infer<typeof sendEmailSchema>;
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email(),
+  redirectTo: z.string().optional(),
+});
+
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
