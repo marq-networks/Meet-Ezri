@@ -25,19 +25,30 @@ export class EmailService {
       // Add timeouts to prevent hanging
       connectionTimeout: 10000, // 10 seconds
       greetingTimeout: 10000,   // 10 seconds
-      socketTimeout: 10000      // 10 seconds
+      socketTimeout: 10000,     // 10 seconds
+      // Force IPv4 to avoid Vercel IPv6 issues with some SMTP providers
+      family: 4
     });
+
+    console.log(`EmailService initialized: Host=${process.env.SMTP_HOST} Port=${port} Secure=${isSecure}`);
   }
 
   async sendEmail(to: string, subject: string, html: string, text?: string) {
-    const info = await this.transporter.sendMail({
-      from: process.env.SMTP_FROM || '"MeetEzri" <noreply@meetezri.com>',
-      to,
-      subject,
-      html,
-      text: text || html.replace(/<[^>]*>?/gm, ''), // fallback text generation
-    });
-    return info;
+    console.log(`Attempting to send email to ${to}...`);
+    try {
+      const info = await this.transporter.sendMail({
+        from: process.env.SMTP_FROM || '"MeetEzri" <noreply@meetezri.com>',
+        to,
+        subject,
+        html,
+        text: text || html.replace(/<[^>]*>?/gm, ''), // fallback text generation
+      });
+      console.log(`Email sent successfully: ${info.messageId}`);
+      return info;
+    } catch (error) {
+      console.error('Email sending failed:', error);
+      throw error;
+    }
   }
 }
 
