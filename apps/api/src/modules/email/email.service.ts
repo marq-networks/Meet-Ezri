@@ -26,9 +26,7 @@ export class EmailService {
       connectionTimeout: 10000, // 10 seconds
       greetingTimeout: 10000,   // 10 seconds
       socketTimeout: 10000,     // 10 seconds
-      // Force IPv4 to avoid Vercel IPv6 issues with some SMTP providers
-      family: 4
-    });
+    } as nodemailer.TransportOptions);
 
     console.log(`EmailService initialized: Host=${process.env.SMTP_HOST} Port=${port} Secure=${isSecure}`);
   }
