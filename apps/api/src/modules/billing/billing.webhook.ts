@@ -40,7 +40,7 @@ export async function stripeWebhookHandler(request: FastifyRequest, reply: Fasti
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(event.data.object as any);
+        await handleCheckoutSessionCompleted(event.data.object as any, request);
         break;
       case 'customer.subscription.updated':
         await handleSubscriptionUpdated(event.data.object as any);
@@ -64,7 +64,7 @@ export async function stripeWebhookHandler(request: FastifyRequest, reply: Fasti
   return reply.send({ received: true });
 }
 
-async function handleCheckoutSessionCompleted(session: any) {
+async function handleCheckoutSessionCompleted(session: any, request: FastifyRequest) {
   const userId = session.metadata?.userId;
   
   if (!userId) {
