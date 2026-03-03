@@ -13,7 +13,9 @@ import {
   ArrowLeft,
   CheckCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -22,6 +24,44 @@ import { AppLayout } from "@/app/components/AppLayout";
 import { api } from "@/lib/api";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { toast } from "sonner";
+
+const PasswordInput = ({ 
+  value, 
+  onChange, 
+  className = "",
+  placeholder 
+}: { 
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  className?: string;
+  placeholder?: string;
+}) => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <div className="relative">
+      <input
+        type={showPassword ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`${className} pr-10`}
+      />
+      <button
+        type="button"
+        onClick={() => setShowPassword(!showPassword)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        tabIndex={-1}
+      >
+        {showPassword ? (
+          <EyeOff className="w-4 h-4" />
+        ) : (
+          <Eye className="w-4 h-4" />
+        )}
+      </button>
+    </div>
+  );
+};
 
 export function AccountSettings() {
   const navigate = useNavigate();
@@ -855,8 +895,7 @@ export function AccountSettings() {
                 <div className="space-y-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Password</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={passwordState.currentPassword}
                       onChange={(e) => setPasswordState({...passwordState, currentPassword: e.target.value})}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
@@ -865,8 +904,7 @@ export function AccountSettings() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">New Password</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={passwordState.newPassword}
                       onChange={(e) => setPasswordState({...passwordState, newPassword: e.target.value})}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"
@@ -875,8 +913,7 @@ export function AccountSettings() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={passwordState.confirmPassword}
                       onChange={(e) => setPasswordState({...passwordState, confirmPassword: e.target.value})}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-colors"

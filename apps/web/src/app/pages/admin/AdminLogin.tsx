@@ -50,8 +50,6 @@ export function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleOption | null>(null);
   const [step, setStep] = useState<"role" | "credentials" | "mfa">("role");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
